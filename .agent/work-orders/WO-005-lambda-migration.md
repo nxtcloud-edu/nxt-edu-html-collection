@@ -1,5 +1,5 @@
 # WO-005: 업로드 앱 EC2 → Lambda Function URL 전환 (비용 최적화)
-상태: 검증 대기
+상태: 완료 (2026-07-12, 검증자 Claude — validate·테스트 8/8 통과, 커밋 분리 준수, main 머지)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/005` 브랜치 (README 규칙)
 
