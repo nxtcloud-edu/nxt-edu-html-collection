@@ -81,11 +81,25 @@ resource "aws_iam_role_policy" "s3_upload" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:PutObject"]
-      Resource = "${aws_s3_bucket.games.arn}/games/*"
-    }]
+    Statement = [
+      {
+        Sid      = "WriteAndReadGames"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${aws_s3_bucket.games.arn}/games/*"
+      },
+      {
+        Sid      = "ListGames"
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.games.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["games/*"]
+          }
+        }
+      }
+    ]
   })
 }
 
