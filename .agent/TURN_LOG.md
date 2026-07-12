@@ -158,3 +158,33 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/002에서 WO-002 수행. 완료 신호 = wo/002 커밋 + TURN_LOG 완료 헤더
+
+---
+
+## 2026-07-12 15:15 KST — claude (Planner/Verifier) — WO-002 1차 검증: 반려 (수정 2건)
+
+### Intent
+- WO-002 산출물 독립 실측 검증 및 머지 판정
+
+### Files changed
+- .agent/TURN_LOG.md — 이 엔트리만 (WO 파일은 wo/002 소유라 미수정 — 충돌 회피)
+
+### Commands / verification
+- 코드 전문 검토: server.js(100줄)·index.html·test·provision-s3.sh·package.json
+- npm test — 5/5 통과 (독립 재실행)
+- DRY_RUN 실측: health 200 / 업로드 201+URL 발급 / 발급 URL에서 run-game 원문 서빙(4976B, title 확인)
+  / 비HTML 400 / 필드 누락 400 / 1MB 초과 413 / 경로 탈출(--path-as-is) 404 / uploads.log.jsonl 기록 확인
+- 서버·임시파일 정리 완료
+
+### Decisions / assumptions
+- 반려 사유 (실 S3 경로 — DRY_RUN으로 검증 불가능한 영역의 스펙 공백):
+  1. **S3 Metadata에 한글 그대로 저장** (server.js storeUpload) — S3 메타데이터 값은 ASCII 전용,
+     실 업로드 시 서명 오류 → encodeURIComponent 인코딩 필요 (README에 디코딩 안내 포함)
+  2. **provision-s3.sh에 Block Public Access 해제 누락** — 신규 버킷은 BPA 기본 활성화라
+     put-bucket-policy가 실패 → put-public-access-block 선행 단계 추가 필요
+- 선택 개선(비차단): /deployed 미존재 key는 500 대신 404
+- DRY_RUN 커버리지 밖 실패였으므로 프로세스 개선: 이후 WO에서 "실행 불가 코드 경로는 제약사항을
+  명령서에 명기"를 플래너 책임으로
+
+### Handoff
+- Hermes: wo/002에서 수정 2건(+선택 1건) 반영, 완료 헤더 재기록 + 커밋
