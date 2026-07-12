@@ -1,10 +1,10 @@
 # Current State
 
-Updated: 2026-07-12 15:13 KST
+Updated: 2026-07-12 15:30 KST
 
 ## Active owners
-- Hermes (Coder): WO-002 반려 수정 완료, 검증 대기 (`wo/002` 브랜치)
-- Claude (Planner): 수정사항 재검증 및 머지 판정 대기
+- Hermes (Coder): WO-003 진행 중 — Terraform 인프라 (`wo/003` 브랜치)
+- Claude (Planner): WO-002 완료 처리, WO-003 완료 신호 대기 (워처 가동)
 
 ## Last verified repo state
 - Branch: wo/002 / S3 메타데이터·BPA 수정·저널 커밋 완료
