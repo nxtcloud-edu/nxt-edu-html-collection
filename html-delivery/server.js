@@ -4,7 +4,7 @@ const express = require('express');
 const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
+const { PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, updateRegistryVersion, verifyPassword } = require('./registry');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
@@ -37,9 +37,14 @@ function validateUploadInput({ affiliation, category, name, password, file }) {
 function isValidContentId(value) { return typeof value === 'string' && CONTENT_ID_PATTERN.test(value); }
 function isValidContentKey(value) { return typeof value === 'string' && CONTENT_KEY_PATTERN.test(value); }
 function createVersionKey(contentId, version) { return `games/${contentId}-v${version}.html`; }
+function buildPublicUrl(key, { bucket, region = 'ap-northeast-2', baseUrl, port = PORT } = {}) {
+  if (!bucket) return `http://localhost:${port}/deployed/${key}`;
+  const base = (baseUrl || `https://${bucket}.s3.${region}.amazonaws.com`).replace(/\/$/, '');
+  return `${base}/${key}`;
+}
 function publicUrl(key) {
-  const base = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-  return process.env.S3_BUCKET ? `${base}/${key}` : `${base}/deployed/${key}`;
+  // DRY_RUN에서만 개발 편의를 위해 앱과 같은 오리진의 로컬 파일을 제공한다.
+  return buildPublicUrl(key, { bucket: process.env.S3_BUCKET, region: process.env.S3_REGION, baseUrl: process.env.BASE_URL });
 }
 function requestBaseUrl(req) { return `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`; }
 function viewerUrl(req, contentId) { return `${requestBaseUrl(req)}/view.html?id=${contentId}`; }
@@ -76,13 +81,6 @@ async function storeObject(key, buffer, metadata) {
   const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
   await client.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, Body: buffer, ContentType: 'text/html; charset=utf-8', Metadata: metadata }));
 }
-async function getObject(key) {
-  if (!process.env.S3_BUCKET) return fs.readFile(path.join(LOCAL_DEPLOY_DIR, key));
-  const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
-  const response = await client.send(new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }));
-  if (!response.Body) throw Object.assign(new Error('콘텐츠 본문이 없습니다.'), { code: 'NoSuchKey' });
-  return Buffer.from(await response.Body.transformToByteArray());
-}
 function feedbackClient() { return DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' })); }
 async function saveFeedback(entry) {
   if (!process.env.FEEDBACK_TABLE) return fs.appendFile(LOCAL_FEEDBACK_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
@@ -112,19 +110,16 @@ function createApp() {
     try {
       const sort = req.query.sort === 'likes' ? 'likes' : 'latest';
       const games = filterGames(await listContents(), { cohort: req.query.cohort, category: req.query.category });
-      return res.json({ games: sortGames(games, sort) });
+      return res.json({ games: sortGames(games, sort).map((game) => ({ ...game, contentUrl: publicUrl(game.latestKey) })) });
     } catch (error) { return next(error); }
   });
   app.get('/api/content', async (req, res, next) => {
     if (!isValidContentId(req.query.id)) return res.sendStatus(404);
-    try { const content = await getRegisteredContent(req.query.id); return content ? res.json({ content }) : res.sendStatus(404); }
+    try {
+      const content = await getRegisteredContent(req.query.id);
+      return content ? res.json({ content: { ...content, contentUrl: publicUrl(content.latestKey) } }) : res.sendStatus(404);
+    }
     catch (error) { return next(error); }
-  });
-  app.get('/play/*splat', async (req, res, next) => {
-    const key = Array.isArray(req.params.splat) ? req.params.splat.join('/') : req.params.splat;
-    if (!isValidContentKey(key)) return res.sendStatus(404);
-    try { return res.type('html').send(await getObject(key)); }
-    catch (error) { if (error.code === 'ENOENT' || error.code === 'NoSuchKey' || error.name === 'NoSuchKey') return res.sendStatus(404); return next(error); }
   });
   app.get('/api/feedback', async (req, res, next) => {
     if (!isValidContentId(req.query.id)) return res.sendStatus(404);
@@ -192,4 +187,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };

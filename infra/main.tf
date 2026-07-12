@@ -19,17 +19,6 @@ resource "aws_s3_bucket" "games" {
   bucket = var.bucket_name
 }
 
-resource "aws_s3_bucket_website_configuration" "games" {
-  bucket = aws_s3_bucket.games.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "error.html"
-  }
-}
 
 resource "aws_s3_bucket_public_access_block" "games" {
   bucket = aws_s3_bucket.games.id
@@ -151,7 +140,7 @@ resource "aws_lambda_function" "uploader" {
     variables = {
       S3_BUCKET      = aws_s3_bucket.games.id
       S3_REGION      = var.region
-      BASE_URL       = "http://${aws_s3_bucket_website_configuration.games.website_endpoint}"
+      BASE_URL       = "https://${aws_s3_bucket.games.id}.s3.${var.region}.amazonaws.com"
       FEEDBACK_TABLE = aws_dynamodb_table.feedback.name
     }
   }
