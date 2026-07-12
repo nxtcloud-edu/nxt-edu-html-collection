@@ -1,9 +1,9 @@
 # Handoff
 
 ## Current handoff summary
-빈 프로젝트에 멀티 에이전트 협업 인프라(full 모드)를 셋업했다. Hermes 코더는
-`../nxt-ai-literacy-hermes` 워크트리에서 tmux 세션 `ai-literacy-hermes`로 대기 중.
-아직 제품 코드와 첫 작업 정의가 없다 — 다음 액션은 첫 WO 발행이다.
+WO-001(run-game 횡스크롤 러너 ver1)이 발행되어 Hermes가 `wo/001` 브랜치에서 작업한다.
+스펙과 금지 사항은 `.agent/work-orders/WO-001-run-game-ver1.md`가 SSOT.
+box-game/game-ver1.html은 읽기 전용 참조 기준이다 — 수정 금지.
 
 ## First things to do before any next edit
 ```bash
@@ -12,10 +12,10 @@ git log -1 --pretty=format:'%h %s'
 ```
 
 ## Next recommended project actions
-1. 프로젝트 목표·산출물 정의 (사용자)
-2. `.agent/work-orders/WO-001-*.md` 발행 (Claude)
-3. `tmux-send-safe.sh ai-literacy-hermes "WO-001 진행해" --enter` 로 착수 지시
+1. (Hermes) WO-001 수행 — 완료 시 TURN_LOG 완료 헤더 + wo/001 커밋
+2. (Claude) 완료 신호 감지 → 브라우저 실측 검증 → main 머지
+3. (Claude) WO-002 html-delivery 발행 (S3 업로드·배포 운영 프로그램)
 
 ## Collision risks
-- 로컬 포트·DB·도커는 워크트리 간 공유 — 전 스위트는 한 번에 하나만
 - Hermes는 기본 모드 구동 — dangerous-command 프롬프트는 60초 내 사람이 tmux attach로 승인 필요 (Gotcha 8)
+- 전 스위트/포트 사용 작업은 한 번에 하나만 (현재는 정적 html이라 해당 없음)

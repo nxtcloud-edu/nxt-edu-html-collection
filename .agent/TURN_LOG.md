@@ -58,3 +58,26 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자가 이 게임 기반 작업 방향을 정하면 WO-001 발행
+
+---
+
+## 2026-07-12 14:40 KST — claude (Planner) — WO-001 발행 (run-game ver1)
+
+### Intent
+- 제품 방향 확정분 반영: 3폴더 구조 확정, S3 배포 결정 기록, box-game 배치, WO-001 발행
+
+### Files changed
+- docs/planning/DECISIONS.md — 3폴더 구조 + S3 정적 호스팅 결정 추가
+- box-game/game-ver1.html — 루트에서 이동 (내용 무변경)
+- .agent/work-orders/WO-001-run-game-ver1.md — 신규 발행
+- .agent/CURRENT_STATE.md, HANDOFF.md — WO-001 진행 상태로 갱신
+
+### Commands / verification
+- git mv 상당 (mv + git add), 커밋 4건 — 테스트: 실행 안 함 (정적 문서·구조 변경만)
+
+### Decisions / assumptions
+- WO 순서: WO-001 run-game(소형·협업 루프 캘리브레이션) → WO-002 html-delivery → 안내 문서
+- 안내 문서는 html-delivery 완성 후 작성 (업로드 절차를 담아야 하므로)
+
+### Handoff
+- Hermes: wo/001에서 WO-001 수행. 완료 신호 = wo/001 커밋 + TURN_LOG 완료 헤더
