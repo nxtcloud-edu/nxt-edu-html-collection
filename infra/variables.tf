@@ -20,20 +20,3 @@ variable "bucket_name" {
     error_message = "bucket_name은 소문자·숫자·점·하이픈으로 된 3~63자여야 합니다."
   }
 }
-
-variable "instance_type" {
-  description = "업로드 앱 EC2 인스턴스 타입"
-  type        = string
-  default     = "t3.micro"
-}
-
-variable "repository_url" {
-  description = "EC2 user_data가 clone할 공개 GitHub 저장소"
-  type        = string
-  default     = "https://github.com/nxtcloud-edu/nxt-ai-literacy.git"
-
-  validation {
-    condition     = can(regex("^https://github\\.com/", var.repository_url))
-    error_message = "repository_url은 HTTPS GitHub URL이어야 합니다."
-  }
-}
