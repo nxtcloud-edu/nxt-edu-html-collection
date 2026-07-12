@@ -12,8 +12,8 @@ git log -1 --pretty=format:'%h %s'
 ```
 
 ## Next recommended project actions
-1. (Hermes) WO-001 수행 — 완료 시 TURN_LOG 완료 헤더 + wo/001 커밋
-2. (Claude) 완료 신호 감지 → 브라우저 실측 검증 → main 머지
+1. (Hermes) 완료 신호 확정 — TURN_LOG 완료 헤더 + wo/001 커밋
+2. (Claude) 완료 신호 감지 → 추가 브라우저 실측 검증 → main 머지
 3. (Claude) WO-002 html-delivery 발행 (S3 업로드·배포 운영 프로그램)
 
 ## Collision risks

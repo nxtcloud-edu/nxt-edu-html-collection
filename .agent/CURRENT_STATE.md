@@ -1,14 +1,14 @@
 # Current State
 
-Updated: 2026-07-12 14:40 KST
+Updated: 2026-07-12 14:48 KST
 
 ## Active owners
-- Hermes (Coder): WO-001 진행 중 — run-game ver1 제작 (`wo/001` 브랜치)
-- Claude (Planner): WO-001 발행 완료, 완료 신호 대기 (워처 가동)
+- Hermes (Coder): WO-001 구현 완료, 검증 대기 (`wo/001` 브랜치)
+- Claude (Planner): 브라우저 실측 검증 및 머지 판정 대기
 
 ## Last verified repo state
-- Branch: main / working tree clean (game-ver1.html은 box-game/으로 이동 완료)
-- 검증: 아직 실행할 스위트 없음 (정적 html 프로젝트)
+- Branch: wo/001 / WO-001 구현·저널 커밋 완료
+- 검증: 정적 구조 검사 통과, 브라우저 스모크 테스트 통과, 콘솔 오류 없음
 
 ## Completed
 - 협업 인프라 셋업 (저널·명령서 채널·워크트리 게이트·tmux 세션)

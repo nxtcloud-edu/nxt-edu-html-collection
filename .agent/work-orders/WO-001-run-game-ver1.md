@@ -1,5 +1,5 @@
 # WO-001: run-game 횡스크롤 달리기 게임 ver1 제작
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/001` 브랜치 (README 규칙)
 

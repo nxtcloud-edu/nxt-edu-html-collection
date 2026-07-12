@@ -81,3 +81,49 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/001에서 WO-001 수행. 완료 신호 = wo/001 커밋 + TURN_LOG 완료 헤더
+
+---
+
+## 2026-07-12 14:48 KST — hermes (Coder) — WO-001
+
+### Intent
+- `run-game/game-ver1.html`에 box-game과 같은 구조의 의도적으로 단순한 횡스크롤 러너 ver1 구현
+
+### Files changed
+- `run-game/game-ver1.html` — 단일 HTML/CSS/JavaScript 게임 신규 작성
+- `.agent/work-orders/WO-001-run-game-ver1.md` — 상태를 `검증 대기`로 변경
+- `.agent/CURRENT_STATE.md` — WO-001 구현·검증 상태 반영
+- `.agent/HANDOFF.md` — 검증자 다음 액션 반영
+- `.agent/TURN_LOG.md` — 본 완료 기록 추가
+
+### Commands / verification
+- `git rev-parse --show-toplevel && git rev-parse --abbrev-ref HEAD && git status --short --branch && git worktree list` — `/Users/glen/Desktop/work/nxt-ai-literacy-hermes`, `wo/001` 확인
+- `read_file AGENTS.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/work-orders/WO-001-run-game-ver1.md`, `.agent/work-orders/README.md`, `docs/planning/DECISIONS.md`, `box-game/game-ver1.html` — 필독 컨텍스트 확인
+- `date '+%Y-%m-%d %H:%M %Z'` — `2026-07-12 14:48 KST`
+- 정적 Python 검사 — 외부 URL/의존성, CONFIG 표식, 한국어 UI, 점프 입력, 금지 기능 부재 확인; 180줄; 통과
+- `git diff --check` — 통과
+- 브라우저 `file:///Users/glen/Desktop/work/nxt-ai-literacy-hermes/run-game/game-ver1.html` — 제목·시작 UI 렌더링 확인
+- 브라우저 시작 버튼 클릭 및 재시작 버튼 클릭 — 시작/게임오버 UI 전환 확인
+- 브라우저 콘솔 `startGame()` — 시작 상태, 점수 표시, 지면 초기화 확인
+- 브라우저 콘솔 `startGame(); jump()` — 점프 속도 `-13` 확인
+- 브라우저 콘솔 장애물 주입 후 `update()` — `gameOver: true`, 게임오버 UI, 점수 숨김 확인
+- 브라우저 콘솔 `startGame()` — 다시 시작 상태, 점수 0, 장애물 0 확인
+- 브라우저 콘솔 조회 — `console_messages: []`, `js_errors: []`
+- 전체 테스트 스위트: 실행 안 함 — 정적 단일 HTML 프로젝트이며 별도 테스트 스위트 없음
+
+### Decisions / assumptions
+- delta-time, 난이도 상승, 최고점수, 일시정지, 효과음, 외부 의존성은 추가하지 않음
+- 점수는 화면 왼쪽을 통과한 장애물 수로 계산
+- 터치 입력은 터치 시작 시 점프로 단순화
+
+### Handoff
+- WO-001 상태를 `검증 대기`로 전환
+- 현재 브랜치 `wo/001`에서 본 기록과 구현을 같은 커밋에 포함
+- Claude가 추가 브라우저 실측 검증 후 main 머지 여부를 판정
+
+### Addendum
+- `git commit -m '횡스크롤 러너 게임 ver1 구현'` 첫 시도 — append-only 훅이 기존 저널 1줄 삭제를 감지해 차단(exit 1)
+- `git diff --cached -- .agent/TURN_LOG.md` — 원인 확인
+- 저널 첫 줄의 기존 빈 줄을 복원한 뒤 재시도 — 커밋 훅 통과
+- `git commit --amend --no-edit` — `CURRENT_STATE.md`의 커밋 상태 표현을 실제 상태로 정정
+- 최종 `git status --short --branch` — `## wo/001`, 추가 변경 없음

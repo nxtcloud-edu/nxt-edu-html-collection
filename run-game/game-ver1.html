@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>달리기 게임</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: monospace; }
+  canvas { border: 2px solid #444; background: #1a1a2e; }
+  #ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #fff; }
+  #ui h1 { font-size: 32px; margin-bottom: 16px; }
+  #ui p { font-size: 16px; margin-bottom: 8px; color: #aaa; }
+  #ui button { padding: 12px 32px; font-size: 18px; background: #e94560; color: #fff; border: none; cursor: pointer; font-family: monospace; margin-top: 12px; }
+  #ui button:hover { background: #ff6b81; }
+  #score { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 24px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div id="score" style="display:none">점수: <span id="scoreValue">0</span></div>
+<canvas id="game"></canvas>
+
+<div id="ui">
+  <h1>달리기 게임</h1>
+  <p>스페이스 또는 ↑ 키로 점프</p>
+  <p>다가오는 장애물을 피하세요!</p>
+  <button onclick="startGame()">시작</button>
+</div>
+
+<script>
+// ===== 설정 (자유롭게 수정하세요!) =====
+const CONFIG = {
+  canvasWidth: 700,
+  canvasHeight: 320,
+
+  // 플레이어
+  playerWidth: 36,
+  playerHeight: 48,
+  playerColor: '#00d2ff',
+  playerX: 100,
+  jumpPower: 13,
+
+  // 물리
+  gravity: 0.6,
+  groundHeight: 48,
+
+  // 장애물
+  obstacleWidth: 30,
+  obstacleHeight: 44,
+  obstacleColor: '#e94560',
+  obstacleSpeed: 5,
+  obstacleSpawnRate: 90, // 프레임 간격
+};
+// ========================================
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = CONFIG.canvasWidth;
+canvas.height = CONFIG.canvasHeight;
+const ui = document.getElementById('ui');
+const scoreDiv = document.getElementById('score');
+const scoreValue = document.getElementById('scoreValue');
+
+let player, obstacles, score, gameOver, frameCount;
+
+function createPlayer() {
+  return { x: CONFIG.playerX, y: groundY() - CONFIG.playerHeight,
+    w: CONFIG.playerWidth, h: CONFIG.playerHeight, velocityY: 0 };
+}
+
+function groundY() {
+  return canvas.height - CONFIG.groundHeight;
+}
+
+function spawnObstacle() {
+  obstacles.push({ x: canvas.width, y: groundY() - CONFIG.obstacleHeight,
+    w: CONFIG.obstacleWidth, h: CONFIG.obstacleHeight, counted: false });
+}
+
+function isColliding(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x &&
+    a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function jump() {
+  if (!gameOver && player.y + player.h >= groundY()) player.velocityY = -CONFIG.jumpPower;
+}
+
+function updatePlayer() {
+  player.velocityY += CONFIG.gravity;
+  player.y += player.velocityY;
+  if (player.y + player.h >= groundY()) {
+    player.y = groundY() - player.h;
+    player.velocityY = 0;
+  }
+}
+
+function updateObstacles() {
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obstacle = obstacles[i];
+    obstacle.x -= CONFIG.obstacleSpeed;
+    if (isColliding(player, obstacle)) return endGame();
+    if (!obstacle.counted && obstacle.x + obstacle.w < player.x) {
+      obstacle.counted = true;
+      score++;
+    }
+    if (obstacle.x + obstacle.w < 0) obstacles.splice(i, 1);
+  }
+}
+
+function update() {
+  if (gameOver) return;
+  frameCount++;
+  updatePlayer();
+  if (frameCount % CONFIG.obstacleSpawnRate === 0) spawnObstacle();
+  updateObstacles();
+  scoreValue.textContent = score;
+}
+
+function drawPlayer() {
+  ctx.fillStyle = CONFIG.playerColor;
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+}
+
+function drawObstacles() {
+  ctx.fillStyle = CONFIG.obstacleColor;
+  for (const obstacle of obstacles) {
+    ctx.fillRect(obstacle.x, obstacle.y, obstacle.w, obstacle.h);
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#333';
+  ctx.fillRect(0, groundY(), canvas.width, CONFIG.groundHeight);
+  drawPlayer();
+  drawObstacles();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  if (!gameOver) requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  player = createPlayer();
+  obstacles = [];
+  score = 0;
+  gameOver = false;
+  frameCount = 0;
+  ui.style.display = 'none';
+  scoreDiv.style.display = 'block';
+  scoreValue.textContent = '0';
+  gameLoop();
+}
+
+function endGame() {
+  gameOver = true;
+  ui.innerHTML = `<h1>게임 오버</h1><p>점수: ${score}</p>
+    <button onclick="startGame()">다시 하기</button>`;
+  ui.style.display = 'block';
+  scoreDiv.style.display = 'none';
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.code === 'Space' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    jump();
+  }
+});
+canvas.addEventListener('touchstart', (event) => {
+  event.preventDefault();
+  jump();
+}, { passive: false });
+</script>
+
+</body>
+</html>
