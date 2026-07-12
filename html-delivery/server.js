@@ -66,9 +66,17 @@ async function storeUpload({ key, buffer, affiliation, name, uploadedAt }) {
     name: encodeMetadataValue(name),
     uploadedAt,
   };
-  if (process.env.S3_BUCKET) await saveToS3(key, buffer, metadata);
-  else await saveLocally(key, buffer);
-  await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
+  if (process.env.S3_BUCKET) {
+    await saveToS3(key, buffer, metadata);
+    try {
+      await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
+    } catch (error) {
+      console.warn('업로드 로그 기록 실패:', error);
+    }
+  } else {
+    await saveLocally(key, buffer);
+    await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
+  }
 }
 
 function createApp() {
