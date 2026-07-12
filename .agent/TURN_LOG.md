@@ -853,3 +853,51 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자 최종 UX 확인 대기. 남은 백로그: 기존 시딩 6건의 피드백 샘플(선택)
+
+
+---
+
+## 2026-07-12 21:42 KST — hermes (Coder) — WO-010
+
+### Intent
+- 이름 기반 콘텐츠에 scrypt 소유권과 불변 contentId 버전 모델 도입
+- 추천 API·soft guard·추천순 갤러리 추가
+- 레거시 S3 listing/fallback 제거
+
+### Files changed
+- `html-delivery/registry.js`, `server.js`, tests: DynamoDB/로컬 레지스트리, 소유권, 버전, 추천, contentId 피드백
+- `public/upload.html`, `view.html`, `index.html`, `cohort.html`: 비밀번호 입력, 불변 뷰어, vN, 추천, 정렬
+- `infra/main.tf`: GetItem/PutItem/Query/Scan/UpdateItem 및 로컬 registry ZIP 제외
+- `README.md`, `.gitignore`, `.agent/*`
+
+### Commands·verification
+- 필수 문서·WO·코드·인프라 조회, `git status`, `git log`: clean wo/010 확인
+- API 1차 `npm test`: 8/8; 추천 추가 후 9/9; 최종 9/9 통과
+- Terraform fmt-recursive, fmt-check, validate: 통과
+- UI Python 정적 검사: password input, 불변 id URL, 추천/정렬/latestKey, viewer innerHTML 없음
+- DRY_RUN 서버 시작; 런타임 전용 무작위 자격 fixture를 mode 0600으로 생성(값 출력·기록 안 함)
+- 최초 v1 multipart: shell `<` 미인용으로 password 필드가 비어 400; 응답은 길이 오류, 자격 값 노출 없음
+- 파일 입력 문법 인용 후 신규 업로드 201: contentId 발급, v1, `view.html?id=`
+- 추천 API: 200, likes 1
+- 동일 identity·정상 자격 재업로드: 201, 동일 contentId/뷰어 URL, v2/direct v2
+- 동일 identity·오자격 재업로드: 403, 지정 오류 문구
+- content API: v2·likes 1, hash/salt 미노출
+- play v2: v2 marker 반환; games sort=likes 응답 통과
+- 브라우저: v2/업데이트/추천 1, iframe v2 marker·focus·large link 확인
+- 브라우저 추천 클릭: likes 2, disabled true, localStorage guard 확인
+- 갤러리: 최신순/추천순, 카드 v2·likes 2·contentId URL 확인
+- 물리 추천순 클릭은 도구 성공 응답에도 aria 상태 불변; JS 오류 0, DOM click 진단으로 pressed true/API 갱신 확인
+- 보안 Python 검사: 런타임 자격 값이 tracked files·registry·feedback에 없음; registry는 hash+salt만
+- 서버 종료; 정확한 두 버전 artifact·registry row·feedback row·응답·자격 fixture 정리
+- 금지 diff: game dirs/lambda.js 출력 없음; S3 listing/Head/fallback 함수 검색 0건
+- 실제 AWS, Terraform plan/apply, 프로덕션 접근·배포: 실행 안 함
+
+### Decisions
+- 공개 projection에서 passwordHash/salt/Dynamo key 제거
+- identity는 affiliation+name+category exact match, contentId는 random 8 hex
+- 이전 버전 객체 보존, registry latestKey만 진전
+- 레거시 객체 호환 경로를 만들지 않음
+
+### Handoff
+- 상태: 검증 대기
+- 검증자는 재시딩 후 프로덕션 v1/v2·추천·정렬을 확인

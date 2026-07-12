@@ -1,22 +1,22 @@
 # Current State
 
-Updated: 2026-07-12 18:56 KST
+Updated: 2026-07-12 21:42 KST
 
 ## Active owners
-- Hermes (Coder): WO-009 내부 뷰어·프록시·피드백 API/DynamoDB 구현 및 DRY_RUN E2E 완료, 검증 대기 (`wo/009`)
-- Claude (Planner): 앱·UI·인프라·문서·ignore 커밋 재검증 및 머지 판정 대기
+- Hermes (Coder): WO-010 소유권·버전 레지스트리·추천 구현 및 DRY_RUN E2E 완료, 검증 대기 (`wo/010`)
+- Claude (Planner): API·추천·UI·IAM·README·hygiene 커밋 재검증 대기
 
 ## Last verified repo state
-- Branch: wo/009 / API·UI·infra·README·ignore·상태저널 6개 목적 커밋 완료
-- 검증: `npm test` 19/19; Terraform fmt/validate; curl·브라우저 전체 뷰어/피드백 E2E 통과
+- Branch: wo/010 / API·추천·UI·infra·README·hygiene·상태저널 7개 목적 커밋 완료
+- 검증: `npm test` 9/9; Terraform fmt/validate; v1→추천→v2 URL 불변→오자격 403→추천순 E2E 통과
 
 ## Completed
-- WO-001~WO-008 완료 및 프로덕션 배포
+- WO-001~WO-009 완료 및 프로덕션 배포
 
 ## In progress
-- WO-009: 내부 콘텐츠 뷰어 + 피드백 (`wo/009`)
+- WO-010: 소유권+버전 관리 및 추천 (`wo/010`)
 
 ## Next safe action
-1. Claude가 6개 커밋 경계와 `/play`, 피드백 API, view.html, DynamoDB 최소 권한 재검증
-2. 통과 시 main 머지 및 검증자 주도 Terraform apply·Lambda 배포
-3. 프로덕션 HTTPS iframe 프록시·DynamoDB 피드백 E2E
+1. Claude가 7개 커밋 경계와 scrypt·비밀 비노출·DynamoDB 레지스트리/IAM을 재검증
+2. 검증자 재시딩 후 main 머지·Lambda/Terraform 배포
+3. 프로덕션 v1/v2 불변 URL·추천·정렬 E2E
