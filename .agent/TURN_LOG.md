@@ -770,3 +770,68 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - WO-009(내부 뷰어+피드백) 발행 — DynamoDB 인프라 포함
+
+
+---
+
+## 2026-07-12 18:56 KST — hermes (Coder) — WO-009
+
+### Intent
+- HTTPS 사이트 내부에서 S3 콘텐츠를 안전하게 iframe 로드하도록 `/play/{key}` 프록시 추가
+- 내부 뷰어에서 콘텐츠 Metadata·플레이·피드백 작성/목록 동선 완성
+- 프로덕션 DynamoDB와 DRY_RUN JSONL의 동일 API 계약 구현
+
+### Files changed
+- `html-delivery/server.js`, `test/validation.test.js`, package manifests: 프록시·피드백 API/저장·뷰어 URL 응답·SDK·테스트
+- `html-delivery/public/view.html`, `index.html`, `cohort.html`: 내부 뷰어·피드백 UI·카드 전환
+- `infra/main.tf`: DynamoDB PAY_PER_REQUEST, PutItem/Query IAM, FEEDBACK_TABLE, 패키징 제외
+- `README.md`: 뷰어 공유 URL·피드백 절차
+- `.gitignore`: 로컬 피드백 JSONL 추적 제외
+- `.agent/*`: 상태·인계·완료 기록
+
+### Commands·verification
+- 시작 문서·WO·현재 server/public/infra/package 조회 및 `git status`, `git log`로 clean wo/009 확인
+- `npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb`: 8 packages 추가, 118 packages audit, 취약점 0
+- API 구현 후 `npm test`: 19/19 통과
+- `git diff --check`: 통과
+- API+테스트+의존성 `feat: 콘텐츠 프록시와 피드백 API 추가` 커밋
+- UI Python 정적 검사: iframe/play/feedback/textContent/focus/내부 same-tab 카드 통과, view.html innerHTML 0건
+- UI `feat: 내부 콘텐츠 뷰어와 피드백 화면 추가` 커밋
+- `terraform fmt -recursive infra`: main.tf 포맷
+- `terraform -chdir=infra fmt -check`: 통과
+- `terraform -chdir=infra validate`: Success, valid
+- infra `feat: 피드백 DynamoDB 인프라 추가` 커밋
+- README Python 문구 검사 통과 및 `docs: 뷰어 공유와 피드백 절차 추가` 커밋
+- `node server.js`: DRY_RUN 서버 시작
+- `/tmp/wo009-viewer-e2e.html` marker fixture 생성
+- `curl /api/health`: 200
+- multipart upload: 201, `url=http://localhost:3210/view.html?key=...`, `directUrl=/deployed/...` 확인
+- `curl /play/games/20260712095028-e906.html`: 200, `text/html; charset=utf-8`, marker 본문
+- 잘못된 `/play` key: 404
+- 잘못된 POST `/api/feedback` key: 404
+- 빈 feedback payload: 400, `피드백은 1~500자로 입력하세요.`
+- 501자 feedback payload: 400, 동일 오류
+- XSS 형태 payload 정상 POST: 201, 빈 nickname은 `익명`
+- GET feedback: 해당 key 1건 반환
+- 브라우저 뷰어: 이름·코호트·분류·시각, iframe marker 확인
+- 전체 스냅샷: `<img ...>` payload가 literal StaticText로 렌더링됨
+- 브라우저 폼 입력/클릭: 두 번째 피드백 등록 성공, 목록 2건 오래된 순 노출
+- 브라우저 갤러리 DOM: 카드 href `view.html?key=...`, target null
+- 브라우저 뷰어 DOM: iframeFocused true, 크게 보기 href `/play/games/...`
+- DRY_RUN 서버 종료
+- 정확한 content key의 artifact, upload JSONL, feedback JSONL 및 `/tmp` fixture 정리
+- 최종 `npm test`: 19/19 통과
+- 최종 Terraform fmt-check·validate: 통과
+- `git diff --name-only 1aa5651..HEAD -- box-game run-game html-delivery/lambda.js`: 출력 없음
+- `.gitignore` 확인 후 `.local-feedback.jsonl` 추가, `chore: 로컬 피드백 파일 추적 제외` 커밋
+- 실제 DynamoDB/S3 API, AWS CLI, Terraform plan/apply, 프로덕션 접근·배포: 실행 안 함
+
+### Decisions
+- key 정규식은 `/play`와 피드백 API가 공유하고 불일치는 404
+- 업로드 응답 `url`은 요청 host/protocol 기반 뷰어 절대 URL, 기존 콘텐츠 URL은 `directUrl`
+- UI는 외부 Metadata·피드백을 모두 textContent로 렌더링
+- DynamoDB 권한은 테이블 ARN의 PutItem·Query로 제한
+
+### Handoff
+- 상태: 검증 대기
+- Claude가 6개 목적 커밋과 프로덕션 HTTPS 프록시·DynamoDB E2E를 재검증

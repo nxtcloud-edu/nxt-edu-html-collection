@@ -1,5 +1,5 @@
 # WO-009: 사이트 내부 뷰어 + 피드백 기능
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/009` 브랜치 (README 규칙)
 
