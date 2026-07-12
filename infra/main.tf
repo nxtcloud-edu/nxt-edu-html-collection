@@ -1,3 +1,20 @@
+resource "aws_dynamodb_table" "feedback" {
+  name         = "nxt-edu-feedback"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "contentKey"
+  range_key    = "createdAt"
+
+  attribute {
+    name = "contentKey"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+}
+
 resource "aws_s3_bucket" "games" {
   bucket = var.bucket_name
 }
@@ -49,6 +66,7 @@ data "archive_file" "lambda" {
     ".env",
     ".env.example",
     ".local-deploy",
+    ".local-feedback.jsonl",
     "scripts",
     "test",
     "uploads.log.jsonl",
@@ -103,6 +121,20 @@ resource "aws_iam_role_policy" "s3_upload" {
   })
 }
 
+resource "aws_iam_role_policy" "feedback" {
+  name = "nxt-ai-literacy-feedback"
+  role = aws_iam_role.uploader.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["dynamodb:PutItem", "dynamodb:Query"]
+      Resource = aws_dynamodb_table.feedback.arn
+    }]
+  })
+}
+
 resource "aws_lambda_function" "uploader" {
   function_name = "nxt-ai-literacy-uploader"
   role          = aws_iam_role.uploader.arn
@@ -116,13 +148,18 @@ resource "aws_lambda_function" "uploader" {
 
   environment {
     variables = {
-      S3_BUCKET = aws_s3_bucket.games.id
-      S3_REGION = var.region
-      BASE_URL  = "http://${aws_s3_bucket_website_configuration.games.website_endpoint}"
+      S3_BUCKET      = aws_s3_bucket.games.id
+      S3_REGION      = var.region
+      BASE_URL       = "http://${aws_s3_bucket_website_configuration.games.website_endpoint}"
+      FEEDBACK_TABLE = aws_dynamodb_table.feedback.name
     }
   }
 
-  depends_on = [aws_iam_role_policy_attachment.lambda_logs]
+  depends_on = [
+    aws_iam_role_policy.feedback,
+    aws_iam_role_policy.s3_upload,
+    aws_iam_role_policy_attachment.lambda_logs,
+  ]
 }
 
 resource "aws_lambda_function_url" "uploader" {
