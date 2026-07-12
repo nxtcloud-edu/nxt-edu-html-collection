@@ -598,3 +598,74 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-006 상태 `검증 대기`
 - Claude가 README 6개 섹션, 링크 4개, 업로드 URL 비하드코딩, 신규 제품 파일 1개 경계를 재검증한 뒤 main 머지 판정
+
+
+---
+
+## 2026-07-12 16:24 KST — hermes (Coder) — WO-007
+
+### Intent
+- 첫 화면을 AI 게임 랜딩+갤러리로 개편하고 업로드 폼을 별도 페이지로 분리
+- 자유 소속 입력을 두 고정 코호트 선택으로 변경하고 S3/DRY_RUN 갤러리 API 제공
+
+### Files changed
+- `html-delivery/server.js` — 코호트 SSOT, `/api/cohorts`, `/api/games`, 고정 코호트 검증, S3/JSONL 목록·정렬·Metadata fallback 추가
+- `html-delivery/test/validation.test.js` — 코호트 검증·정렬·Metadata decode fallback·JSONL 파싱 테스트 추가
+- `html-delivery/public/index.html` — sticky nav·히어로·필터·게임 카드·빈/오류 상태 랜딩 갤러리
+- `html-delivery/public/upload.html` — 기존 폼 이동, API 기반 코호트 select, 갤러리 복귀·URL 복사 유지
+- `infra/main.tf` — Lambda 역할에 games/* GetObject와 prefix 제한 ListBucket 추가
+- `README.md` — 4장 배포 절차를 갤러리 CTA·코호트 선택 기준으로 갱신
+- `.agent/work-orders/WO-007-landing-gallery-cohort.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 검증 대기·인계 기록
+
+### Commands / verification
+- `git status --short --branch` — clean `wo/007` 확인
+- `git log -4 --oneline --decorate` — HEAD `56ffa8a`, main 기준 WO-007 발행 확인
+- `read_file`/`search_files` — AGENTS, 상태·인계, WO 규칙, server.js, public/index.html, validation tests, infra/main.tf, README, package 구조 확인
+- API 구현 후 `npm test` — 12/12 통과
+- API 커밋 전 `git diff --check` — 통과
+- `a350d28 feat: 코호트와 게임 갤러리 API 추가` — server+tests만 커밋
+- 최초 Python UI 정적 검증 — 실패: 빈 상태 지정 문구가 두 DOM 노드로 분리됨; 정확한 한 문장 노드로 수정
+- 수정 후 Python UI 정적 검증 — 랜딩 CTA/API/필터/빈 상태/새 탭 카드, upload select/API/복사/복귀 링크 통과; 자유 affiliation input 부재
+- UI 커밋 전 `git diff --check` — 통과
+- `2c28c4b feat: 랜딩 갤러리와 업로드 화면 분리` — public HTML 2개만 커밋
+- `terraform fmt -recursive infra` — 실행 완료
+- `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — 구성 valid
+- `f3aa458 feat: 갤러리 조회용 S3 권한 추가` — infra/main.tf만 커밋
+- Python README 4장 검증 — 갤러리·업로드 CTA·소속(수업) 선택·강사 공지 확인, 이전 업로드 페이지 표현 부재
+- README 커밋 전 `git diff --check` — 통과
+- `8cea0ec docs: 코호트 선택 업로드 동선 반영` — README만 커밋
+- `node server.js` — background DRY_RUN 서버 시작, process poll에서 running 확인
+- `curl -i /api/health` — 200 `{"ok":true}`
+- `curl -i /api/cohorts` — 200, 정확한 두 코호트 반환
+- `/tmp/wo007-gallery-e2e.html` fixture 생성
+- 미등록 코호트 multipart curl — 400, `등록된 수업(코호트)을 선택하세요.`
+- 정상 코호트 multipart curl — 201, key `games/20260712072224-c0ad.html`
+- `curl /api/games` — 신규 `WO007검증` 게임이 최신 첫 항목으로 즉시 노출
+- 발급 `/deployed/games/20260712072224-c0ad.html` curl — `WO-007 gallery e2e marker` 원문 반환
+- 브라우저 `http://localhost:3210/` — sticky nav CTA, 히어로, 5개 카드, 전체+코호트 2개 필터 확인
+- 브라우저 두 번째 코호트 필터 — 0개 및 정확한 빈 상태 문구 확인
+- 브라우저 첫 코호트 필터 — 신규 카드 1개 확인, 카드 클릭 성공; URL 응답은 curl marker로 교차 확인
+- 브라우저 상단 `내 게임 업로드` 클릭 — upload.html, 갤러리 복귀 링크, API 로드된 select option 2개, 파일·제출 UI 확인
+- process kill — DRY_RUN 서버 종료
+- Python 정리 — 정확한 E2E key 파일·JSONL 한 줄·`/tmp` fixture/response 제거, 기존 로컬 기록 보존
+- 최종 `npm test` — 12/12 통과
+- 최종 Terraform `fmt -check` — 통과
+- 최종 Terraform `validate` — 구성 valid
+- 최종 `git status --short --branch` — clean `wo/007`
+- `git log -4 --pretty=format:'%h %s'` — API/UI/IAM/docs 4개 목적 커밋 확인
+- 모든 검증 명령은 긴 `&&` 체인과 `node -e` 없이 단독 실행
+- 게임 파일·lambda.js 수정, Terraform plan/apply, AWS CLI, 프로덕션 접근·배포·push — 실행 안 함
+
+### Decisions
+- 외부 게임 Metadata는 DOM `textContent`로 렌더링해 스크립트 삽입을 방지
+- S3 HeadObject 실패·Metadata 누락·decode 실패 객체도 `알 수 없음`으로 목록 유지
+- DRY_RUN JSONL의 손상된 줄은 건너뛰고 정상 항목을 최신순으로 제공
+- 과거 자유 소속 로컬 항목은 전체 탭에는 보이지만 신규 고정 코호트 필터에는 포함되지 않음
+- IAM은 GetObject를 games/* 객체로, ListBucket을 해당 버킷+games/* prefix 조건으로 제한
+
+### Handoff
+- WO-007 상태 `검증 대기`
+- 목적별 커밋: API `a350d28`, UI `2c28c4b`, IAM `f3aa458`, docs `8cea0ec`; 본 상태·저널 커밋 별도
+- Claude가 커밋 경계·DRY_RUN·Terraform을 재검증한 뒤 main 머지 판정
+- 프로덕션 배포/apply와 실 S3 갤러리 E2E는 검증자+사용자 전담

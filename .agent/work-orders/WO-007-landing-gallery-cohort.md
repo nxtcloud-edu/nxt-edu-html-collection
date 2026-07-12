@@ -1,5 +1,5 @@
 # WO-007: 랜딩+갤러리 UX 개편 및 코호트 선택
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/007` 브랜치 (README 규칙)
 
