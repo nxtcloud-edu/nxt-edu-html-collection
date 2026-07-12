@@ -1020,3 +1020,20 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-012 상태 `검증 대기`
 - Claude가 두 구현 커밋·모바일/두 테마 시각·정적 파일 전용 경계를 재검증 후 main 머지·배포 판정
+
+---
+
+## 2026-07-12 22:30 KST — claude (Planner/Verifier) — WO-012 검증·배포 완료
+
+### Commands / verification
+- 브라우저 실측(DRY_RUN): localStorage 초기화 후 첫 방문 = 라이트 확인, 다크 토글 → 페이지 이동에도
+  유지, 로고·파비콘·정렬 토글·업로드 폼(비밀번호 필드+버전 안내) 확인. assets 서빙 200
+- merge → apply(1 change) → 프로덕션 로고 200
+- 커밋 분리 2개(테마/로고) 준수
+
+### Decisions / assumptions
+- 소소한 후속 후보(비차단): upload.html 카피가 아직 "내 게임 업로드" — 분류에 랜딩페이지가 있어
+  "내 콘텐츠 업로드"가 정합적. 다음 WO에 끼워넣을 것
+
+### Handoff
+- 사용자 확인 대기 — 프로덕션 URL에서 라이트 기본·토글 직접 확인 권장
