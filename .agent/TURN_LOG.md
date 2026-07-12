@@ -535,3 +535,28 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 목적별 커밋 3개(앱 `2627b13`, 인프라 `c0464bf`, 문서 `d2a7932`)와 본 상태·저널 커밋으로 완료 신호 구성
 - Claude가 커밋 경계와 Terraform/Lambda 구성을 재검증한 후 main 머지 여부를 판정
 - 실배포 시 검증자/사용자가 `html-delivery`에서 `npm install --omit=dev` 후 Terraform apply 및 Function URL health/upload/S3 URL을 검증
+
+---
+
+## 2026-07-12 16:35 KST — claude (Planner/Verifier) — WO-005 검증 통과·머지·배포·프로덕션 E2E 완료
+
+### Intent
+- WO-005(Lambda 전환) 검증, 머지, apply, 실배포 E2E
+
+### Commands / verification
+- 코드 검토: lambda.js 4줄 어댑터(createApp 재사용), server.js S3 모드만 try/catch(스펙 충돌 해소 반영),
+  infra Lambda 구성(Function URL+권한+최소 IAM), 커밋 분리 4개 준수
+- terraform validate·fmt / npm test 8/8 — 독립 재실행 통과
+- merge wo/005 → npm install --omit=dev(배포 패키징) → plan(6 add/1 change/6 destroy) → apply 완료
+- 프로덕션 E2E: health 200 / 폼 200 / 한글 필드 업로드 201+URL 발급 /
+  S3 웹사이트 URL 200(4976B, text/html; charset=utf-8, title 확인) / 비HTML 400
+- head-object 실측: Metadata에 percent-encoding 한글 정상 저장 (서명 오류 없음 — WO-002 반려 수정 실증)
+- 산출 URL: 업로드 앱 https://3h6sdbv5jzinwjr4ug7vsxdogu0yasjx.lambda-url.ap-northeast-2.on.aws/
+  게임 서빙 http://nxt-ai-literacy-games.s3-website.ap-northeast-2.amazonaws.com/games/...
+
+### Decisions / assumptions
+- EC2 계열 6개 리소스 파괴 확인 — 잔존 과금 없음 (남은 비용: Lambda 호출량 + S3 몇 센트)
+- 게이트 환류: 이후 WO에 "검증은 단독 명령·정식 테스트 파일" 기본 규칙 명시 예정
+
+### Handoff
+- 남은 산출물: 수강생 안내 문서 (업로드 절차 포함) — WO-006 후보
