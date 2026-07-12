@@ -1,4 +1,4 @@
 const serverless = require('serverless-http');
 const { createApp } = require('./server');
 
-module.exports.handler = serverless(createApp());
+module.exports.handler = serverless(createApp(), { binary: ['image/*'] });
