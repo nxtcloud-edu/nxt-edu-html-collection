@@ -10,12 +10,23 @@ const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
-const COHORTS = ['2026-고대세종-ai', '2026-한이음-ai-중급'];
-const CATEGORIES = ['미니게임', '랜딩페이지'];
+const COHORTS = ['2026-고대세종-ai', '2026-한이음-ai-중급', '2026-고대세종-기업인턴십'];
+const TEAM_COHORTS = {
+  '2026-고대세종-기업인턴십': ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'],
+};
+const CATEGORIES = ['미니게임', '웹페이지'];
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
 const CONTENT_ID_PATTERN = /^[0-9a-f]{8}$/;
 const CONTENT_KEY_PATTERN = /^games\/[0-9a-f]{8}-v[1-9][0-9]*\.html$/;
+
+function normalizeCategory(category) {
+  return category === '랜딩페이지' ? '웹페이지' : category;
+}
+
+function normalizeContent(content) {
+  return { ...content, category: normalizeCategory(content.category) };
+}
 
 function validateUploadInput({ affiliation, category, name, password, file }) {
   const errors = [];
@@ -24,7 +35,10 @@ function validateUploadInput({ affiliation, category, name, password, file }) {
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   if (!COHORTS.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
   if (!CATEGORIES.includes(trimmedCategory)) errors.push('분류를 선택하세요.');
-  if (!trimmedName || trimmedName.length > 40) errors.push('이름은 1~40자로 입력하세요.');
+  const teams = TEAM_COHORTS[trimmedAffiliation];
+  if (teams) {
+    if (!teams.includes(trimmedName)) errors.push('팀을 선택하세요.');
+  } else if (!trimmedName || trimmedName.length > 40) errors.push('이름은 1~40자로 입력하세요.');
   if (typeof password !== 'string' || password.length < 4 || password.length > 30) errors.push('비밀번호는 4~30자로 입력하세요.');
   if (!file) errors.push('HTML 파일을 선택하세요.');
   else {
@@ -111,14 +125,15 @@ function createApp() {
   app.get('/api/games', async (req, res, next) => {
     try {
       const sort = req.query.sort === 'likes' ? 'likes' : 'latest';
-      const games = filterGames(await listContents(), { cohort: req.query.cohort, category: req.query.category });
+      const games = filterGames((await listContents()).map(normalizeContent), { cohort: req.query.cohort, category: req.query.category });
       return res.json({ games: sortGames(games, sort).map((game) => ({ ...game, contentUrl: publicUrl(game.latestKey) })) });
     } catch (error) { return next(error); }
   });
   app.get('/api/content', async (req, res, next) => {
     if (!isValidContentId(req.query.id)) return res.sendStatus(404);
     try {
-      const content = await getRegisteredContent(req.query.id);
+      const registered = await getRegisteredContent(req.query.id);
+      const content = registered ? normalizeContent(registered) : null;
       return content ? res.json({ content: { ...content, contentUrl: publicUrl(content.latestKey) } }) : res.sendStatus(404);
     }
     catch (error) { return next(error); }
@@ -148,7 +163,7 @@ function createApp() {
     const result = validateUploadInput({ ...req.body, file: req.file });
     if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
     try {
-      const existing = await findByIdentity(result);
+      const existing = await findByIdentity(result, normalizeCategory);
       if (existing && !verifyPassword(req.body.password, existing.passwordHash, existing.salt)) {
         return res.status(403).json({ error: '이미 등록된 이름입니다. 비밀번호가 맞지 않아요.' });
       }
@@ -189,4 +204,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
