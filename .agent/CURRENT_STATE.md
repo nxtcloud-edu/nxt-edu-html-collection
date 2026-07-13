@@ -1,23 +1,23 @@
 # Current State
 
-Updated: 2026-07-13 10:21 KST
+Updated: 2026-07-13 10:40 KST
 
 ## Active owners
-- Hermes (Coder): WO-015 포털 모눈 배경·라이트 마감 구현 및 브라우저 검증 완료 (`wo/015`)
-- Claude (Planner): WO-015 두 구현 커밋과 4페이지 양 테마 재검증 대기
+- Hermes (Coder): WO-016 코호트 갤러리 복귀 링크 위치 이동 완료 (`wo/016`)
+- Claude (Planner): WO-016 단일 목적 diff·양 테마 재검증 대기
 
 ## Last verified repo state
-- Branch: `wo/015`
-- 구현 커밋: 모눈 시스템 `65ade2b`, 라이트 마감 `41f7ca7`
-- 검증: `npm test` 16/16; 4페이지 라이트/다크 DRY_RUN; 브라우저 오류 0
+- Branch: `wo/016`
+- 변경: `cohort.html`의 복귀 링크를 네비에서 콘텐츠 요약 바로 아래로 이동
+- 검증: 라이트/다크 DRY_RUN, `npm test` 16/16, 브라우저 오류 0
 
 ## Completed
-- WO-001~WO-014 완료 및 프로덕션 배포
+- WO-001~WO-015 완료 및 프로덕션 배포
 
 ## In progress
-- WO-015: 포털 디자인 문법 이식 완료, 검증 대기
+- WO-016: 복귀 링크 위치 이동 완료, 검증 대기
 
 ## Next safe action
-1. Claude가 40px 모눈·중앙 페이드·트윙클/reduced-motion 구현 재검증
-2. 4페이지 라이트 마감과 다크 회귀 시각 확인
+1. Claude가 네비에 토글만 남고 요약 다음에 링크가 위치하는지 확인
+2. 라이트/다크 보조 색상·44px 터치 타깃 확인
 3. 검증 통과 시 main 머지·배포

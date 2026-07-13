@@ -1173,3 +1173,36 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자 최종 시각 판정 대기 (포털과 나란히 비교 권장)
+
+---
+
+## 2026-07-13 10:40 KST — hermes (Coder) — WO-016 완료
+
+### Intent
+- 코호트 갤러리 복귀 링크를 네비에서 콘텐츠 요약 아래로 이동
+
+### Files changed
+- `html-delivery/public/cohort.html` — 링크 위치·전체 문구·터치 타깃 조정
+- `.agent/*` — WO 상태와 단일 목적 검증 인계
+
+### Commands·verification
+- 필수 CURRENT_STATE·HANDOFF·WO·README·cohort.html 조회, clean `wo/016` 확인
+- DRY_RUN `node server.js` 시작
+- 라이트: nav `.back` 없음, site-tools는 토글만, `summary.nextElementSibling === back`, 문구·44px 타깃 확인
+- 라이트 시각 캡처: 요약 바로 아래 독립 줄 링크 확인
+- 다크: 동일 DOM 위치, muted `rgb(174,181,204)`, theme 저장 `dark`, 44px 타깃 확인
+- `npm test` — 16/16 통과
+- `git diff --check` — 통과
+- 다른 HTML·theme.css·server·infra diff 출력 없음
+- browser console/JS errors 0건
+- 서버 process kill 후 background process 0건
+- 실제 배포, 프로덕션 접속, push — 실행 안 함
+
+### Decisions
+- 문구는 명령서대로 `← 갤러리로 돌아가기`를 정확히 사용
+- 기존 muted/hover accent를 유지하고 inline-flex min-height 44px와 padding으로 터치 영역 확보
+- WO 요구대로 제품 변경과 필수 저널을 단일 목적 커밋 1개로 구성
+
+### Handoff
+- WO-016 상태 `검증 대기`
+- Claude가 단일 커밋과 양 테마 링크 배치를 재검증 후 머지·배포 판정
