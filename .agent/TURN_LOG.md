@@ -1532,3 +1532,57 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 다음 작업 대기. 참고: 대용량 2건은 뷰어 로딩 수 초 소요 (원본 특성)
+
+---
+
+## 2026-07-13 16:40 KST — hermes (Coder) — WO-023
+
+### Intent
+- 홈을 콘텐츠 기본 탭과 수업별 탭으로 분리하고 URL 해시 상태를 브라우저 내비게이션과 동기화
+- `/api/games` 전체 응답을 클라이언트에서 정렬·분류해 10개씩 페이지네이션
+- 지정 히어로 카피 2줄과 라이트 분류 칩 AA 대비를 DESIGN.md 범위에서 적용
+
+### Files changed
+- `html-delivery/public/index.html` — 홈 탭/tabpanel, 해시·뒤로가기 상태, 클라이언트 정렬·필터·페이지네이션, 히어로 카피
+- `html-delivery/public/assets/theme.css` — 탭·페이지 버튼의 기존 filter 활성 문법 계승, 라이트 분류 칩 대비
+- `.agent/work-orders/WO-023-home-tabs-pagination.md`, `CURRENT_STATE.md`, `HANDOFF.md`, `TURN_LOG.md` — 검증 대기 상태와 인계 증거
+
+### Commands·verification
+- `multi-agent-work-journal`, `creative-design-artifacts`, `software-quality-and-debugging` 스킬을 조회
+- `AGENTS.md` → `.agent/CURRENT_STATE.md` → `.agent/HANDOFF.md` 순으로 읽고 work-order README, WO-023, `DESIGN.md`를 추가 조회
+- `git status --short --branch` — clean `wo/023`; `git log -1` — base `77e40bf`
+- index/theme와 테스트의 관련 문자열·브라우저 테스트 의존성 사용 여부를 조회; jsdom/playwright/puppeteer 사용 없음 확인
+- WO 상태를 `진행 중(Hermes)`로 전환하고 세부 작업 목록 작성
+- `index.html`에 ARIA tab/tabpanel, 기본 콘텐츠 탭, `#classes`, pushState/popstate/hashchange, 키보드 좌우 이동 구현
+- `/api/games` 재호출 없이 전체 응답을 category/sort 처리하고 `PAGE_SIZE=10`, 이전/숫자/다음, 생략부호 토큰, 총 필터 건수 유지, 필터·정렬 시 page=1 리셋 구현
+- `theme.css`에 탭·현재 페이지의 filter 활성 문법과 mono 계층을 연결
+- `lsof -nP -iTCP:3210 -sTCP:LISTEN` — listener 없음(exit 1); `PORT=3210 node server.js` 백그라운드 시작; `curl --fail --silent --show-error http://localhost:3210/api/health` — `{"ok":true}`
+- 브라우저 기본 URL — 콘텐츠 탭 선택; 수업 탭 물리 클릭 — `#classes`, content hidden/classes visible, 6개 코호트; browser back — 해시 제거·콘텐츠 탭 복원
+- 브라우저 23건 합성 DRY_RUN — 총 `23개의 콘텐츠`, 1페이지 10개, 2페이지 10개, 3페이지 3개; 숫자 페이지 물리 클릭은 화면 밖/stale ref에서 처음 no-op 후 스크롤하여 2페이지 물리 클릭 성공
+- 첫 구현 브라우저 콘솔·JS 오류 0건
+- `git diff --check` — 통과; 신규 margin/padding/gap 직접 px 검색 0건; staged check/stat/status를 단독 확인
+- 커밋 `6295e59 feat: 홈 탭과 콘텐츠 페이지네이션 추가`
+- 히어로 문장을 지정된 두 개 block span으로 교체하고 라이트 `.category`를 text `#3f4560`, border `#b7bdd1`로 변경
+- Python WCAG 상대 휘도 계산 — `#3f4560` on `#ffffff` 대비 9.41:1
+- 브라우저 라이트 실측 — 두 span 모두 block, 칩 text `rgb(63,69,96)`, border `rgb(183,189,209)`; 다크 토글 후 칩 기존 text `rgb(203,209,236)`, border `rgb(69,75,108)` 유지, 홈 탭 높이 54px
+- `git diff --check`, 카피 문자열 검색, staged check/stat/status를 단독 확인
+- 커밋 `464cf7c style: 히어로 카피와 분류 칩 대비 개선`
+- 최종 브라우저 `/#classes` 직접 진입 — 수업 탭 선택·6개 코호트; 콘텐츠 탭 물리 클릭 — 해시 제거·패널/ARIA 동기화
+- 최종 23건 합성 DRY_RUN — 2페이지 이동 후 웹페이지 필터가 12건·1페이지로 리셋, 추천순 변경도 1페이지 리셋, 전체 3페이지는 3개 카드 확인
+- 일부 동적 DOM 검증 중 stale/offscreen browser ref 클릭이 no-op 또는 unknown ref였고 한 차례 브라우저 컨텍스트가 `about:blank`로 바뀜; 새 직접 URL 내비게이션 후 위 최종 상태를 재확인
+- 사용자 지시 수신 후 추가 브라우저 검증 중단; 로컬 서버 `process kill` 완료
+- `date`, `git log -3`, `git status --short --branch`, CURRENT_STATE/HANDOFF/TURN_LOG tail을 단독 조회해 인계 기준 대조
+- `npm test`, 최종 `git diff --check`, `check-journal.sh .agent` — 사용자 즉시 마무리 지시에 따라 실행 안 함, 검증자 인계
+- 서버 API·registry·infra·클라우드·프로덕션 변경, push, main 머지, 배포, 데이터 시딩 — 실행 안 함
+
+### Decisions
+- 콘텐츠 탭은 해시 없음, 수업 탭만 `#classes`로 표현해 명세의 기본 URL을 유지
+- 탭 전환은 `history.pushState` 후 scrollY 복원으로 기본 앵커 점프를 피하고 뒤로가기 기록을 보존
+- 전체 응답 배열은 원본을 mutate하지 않도록 filter 결과를 sort하고, 카운트는 페이지 slice 전 총 필터 건수로 유지
+- 페이지 수 7 이하에서는 전 번호, 초과 시 현재 주변·처음·끝과 생략부호만 노출
+- 신규 간격은 `--sp-*`만 사용하고 칩 색은 WO에 지정된 값만 적용, 다크 오버라이드는 추가하지 않음
+
+### Handoff
+- WO-023 상태 `검증 대기`
+- Claude가 구현 커밋 `6295e59`, `464cf7c`와 본 docs 커밋을 독립 검증하고 `npm test`·`git diff --check`를 단독 실행 후 머지 여부 판정
+
