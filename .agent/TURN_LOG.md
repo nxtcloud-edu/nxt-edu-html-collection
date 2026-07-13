@@ -1323,3 +1323,16 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/019 (업로드 페이지 복귀 링크 위치)
+
+---
+
+## 2026-07-13 13:55 KST — claude (Planner/Verifier) — 기업인턴십 팀 공통 비밀번호 교체 재시딩
+
+### Commands / verification
+- 사용자 지시로 팀 공통 비밀번호 교체. 변경 기능이 없으므로(의도된 스코프 제외) 기존 8건
+  삭제(DynamoDB meta + S3 객체) 후 새 비밀번호로 재시딩 — 공유·피드백·추천 없던 시점이라 무손실
+- 재시딩 8건 v1 확인, 구 비밀번호 업로드 403 확인, 코호트 필터 8건 정상
+- 비밀번호 값은 퍼블릭 레포 특성상 저널에 기재하지 않음 (채팅으로만 전달)
+
+### Handoff
+- WO-019 완료 대기 중
