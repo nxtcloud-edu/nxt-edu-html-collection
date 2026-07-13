@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
-const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
+const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
 function runtimeSecret() { return crypto.randomBytes(12).toString('base64url'); }
@@ -29,6 +29,14 @@ test('기업인턴십 코호트는 1팀부터 8팀만 허용한다', () => {
   assert.deepEqual(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '3팀', password, file: htmlFile }).errors, []);
   assert.equal(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors[0], '팀을 선택하세요.');
   assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors, []);
+});
+
+test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', () => {
+  assert.deepEqual(cohortOptions(), [
+    { name: '2026-고대세종-ai', teams: null },
+    { name: '2026-한이음-ai-중급', teams: null },
+    { name: '2026-고대세종-기업인턴십', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'] },
+  ]);
 });
 
 test('레거시 랜딩페이지 분류를 웹페이지로 정규화한다', () => {

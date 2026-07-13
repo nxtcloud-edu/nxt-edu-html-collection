@@ -39,7 +39,7 @@
   <section class="panel" aria-labelledby="upload-title">
     <p class="eyebrow">PUBLISH YOUR CONTENT</p>
     <h1 id="upload-title">내 콘텐츠 업로드</h1>
-    <p class="intro">수업과 이름을 확인하고, AI와 함께 만든 HTML 콘텐츠를 세상에 공개해 보세요.</p>
+    <p class="intro">수업과 이름 또는 팀을 확인하고, AI와 함께 만든 HTML 콘텐츠를 세상에 공개해 보세요.</p>
     <form id="uploadForm">
       <label for="affiliation">소속(수업)</label>
       <select id="affiliation" name="affiliation" required disabled>
@@ -49,11 +49,14 @@
       <select id="category" name="category" required disabled>
         <option value="">분류 목록을 불러오는 중...</option>
       </select>
-      <label for="name">이름</label>
+      <label id="nameLabel" for="name">이름</label>
       <input id="name" name="name" maxlength="40" autocomplete="name" required>
+      <select id="team" name="name" hidden disabled>
+        <option value="">팀을 선택하세요</option>
+      </select>
       <label for="password">소유 비밀번호</label>
       <input id="password" name="password" type="password" minlength="4" maxlength="30" autocomplete="new-password" required>
-      <p class="hint">같은 수업·이름·분류로 다시 올리면 이 비밀번호를 확인하고 새 버전으로 업데이트됩니다.</p>
+      <p class="hint">같은 수업·이름(또는 팀)·분류로 다시 올리면 이 비밀번호를 확인하고 새 버전으로 업데이트됩니다.</p>
       <label for="file">HTML 파일</label>
       <input id="file" name="file" type="file" accept=".html,text/html" required>
       <p class="hint">HTML 파일 1개 · 최대 1MB</p>
@@ -66,16 +69,38 @@
 const form = document.getElementById('uploadForm');
 const affiliation = document.getElementById('affiliation');
 const category = document.getElementById('category');
+const nameLabel = document.getElementById('nameLabel');
+const nameInput = document.getElementById('name');
+const teamSelect = document.getElementById('team');
 const submitButton = document.getElementById('submitButton');
 const result = document.getElementById('result');
+let cohortOptions = [];
+
+function updateNameField() {
+  const teams = cohortOptions.find((cohort) => cohort.name === affiliation.value)?.teams;
+  nameInput.value = '';
+  teamSelect.value = '';
+  const usesTeams = Array.isArray(teams);
+  nameLabel.textContent = usesTeams ? '팀' : '이름';
+  nameLabel.htmlFor = usesTeams ? 'team' : 'name';
+  nameInput.hidden = usesTeams;
+  nameInput.disabled = usesTeams;
+  nameInput.required = !usesTeams;
+  teamSelect.hidden = !usesTeams;
+  teamSelect.disabled = !usesTeams;
+  teamSelect.required = usesTeams;
+  teamSelect.replaceChildren(new Option('팀을 선택하세요', ''));
+  if (usesTeams) teams.forEach((team) => teamSelect.add(new Option(team, team)));
+}
 
 async function loadOptions() {
   try {
     const responses = await Promise.all([fetch('/api/cohorts'), fetch('/api/categories')]);
     if (responses.some((response) => !response.ok)) throw new Error('선택 목록 요청 실패');
     const [cohortData, categoryData] = await Promise.all(responses.map((response) => response.json()));
+    cohortOptions = cohortData.cohorts;
     affiliation.replaceChildren(new Option('소속(수업)을 선택하세요', ''));
-    cohortData.cohorts.forEach((cohort) => affiliation.add(new Option(cohort, cohort)));
+    cohortOptions.forEach((cohort) => affiliation.add(new Option(cohort.name, cohort.name)));
     category.replaceChildren(new Option('분류를 선택하세요', ''));
     categoryData.categories.forEach((value) => category.add(new Option(value, value)));
     affiliation.disabled = false;
@@ -89,6 +114,8 @@ async function loadOptions() {
     result.textContent = '페이지를 새로고침해 다시 시도해 주세요.';
   }
 }
+
+affiliation.addEventListener('change', updateNameField);
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();

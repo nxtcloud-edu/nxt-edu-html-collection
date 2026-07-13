@@ -28,6 +28,10 @@ function normalizeContent(content) {
   return { ...content, category: normalizeCategory(content.category) };
 }
 
+function cohortOptions() {
+  return COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null }));
+}
+
 function validateUploadInput({ affiliation, category, name, password, file }) {
   const errors = [];
   const trimmedAffiliation = typeof affiliation === 'string' ? affiliation.trim() : '';
@@ -120,7 +124,7 @@ function createApp() {
   app.use(express.json({ limit: '16kb' }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
-  app.get('/api/cohorts', (_req, res) => res.json({ cohorts: COHORTS }));
+  app.get('/api/cohorts', (_req, res) => res.json({ cohorts: cohortOptions() }));
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
   app.get('/api/games', async (req, res, next) => {
     try {
@@ -204,4 +208,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
