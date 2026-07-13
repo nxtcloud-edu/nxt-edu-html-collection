@@ -1517,3 +1517,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-022 상태 `검증 대기`
 - journal/status를 포함한 단일 커밋은 현재 HEAD `feat: 행사 팀 코호트 3개 추가`이며 Claude가 재검증 후 머지·배포·시딩 여부 판정
+
+---
+
+## 2026-07-13 16:40 KST — claude (Planner/Verifier) — WO-022 배포 + 행사 3개 코호트 18건 시딩 완료
+
+### Commands / verification
+- WO-022: 경계 검증(아이디어톤 7팀 201/8팀 400, 워크플로우 5팀 201/6팀 400), 테스트 23/23 → 머지·배포
+- 시딩: edu-landings-pages 버킷 → 16건 API 업로드(각 페이지 <title> 기반 작품명 제목),
+  1MB 초과 2건(고대6팀 14.6MB·국민1팀 22.7MB)은 직접 등록 — 레지스트리 아이템은 서버
+  registry.js(hashPassword·newContentId) 재사용으로 스키마 일치 보장, S3 메타데이터 동일 형식
+- 직접 등록분 검증: 갤러리 노출·제목 정상, 대용량 서빙 200(14.6MB), 틀린 비번 403(소유권 체계 연동)
+- 행사 index 3개 제외(_astro 의존), 최종 갤러리 32건 (코호트 6개)
+
+### Handoff
+- 다음 작업 대기. 참고: 대용량 2건은 뷰어 로딩 수 초 소요 (원본 특성)
