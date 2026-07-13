@@ -18,9 +18,10 @@ fi
 
 WAITED=0
 while [ $WAITED -lt $TIMEOUT ]; do
-  PANE=$(tmux capture-pane -t "$SESSION" -p | tail -3)
-  # 유휴 판정: 프롬프트(❯) 노출 + busy 인디케이터 부재
-  if echo "$PANE" | grep -q "❯" && ! echo "$PANE" | grep -qE "computing|thinking|Cancelling|interrupt"; then
+  PANE=$(tmux capture-pane -t "$SESSION" -p | tail -5)
+  # 유휴 판정: 프롬프트(❯) 노출 + 활성 턴 마커(경과 타이머 ⏱, 압축 중) 부재
+  # 주의: 힌트 바의 "msg=interrupt"는 상시 표시 — busy 패턴에 쓰면 영구 대기 (GOTCHAS 3)
+  if echo "$PANE" | grep -q "❯" && ! echo "$PANE" | grep -qE "⏱|Compacting"; then
     tmux send-keys -t "$SESSION" "$TEXT"
     [ -n "$ENTER" ] && tmux send-keys -t "$SESSION" Enter
     echo "전송 완료(${WAITED}s 대기): $SESSION"
