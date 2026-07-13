@@ -1613,3 +1613,19 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 다음 작업 시: 명령서 커밋 → wo/NNN 분기 → 착수 지시 (기존 절차 그대로)
+
+---
+
+## 2026-07-13 17:50 KST — claude (Planner) — 코더 런타임 해체 (사용자 지시)
+
+### Commands / verification
+- tmux kill-session ai-literacy-hermes / git worktree remove(--force, 추적 변경 없음 확인 후)
+  / hermes/idle 삭제 / worktree prune — 남은 것: main 단일 브랜치·단일 워크트리
+- .githooks(pre-commit 저널 가드 포함)·core.hooksPath·.agent 저널·스크립트는 레포에 유지
+
+### 재가동 절차 (다음 작업 시작 시)
+1. `git worktree add ../nxt-ai-literacy-hermes -b hermes/idle main`
+2. `touch ../nxt-ai-literacy-hermes/.agent-coder-guard` (코더 게이트 마커)
+3. `tmux new-session -d -s ai-literacy-hermes -c ../nxt-ai-literacy-hermes` → `hermes` 기동
+4. 명령서 커밋 → `git -C ../nxt-ai-literacy-hermes checkout -b wo/NNN main` → 착수 지시
+   (.agent/scripts/tmux-send-safe.sh · watcher.sh 사용)
