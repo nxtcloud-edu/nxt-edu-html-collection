@@ -1,5 +1,5 @@
 # WO-017: CloudFront + showcase.nxtcloud.kr 커스텀 도메인
-상태: 검증 대기
+상태: 완료 (2026-07-13, 검증자 Claude — 구성 검토·validate·테스트 17/17 통과, main 머지·apply)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/017` 브랜치
 
