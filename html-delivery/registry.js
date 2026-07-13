@@ -54,8 +54,10 @@ async function listContents() {
   return (await listRegistryItems()).map(publicContent);
 }
 
-async function findByIdentity({ affiliation, name, category }) {
-  return (await listRegistryItems()).find((item) => item.affiliation === affiliation && item.name === name && item.category === category) || null;
+async function findByIdentity({ affiliation, name, category }, normalizeCategory = (value) => value) {
+  return (await listRegistryItems()).find((item) => item.affiliation === affiliation
+    && item.name === name
+    && normalizeCategory(item.category) === normalizeCategory(category)) || null;
 }
 
 async function getRegistryItem(contentId) {

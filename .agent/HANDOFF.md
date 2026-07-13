@@ -1,31 +1,33 @@
 # Handoff
 
 ## Current handoff summary
-WO-017에서 `showcase.nxtcloud.kr`용 ACM 인증서를 us-east-1에 생성·DNS 검증하고, Lambda Function URL을 custom origin으로 쓰는 CloudFront와 Route53 A/AAAA alias를 정의했다. 기본 behavior는 CachingDisabled, assets는 CachingOptimized이며 양쪽 모두 managed `AllViewerExceptHostHeader`를 사용해 Lambda URL로 viewer Host를 전달하지 않는다. 앱 발급 URL은 `APP_BASE_URL`을 최우선 사용한다.
+WO-018에서 `2026-고대세종-기업인턴십` 코호트와 1팀~8팀 서버 SSOT를 추가했다. 이 코호트는 이름 대신 팀만 허용하며, 업로드 UI가 코호트에 따라 이름 input과 팀 select를 전환하고 값을 초기화한다. `랜딩페이지`는 새 canonical `웹페이지`로 표시하되 `normalizeCategory`가 레거시 저장 데이터를 조회·필터·상세·동일 identity 갱신에서 호환한다. `/api/cohorts`는 `{name, teams}` 객체 배열로 확장했고 index/cohort/upload 소비부를 같은 커밋에서 갱신했다.
 
 ## Verification evidence
-- `node --test test/validation.test.js`: 11/11 통과
-- `npm test`: 17/17 통과
-- `terraform -chdir=infra init -backend=false`: 성공, aws v5.100.0/archive v2.8.0 재사용
-- `terraform -chdir=infra fmt -check`: 통과
-- `terraform -chdir=infra validate`: `Success! The configuration is valid.`
-- managed policy는 name data source 사용; 양 behavior에서 AllViewerExceptHostHeader 참조 2건
-- `X-Forwarded-Host`·legacy `forwarded_values` 없음
-- Lambda Function URL·permission 유지
-- plan/apply·aws CLI·클라우드 접속 실행 안 함
+- `node --test test/validation.test.js`: 최종 14/14 통과
+- `npm test`: 최종 20/20 통과
+- DRY_RUN: health 200
+- 인턴십+3팀+웹페이지 업로드 201
+- 인턴십+일반 이름 업로드 400, `팀을 선택하세요.`
+- 일반 코호트+일반 이름 업로드 201
+- `/api/cohorts`, `/api/categories`, 웹페이지 필터 API 모두 200; 계약 스크립트 통과
+- 브라우저: 코호트 3개·분류 `웹페이지` 노출; 인턴십 선택 시 팀 라벨/select와 1팀~8팀; 일반 코호트 복귀 시 이름 input 및 값 초기화
+- 브라우저 console/JS 오류 0
+- 생성한 레지스트리 2행·artifact 2개 및 임시 비밀번호/응답/스크립트 정리
+- background process 0건, `git diff --check` 통과
+- 실 AWS·프로덕션·배포·시딩·push 실행 안 함
 
 ## Commits
-- `a150a66 feat: 발급 URL에 APP_BASE_URL 우선 적용`
-- `e8cc59c feat: CloudFront 커스텀 도메인 인프라 추가`
-- 상태·저널 문서 커밋은 현재 HEAD `docs: WO-017 커스텀 도메인 검증 인계`
+- `83d3104 feat: 인턴십 팀 검증과 웹페이지 분류 추가`
+- `cd12ecb feat: 팀 선택 UI와 코호트 계약 확장`
+- 상태·저널 문서 커밋은 현재 HEAD `docs: WO-018 인턴십 코호트 검증 인계`
 
 ## Next recommended project actions
-1. 검증자가 plan에서 인증서 us-east-1, distribution origin domain, DNS 레코드 변경을 확인
-2. apply 후 ACM 검증 완료·CloudFront Deployed·Route53 해석 대기
-3. `https://showcase.nxtcloud.kr` health, upload 반환 URL, feedback/like POST, `/assets/*`를 E2E 검증
+1. 검증자가 API 객체 계약과 index/cohort/upload 소비부를 함께 리뷰
+2. 배포 후 팀 select, 팀 외 값 400, 일반 코호트 이름 입력을 실제 도메인에서 확인
+3. 검증자 권한으로 1팀~8팀 콘텐츠 시딩
 
 ## Collision risks
-- hosted zone은 `name = "nxtcloud.kr."`, `private_zone = false` data lookup; 계정 내 동일 이름 public zone이 하나라는 전제
-- CloudFront 생성·ACM 검증은 apply 시 시간이 걸림
-- 직접 Lambda Function URL 접근은 의도적으로 유지
-- 실제 plan/apply·프로덕션 접속·push 미실행
+- 기존 저장 데이터는 수정하지 않았고 응답 시에만 `랜딩페이지`→`웹페이지` 정규화
+- 레거시 identity 재업로드도 같은 콘텐츠로 찾도록 registry lookup에 normalizer를 주입
+- 팀 코호트별 특수 갤러리 UI는 스코프 밖

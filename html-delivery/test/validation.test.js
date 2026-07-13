@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
-const { CATEGORIES, COHORTS, buildPublicUrl, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
+const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
 function runtimeSecret() { return crypto.randomBytes(12).toString('base64url'); }
@@ -20,6 +20,31 @@ test('기존 업로드 검증 규칙을 유지한다', () => {
   assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: '', name: '작품', password, file: htmlFile }).errors[0], '분류를 선택하세요.');
   assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '', password, file: htmlFile }).errors[0], '이름은 1~40자로 입력하세요.');
   assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', password, file: { originalname: 'x.txt', size: 1 } }).errors[0], 'HTML 파일만 업로드할 수 있습니다.');
+});
+
+test('기업인턴십 코호트는 1팀부터 8팀만 허용한다', () => {
+  const affiliation = '2026-고대세종-기업인턴십';
+  const password = runtimeSecret();
+  assert.deepEqual(TEAM_COHORTS[affiliation], ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀']);
+  assert.deepEqual(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '3팀', password, file: htmlFile }).errors, []);
+  assert.equal(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors[0], '팀을 선택하세요.');
+  assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors, []);
+});
+
+test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', () => {
+  assert.deepEqual(cohortOptions(), [
+    { name: '2026-고대세종-ai', teams: null },
+    { name: '2026-한이음-ai-중급', teams: null },
+    { name: '2026-고대세종-기업인턴십', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'] },
+  ]);
+});
+
+test('레거시 랜딩페이지 분류를 웹페이지로 정규화한다', () => {
+  assert.deepEqual(CATEGORIES, ['미니게임', '웹페이지']);
+  assert.equal(normalizeCategory('랜딩페이지'), '웹페이지');
+  assert.equal(normalizeCategory('웹페이지'), '웹페이지');
+  const legacy = [{ contentId: '11111111', category: normalizeCategory('랜딩페이지') }];
+  assert.equal(filterGames(legacy, { category: '웹페이지' }).length, 1);
 });
 
 test('scrypt 해시는 랜덤 salt를 사용하고 timing-safe 검증한다', () => {

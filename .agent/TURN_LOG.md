@@ -1269,3 +1269,44 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 수강생 공지 주소 = https://showcase.nxtcloud.kr (README의 "강사 공지" 자리에 쓸 값)
+
+---
+
+## 2026-07-13 12:56 KST — hermes (Coder) — WO-018 완료
+
+### Intent
+- 기업인턴십 코호트의 팀 선택·서버 검증과 웹페이지 분류 레거시 호환 구현
+- `/api/cohorts` 확장과 모든 UI 소비부를 한 커밋에서 전환
+
+### Files changed
+- `html-delivery/server.js`, `registry.js`, `test/validation.test.js` — 코호트·팀 SSOT, 검증, 분류 정규화, API 계약, 테스트
+- `public/index.html`, `cohort.html`, `upload.html` — 객체 계약 소비, 웹페이지 문구, 이름/팀 동적 필드
+- `README.md` — 4장 웹페이지·팀 선택 안내
+- `.agent/*` — WO 상태와 검증 인계
+
+### Commands·verification
+- 필수 CURRENT_STATE·HANDOFF·WO·README 및 server/UI/test/README 조회, clean `wo/018` 확인
+- `node --test test/validation.test.js` — 서버 규칙 후 13/13, API/UI 후 14/14 통과
+- 구현 커밋 `83d3104`, `cd12ecb`
+- DRY_RUN `node server.js` 시작, health 200
+- 최초 팀 업로드 probe — 400; 임시 비밀번호 파일의 개행으로 31자 초과, 응답 `비밀번호는 4~30자로 입력하세요.` 확인
+- 개행 없는 24자 런타임 비밀번호로 재생성 후 인턴십+3팀+웹페이지 업로드 201
+- 인턴십+홍길동 업로드 400, `팀을 선택하세요.`
+- 일반 코호트+일반 이름 업로드 201
+- `/api/cohorts`, `/api/categories`, `?category=웹페이지` — 각각 200
+- 계약 검증 스크립트 — 팀 201·오류 400·일반 201·객체/분류 shape 통과
+- 브라우저: 코호트 3개, 분류 웹페이지, 인턴십 선택 시 팀 label/select 1팀~8팀, 일반 복귀 시 이름 input·값 초기화 확인
+- 브라우저 console/JS 오류 0건
+- 서버 process kill 후 생성 레지스트리 2행·artifact 2개 제거, 임시 fixture/비밀번호/응답/스크립트 제거
+- `npm test` — 최종 20/20 통과
+- 공개 HTML에서 랜딩페이지·구 배열 계약 패턴 0건, `git diff --check` 통과, background process 0건
+- 실 AWS 호출, 프로덕션 접속, 배포, 시딩, push — 실행 안 함
+
+### Decisions
+- 서버/domain 규칙을 첫 커밋, `/api/cohorts` 계약과 index/cohort/upload 소비부를 둘째 커밋으로 묶어 중간 계약 단절 방지
+- 저장 category는 수정하지 않고 API 조회·필터·상세에서 normalize하며 동일 identity lookup에도 normalizer 적용
+- 팀 select와 이름 input은 같은 form field `name`을 쓰되 비활성 필드를 disabled 처리해 하나만 제출
+
+### Handoff
+- WO-018 상태 `검증 대기`
+- Claude가 계약/UI를 재검증 후 배포하고 1팀~8팀 콘텐츠를 시딩
