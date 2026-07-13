@@ -83,8 +83,8 @@ async function saveRegistryItem(item) {
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 }
 
-function mergeVersionFields(item, { latestVersion, latestKey, updatedAt }) {
-  return { ...item, latestVersion, latestKey, updatedAt };
+function mergeVersionFields(item, { title, latestVersion, latestKey, updatedAt }) {
+  return { ...item, title, latestVersion, latestKey, updatedAt };
 }
 
 async function updateRegistryVersion(contentId, fields) {
@@ -98,8 +98,9 @@ async function updateRegistryVersion(contentId, fields) {
   await documentClient().send(new UpdateCommand({
     TableName: TABLE_NAME,
     Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
-    UpdateExpression: 'SET latestVersion = :version, latestKey = :key, updatedAt = :updatedAt',
+    UpdateExpression: 'SET title = :title, latestVersion = :version, latestKey = :key, updatedAt = :updatedAt',
     ExpressionAttributeValues: {
+      ':title': fields.title,
       ':version': fields.latestVersion,
       ':key': fields.latestKey,
       ':updatedAt': fields.updatedAt,

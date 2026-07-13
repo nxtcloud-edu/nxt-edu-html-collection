@@ -2,33 +2,42 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
-const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
+const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
 function runtimeSecret() { return crypto.randomBytes(12).toString('base64url'); }
 
 test('업로드 입력은 소유 비밀번호 4~30자를 요구한다', () => {
   const password = runtimeSecret();
-  assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', password, file: htmlFile }).errors, []);
-  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', password: '', file: htmlFile }).errors[0], '비밀번호는 4~30자로 입력하세요.');
-  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', password: 'x'.repeat(31), file: htmlFile }).errors[0], '비밀번호는 4~30자로 입력하세요.');
+  assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '제목', password, file: htmlFile }).errors, []);
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '제목', password: '', file: htmlFile }).errors[0], '비밀번호는 4~30자로 입력하세요.');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '제목', password: 'x'.repeat(31), file: htmlFile }).errors[0], '비밀번호는 4~30자로 입력하세요.');
+});
+
+test('업로드 제목은 트림한 1~60자를 요구한다', () => {
+  const password = runtimeSecret();
+  const valid = validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '  박스 피하기 리믹스  ', password, file: htmlFile });
+  assert.deepEqual(valid.errors, []);
+  assert.equal(valid.title, '박스 피하기 리믹스');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: ' ', password, file: htmlFile }).errors[0], '제목을 입력하세요.');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '가'.repeat(61), password, file: htmlFile }).errors[0], '제목을 입력하세요.');
 });
 
 test('기존 업로드 검증 규칙을 유지한다', () => {
   const password = runtimeSecret();
-  assert.equal(validateUploadInput({ affiliation: '없음', category: CATEGORIES[0], name: '작품', password, file: htmlFile }).errors[0], '등록된 수업(코호트)을 선택하세요.');
-  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: '', name: '작품', password, file: htmlFile }).errors[0], '분류를 선택하세요.');
-  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '', password, file: htmlFile }).errors[0], '이름은 1~40자로 입력하세요.');
-  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', password, file: { originalname: 'x.txt', size: 1 } }).errors[0], 'HTML 파일만 업로드할 수 있습니다.');
+  assert.equal(validateUploadInput({ affiliation: '없음', category: CATEGORIES[0], name: '작품', title: '제목', password, file: htmlFile }).errors[0], '등록된 수업(코호트)을 선택하세요.');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: '', name: '작품', title: '제목', password, file: htmlFile }).errors[0], '분류를 선택하세요.');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '', title: '제목', password, file: htmlFile }).errors[0], '이름은 1~40자로 입력하세요.');
+  assert.equal(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '작품', title: '제목', password, file: { originalname: 'x.txt', size: 1 } }).errors[0], 'HTML 파일만 업로드할 수 있습니다.');
 });
 
 test('기업인턴십 코호트는 1팀부터 8팀만 허용한다', () => {
   const affiliation = '2026-고대세종-기업인턴십';
   const password = runtimeSecret();
   assert.deepEqual(TEAM_COHORTS[affiliation], ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀']);
-  assert.deepEqual(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '3팀', password, file: htmlFile }).errors, []);
-  assert.equal(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors[0], '팀을 선택하세요.');
-  assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', password, file: htmlFile }).errors, []);
+  assert.deepEqual(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '3팀', title: '제목', password, file: htmlFile }).errors, []);
+  assert.equal(validateUploadInput({ affiliation, category: CATEGORIES[0], name: '홍길동', title: '제목', password, file: htmlFile }).errors[0], '팀을 선택하세요.');
+  assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', title: '제목', password, file: htmlFile }).errors, []);
 });
 
 test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', () => {
@@ -63,9 +72,14 @@ test('공개 콘텐츠에서 해시와 salt 및 Dynamo 키를 제거한다', () 
 });
 
 test('버전 부분 갱신은 추천 수와 소유권 필드를 보존한다', () => {
-  const previous = { contentId: '12345678', likes: 7, passwordHash: 'hash', salt: 'salt', latestVersion: 1, latestKey: 'games/12345678-v1.html', updatedAt: 'old' };
-  const updated = mergeVersionFields(previous, { latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
-  assert.deepEqual(updated, { ...previous, latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
+  const previous = { contentId: '12345678', title: '이전 제목', likes: 7, passwordHash: 'hash', salt: 'salt', latestVersion: 1, latestKey: 'games/12345678-v1.html', updatedAt: 'old' };
+  const updated = mergeVersionFields(previous, { title: '새 제목', latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
+  assert.deepEqual(updated, { ...previous, title: '새 제목', latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
+});
+
+test('표시 제목은 title을 우선하고 레거시 콘텐츠는 name으로 fallback한다', () => {
+  assert.equal(contentTitle({ title: '작품 제목', name: '1팀' }), '작품 제목');
+  assert.equal(contentTitle({ name: '1팀' }), '1팀');
 });
 
 test('contentId와 버전 key 계약을 지킨다', () => {

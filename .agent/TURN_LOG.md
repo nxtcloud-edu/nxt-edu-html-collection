@@ -1366,3 +1366,54 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-019 상태 `검증 대기`
 - Claude가 단일 커밋과 양 테마 배치를 재검증 후 머지·배포 판정
+
+
+---
+
+## 2026-07-13 13:41 KST — hermes (Coder) — WO-020
+
+### Intent
+- 소유권 identity와 분리된 콘텐츠 `title`을 신규 업로드·버전 갱신·API·카드·뷰어에 도입하고 레거시 name fallback을 유지
+- 서버/테스트와 UI/README를 최소 2개 목적 커밋으로 분리
+
+### Files changed
+- `html-delivery/server.js` — title 트림 1~60자 검증, 레지스트리/S3 Metadata 저장, 업로드 응답 및 표시 fallback 계약
+- `html-delivery/registry.js` — 버전 갱신 시 title을 포함한 부분 업데이트
+- `html-delivery/test/validation.test.js` — title 필수·길이·fallback·버전 갱신 회귀 테스트
+- `html-delivery/public/upload.html` — 별도 콘텐츠 제목 입력과 지정 placeholder
+- `html-delivery/public/index.html`, `cohort.html`, `view.html` — `title || name` 제목과 소유자·코호트 메타 표시
+- `README.md` — 4장 제목 입력 절차
+- `.agent/work-orders/WO-020-content-title.md`, `CURRENT_STATE.md`, `HANDOFF.md`, `TURN_LOG.md` — 검증 대기 상태와 인계 증거
+
+### Commands·verification
+- `AGENTS.md` → `.agent/CURRENT_STATE.md` → `.agent/HANDOFF.md` → work-order README·WO-020 순서로 읽고 `git status --short --branch`, `git log -1` 확인 — clean `wo/020`, base `f335f37`
+- 서버·registry·validation test·upload/index/cohort/view·README 조회 및 title 표시 지점 검색
+- TDD red `node --test test/validation.test.js` — 16건 중 13 통과·3 실패(title trim 반환, 버전 title 갱신, fallback 함수 부재)
+- 구현 후 `node --test test/validation.test.js` — 16/16 통과
+- `git diff --check`, staged stat/status 검사 — 통과; `.agent` 파일은 구현 커밋에서 제외
+- 커밋 `290eb7d feat: 콘텐츠 제목 저장과 API 계약 추가`
+- 공개 HTML title 직접 name 표시 검색 0건, `title || name` 카드·뷰어 적용 확인
+- 커밋 `8f2c738 feat: 갤러리와 뷰어에 콘텐츠 제목 표시`
+- `lsof -nP -iTCP:3210 -sTCP:LISTEN` — 시작 전 listener 없음(exit 1)
+- `/tmp`에 고유 name·런타임 비밀번호·HTML fixture 생성 후 `PORT=3210 node server.js` 시작, `/api/health` 200
+- title 포함 multipart 신규 업로드 — 201, 응답 title `WO-020 제목 실측`, v1
+- title 누락 multipart 업로드 — 400, `제목을 입력하세요.`
+- `/api/games` — 신규 항목의 title·name·affiliation 포함 확인
+- 브라우저 `/` — 신규 카드 제목 우선과 소유자·코호트 메타 확인; title 없는 기존 카드 2건은 name fallback 확인
+- 카드 물리 click 응답 뒤 탐색이 유지되어 직접 뷰어 URL로 이동; 신규 뷰어 title 우선·소유자·코호트 메타 확인
+- 같은 identity·비밀번호로 새 title 재업로드 — 201, 동일 contentId, v2; `/api/content`에서 갱신 title 확인
+- 브라우저 레거시 뷰어 — title 없는 `0b1cc67a`가 name `회귀검증`을 제목으로 표시
+- server process kill 후 포트 3210 listener 없음(exit 1); 전용 Python cleanup으로 fixture registry 1건·artifact v1/v2·임시 파일·스크립트 제거
+- `npm test` — 최종 22/22 통과
+- 최종 `git diff --check` — 통과
+- 클라우드·프로덕션 접속/변경, Terraform, 배포, push, main 머지 — 실행 안 함
+
+### Decisions
+- identity lookup은 기존 `(코호트·이름/팀·분류)` 그대로 유지하고 title을 사용하지 않음
+- S3 Metadata title은 `encodeURIComponent`로 저장하고 레지스트리 title을 SSOT로 사용
+- title 길이 초과도 명세의 단일 400 메시지 `제목을 입력하세요.`로 처리
+- 코호트 상세 카드도 카드 표면으로 간주해 title fallback과 소유자·코호트 메타를 함께 적용
+
+### Handoff
+- WO-020 상태 `검증 대기`
+- Claude가 두 구현 커밋과 본 상태/저널 커밋을 재검증 후 main 머지·배포·기존 8팀 title 주입 여부 판정

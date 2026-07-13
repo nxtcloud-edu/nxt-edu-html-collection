@@ -28,28 +28,34 @@ function normalizeContent(content) {
   return { ...content, category: normalizeCategory(content.category) };
 }
 
+function contentTitle(content) {
+  return content.title || content.name;
+}
+
 function cohortOptions() {
   return COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null }));
 }
 
-function validateUploadInput({ affiliation, category, name, password, file }) {
+function validateUploadInput({ affiliation, category, name, title, password, file }) {
   const errors = [];
   const trimmedAffiliation = typeof affiliation === 'string' ? affiliation.trim() : '';
   const trimmedCategory = typeof category === 'string' ? category.trim() : '';
   const trimmedName = typeof name === 'string' ? name.trim() : '';
+  const trimmedTitle = typeof title === 'string' ? title.trim() : '';
   if (!COHORTS.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
   if (!CATEGORIES.includes(trimmedCategory)) errors.push('분류를 선택하세요.');
   const teams = TEAM_COHORTS[trimmedAffiliation];
   if (teams) {
     if (!teams.includes(trimmedName)) errors.push('팀을 선택하세요.');
   } else if (!trimmedName || trimmedName.length > 40) errors.push('이름은 1~40자로 입력하세요.');
+  if (!trimmedTitle || trimmedTitle.length > 60) errors.push('제목을 입력하세요.');
   if (typeof password !== 'string' || password.length < 4 || password.length > 30) errors.push('비밀번호는 4~30자로 입력하세요.');
   if (!file) errors.push('HTML 파일을 선택하세요.');
   else {
     if (path.extname(file.originalname).toLowerCase() !== '.html') errors.push('HTML 파일만 업로드할 수 있습니다.');
     if (file.size > MAX_FILE_SIZE) errors.push('파일 크기는 1MB 이하여야 합니다.');
   }
-  return { errors, affiliation: trimmedAffiliation, category: trimmedCategory, name: trimmedName };
+  return { errors, affiliation: trimmedAffiliation, category: trimmedCategory, name: trimmedName, title: trimmedTitle };
 }
 
 function isValidContentId(value) { return typeof value === 'string' && CONTENT_ID_PATTERN.test(value); }
@@ -178,14 +184,14 @@ function createApp() {
       const credentials = existing ? { passwordHash: existing.passwordHash, salt: existing.salt } : hashPassword(req.body.password);
       const item = {
         contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
-        name: result.name, affiliation: result.affiliation, category: result.category,
+        name: result.name, title: result.title, affiliation: result.affiliation, category: result.category,
         ...credentials, latestVersion: version, latestKey: key, likes: existing?.likes || 0,
         createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
       };
-      await storeObject(key, req.file.buffer, { contentid: contentId, version: String(version) });
-      if (existing) await updateRegistryVersion(contentId, { latestVersion: version, latestKey: key, updatedAt: uploadedAt });
+      await storeObject(key, req.file.buffer, { contentid: contentId, title: encodeURIComponent(result.title), version: String(version) });
+      if (existing) await updateRegistryVersion(contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
       else await saveRegistryItem(item);
-      return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, version, uploadedAt });
+      return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, title: result.title, version, uploadedAt });
     } catch (error) { return next(error); }
   });
   app.post('/api/like', async (req, res, next) => {
@@ -208,4 +214,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
