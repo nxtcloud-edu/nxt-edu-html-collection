@@ -1904,3 +1904,11 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Files/commands: git merge --ff-only wo/027 (main=fd89849, GOTCHAS 4 흡수 위해 먼저 리베이스). terraform plan(0/1/0 — Lambda 코드 해시만) → apply(1 changed). 프로덕션: 미인증 change-password 401, admin.html passwordChangeForm 렌더, 갤러리 유출 없음. 실제 비번 변경은 미수행(프로덕션 자격 보호).
 - Decisions: 사용자 승인 후 배포. 인프라/IAM/env 변경 없음 확인.
 - Handoff: WO-027 완료·개통. 로컬 폴더명 rename(nxt-edu-html-collection) 대기 — clean 체크포인트 도달.
+
+## 2026-07-14 13:38 KST — Claude (Planner) — WO-028 발행 (관리자 UI 정돈)
+- Intent: 사용자 UI 리포트(비번 변경 모달화 + 콘텐츠 표 헤더·삭제 버튼 패널 밖 오버플로)를 WO-028로 발행, Hermes에 디스패치.
+- Files changed: `.agent/work-orders/WO-028-admin-ui-modal-overflow.md`(신규), `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, 본 TURN_LOG.
+- 원인 분석(코드 확인): `admin.html` L11 `.table-wrap{overflow-x:visible}` + `.actions-cell{min-width:210px}`/`.row-actions{flex-wrap:nowrap}`로 표가 컨테이너보다 넓어 밖으로 흘러넘침. 비번 폼은 L21 필터 aside 인라인. `admin-ui.test.js` test 2·3이 구 구조 단언 중 → WO에 갱신 지시 포함.
+- 설계 결정(사용자 확정): 실행=Hermes 디스패치, 비번 트리거 버튼=상단 `.site-tools`(로그아웃 옆). 오버플로=`overflow-x:auto` 봉합 + 동작 컬럼 폭 조정. 순수 프론트(admin.html + admin-ui.test.js)만, 백엔드/API/인프라 불변.
+- Commands: read admin.html/admin-ui.test.js/WO-000·027/README, write WO-028·CURRENT_STATE·HANDOFF. 커밋 예정 `docs: WO-028 ... 발행`(main). 코더 워크트리 `wo/028` 분기 예정. AWS/배포/머지 — 실행 안 함.
+- Handoff: Hermes가 wo/028에서 구현 → npm test 그린 → 검증 대기. 검증(diff·npm test·Chrome 시각)·머지·배포는 Claude.
