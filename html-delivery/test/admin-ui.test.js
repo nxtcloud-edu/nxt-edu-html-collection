@@ -22,6 +22,13 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.equal(admin.includes('innerHTML'), false);
   assert.match(admin, /textContent/);
   assert.match(admin, /button\('수정 저장','primary','submit'\)/);
+  assert.match(admin, /<dialog id="passwordModal"/);
+  assert.match(admin, /id="openPasswordButton"/);
+  assert.match(admin, /<dialog id="passwordModal"[\s\S]*id="passwordChangeForm"/);
+  assert.match(admin, /openPasswordButton\.addEventListener\('click',[\s\S]*passwordModal\.showModal\(\)/);
+  assert.match(admin, /openPasswordButton\.hidden=false/);
+  assert.match(admin, /openPasswordButton\.hidden=true/);
+  assert.match(admin, /passwordModal\.close\(\)/);
   assert.match(admin, /id="passwordChangeForm"/);
   assert.match(admin, /id="currentAdminPassword"[^>]*type="password"/);
   assert.match(admin, /id="newAdminPassword"[^>]*type="password"[^>]*minlength="8"[^>]*maxlength="72"/);
@@ -34,8 +41,10 @@ test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버
   const admin = await readFile(path.join(__dirname, '../public/admin.html'), 'utf8');
   assert.match(admin, /th\{white-space:nowrap\}/);
   assert.match(admin, /td\{word-break:keep-all\}/);
-  assert.match(admin, /\.row-actions\{flex-wrap:nowrap\}/);
-  assert.match(admin, /\.actions-cell\{white-space:nowrap;min-width:210px\}/);
+  assert.match(admin, /\.table-wrap\{overflow-x:auto/);
+  assert.equal(admin.includes('overflow-x:visible'), false);
+  assert.match(admin, /\.button-row,\.toolbar,\.row-actions\{display:flex;align-items:center;flex-wrap:wrap;gap:var\(--sp-2\)\}/);
+  assert.match(admin, /\.actions-cell\{white-space:normal;min-width:180px\}/);
   assert.match(admin, /table\{width:100%;border-collapse:collapse\}/);
   assert.equal(admin.includes('min-width:940px'), false);
   assert.match(admin, /repeat\(auto-fit,minmax\(180px,1fr\)\)/);
