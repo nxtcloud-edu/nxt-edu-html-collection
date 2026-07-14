@@ -5,7 +5,7 @@ const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { deleteRegistryItem, findByIdentity, getAdminCredential, getContent: getRegisteredContent, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
+const { addCustomCohort, deleteRegistryItem, findByIdentity, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
@@ -52,17 +52,20 @@ function contentTitle(content) {
   return content.title || content.name;
 }
 
-function cohortOptions() {
-  return COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
+async function cohortOptions() {
+  const base = COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
+  const names = new Set(COHORTS);
+  const custom = (await getCustomCohorts()).filter((cohort) => cohort?.name && !names.has(cohort.name)).map((cohort) => ({ name: cohort.name, teams: null, date: cohort.date || null }));
+  return [...base, ...custom];
 }
 
-function validateUploadInput({ affiliation, category, name, title, password, file }) {
+function validateUploadInput({ affiliation, category, name, title, password, file }, validAffiliations = COHORTS) {
   const errors = [];
   const trimmedAffiliation = typeof affiliation === 'string' ? affiliation.trim() : '';
   const trimmedCategory = typeof category === 'string' ? category.trim() : '';
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   const trimmedTitle = typeof title === 'string' ? title.trim() : '';
-  if (!COHORTS.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
+  if (!validAffiliations.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
   if (!CATEGORIES.includes(trimmedCategory)) errors.push('분류를 선택하세요.');
   const teams = TEAM_COHORTS[trimmedAffiliation];
   if (teams) {
@@ -110,7 +113,7 @@ function validateFeedbackInput({ nickname, message }) {
   if (trimmedNickname.length > 20) errors.push('닉네임은 20자 이하로 입력하세요.');
   return { errors, nickname: trimmedNickname || '익명', message: trimmedMessage };
 }
-function validateAdminContentPatch(existing, body = {}) {
+function validateAdminContentPatch(existing, body = {}, validAffiliations = COHORTS) {
   const allowed = ['title', 'name', 'affiliation', 'category'];
   const unknown = Object.keys(body).filter((key) => !allowed.includes(key));
   const errors = [];
@@ -128,7 +131,7 @@ function validateAdminContentPatch(existing, body = {}) {
     category: typeof merged.category === 'string' ? merged.category.trim() : '',
   };
   if (!allowed.some((key) => Object.prototype.hasOwnProperty.call(body, key))) errors.push('수정할 항목을 입력하세요.');
-  if (!COHORTS.includes(trimmed.affiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
+  if (!validAffiliations.includes(trimmed.affiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
   if (!CATEGORIES.includes(trimmed.category)) errors.push('분류를 선택하세요.');
   const teams = TEAM_COHORTS[trimmed.affiliation];
   if (teams) {
@@ -247,7 +250,8 @@ function createApp() {
     try {
       const existing = await getRegistryItem(req.params.contentId);
       if (!existing) return res.sendStatus(404);
-      const result = validateAdminContentPatch(existing, req.body || {});
+      const cohortNames = (await cohortOptions()).map((cohort) => cohort.name);
+      const result = validateAdminContentPatch(existing, req.body || {}, cohortNames);
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
       const fields = { ...result.fields, updatedAt: new Date().toISOString() };
       const ok = await updateContentFields(req.params.contentId, fields);
@@ -278,7 +282,22 @@ function createApp() {
       return res.json({ ok: true });
     } catch (error) { return next(error); }
   });
-  app.get('/api/cohorts', (_req, res) => res.json({ cohorts: cohortOptions() }));
+  app.get('/api/cohorts', async (_req, res, next) => {
+    try { return res.json({ cohorts: await cohortOptions() }); }
+    catch (error) { return next(error); }
+  });
+  app.post('/api/admin/cohorts', adminAuth.requireAdmin, async (req, res, next) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const date = typeof req.body?.date === 'string' ? req.body.date.trim() : null;
+    if (!name || name.length > 60) return res.status(400).json({ error: '코호트 이름은 1~60자로 입력하세요.' });
+    if (date !== null && date.length > 20) return res.status(400).json({ error: '일자는 20자 이하로 입력하세요.' });
+    try {
+      if ((await cohortOptions()).some((cohort) => cohort.name === name)) return res.status(409).json({ error: '이미 있는 코호트예요.' });
+      await addCustomCohort({ name, date: date || null });
+      auditAdminAction('add-cohort', null);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  });
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
   app.get('/api/games', async (req, res, next) => {
     try {
@@ -318,9 +337,10 @@ function createApp() {
     } catch (error) { return next(error); }
   });
   app.post('/api/upload', upload.single('file'), async (req, res, next) => {
-    const result = validateUploadInput({ ...req.body, file: req.file });
-    if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
     try {
+      const cohortNames = (await cohortOptions()).map((cohort) => cohort.name);
+      const result = validateUploadInput({ ...req.body, file: req.file }, cohortNames);
+      if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
       const existing = await findByIdentity(result, normalizeCategory);
       if (existing && !verifyPassword(req.body.password, existing.passwordHash, existing.salt)) {
         return res.status(403).json({ error: '이미 등록된 이름입니다. 비밀번호가 맞지 않아요.' });

@@ -55,8 +55,8 @@ test('행사별 팀 코호트는 지정된 마지막 팀까지만 허용한다',
   });
 });
 
-test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', () => {
-  assert.deepEqual(cohortOptions(), [
+test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', async () => {
+  assert.deepEqual(await cohortOptions(), [
     { name: '2026-고대세종-ai', teams: null, date: '6.24~25' },
     { name: '2026-한이음-ai-중급', teams: null, date: '7.12' },
     { name: '2026-고대세종-기업인턴십', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'], date: '7.1~31' },
@@ -64,6 +64,13 @@ test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다
     { name: '2026-국민대-ai워크플로우', teams: ['1팀', '2팀', '3팀', '4팀', '5팀'], date: '6.24~30' },
     { name: '2026-서남-해커톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀'], date: '7.10' },
   ]);
+});
+
+test('커스텀 코호트 이름은 확장된 업로드 검증에서만 수용한다', () => {
+  const custom = '2026-새 코호트';
+  const input = { affiliation: custom, category: CATEGORIES[0], name: '작품', title: '제목', password: runtimeSecret(), file: htmlFile };
+  assert.equal(validateUploadInput(input).errors[0], '등록된 수업(코호트)을 선택하세요.');
+  assert.deepEqual(validateUploadInput(input, [...COHORTS, custom]).errors, []);
 });
 
 test('레거시 랜딩페이지 분류를 웹페이지로 정규화한다', () => {

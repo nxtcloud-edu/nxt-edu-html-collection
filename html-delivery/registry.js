@@ -6,7 +6,9 @@ const { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, ScanComma
 
 const LOCAL_REGISTRY = path.join(__dirname, '.local-registry.json');
 const LOCAL_ADMIN_CREDENTIAL = path.join(path.dirname(LOCAL_REGISTRY), '.local-admin-credential.json');
+const LOCAL_COHORTS = path.join(path.dirname(LOCAL_REGISTRY), '.local-cohorts.json');
 const ADMIN_CREDENTIAL_KEY = { contentKey: 'admin#credential', createdAt: 'meta' };
+const CUSTOM_COHORT_KEY = { contentKey: 'cohort#custom', createdAt: 'meta' };
 const TABLE_NAME = process.env.FEEDBACK_TABLE;
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
@@ -64,6 +66,26 @@ async function saveAdminCredential({ passwordHash, salt, updatedAt }) {
     return;
   }
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+}
+
+async function getCustomCohorts() {
+  if (!TABLE_NAME) {
+    try {
+      const cohorts = JSON.parse(await fs.readFile(LOCAL_COHORTS, 'utf8'));
+      return Array.isArray(cohorts) ? cohorts : [];
+    } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  }
+  const response = await documentClient().send(new GetCommand({ TableName: TABLE_NAME, Key: CUSTOM_COHORT_KEY }));
+  return Array.isArray(response.Item?.cohorts) ? response.Item.cohorts : [];
+}
+
+async function addCustomCohort({ name, date }) {
+  const cohorts = [...await getCustomCohorts(), { name, date: date || null, createdAt: new Date().toISOString() }];
+  if (!TABLE_NAME) {
+    await fs.writeFile(LOCAL_COHORTS, JSON.stringify(cohorts), { encoding: 'utf8', mode: 0o600 });
+    return;
+  }
+  await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...CUSTOM_COHORT_KEY, cohorts } }));
 }
 
 async function listRegistryItems() {
@@ -242,4 +264,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_CREDENTIAL, LOCAL_REGISTRY, deleteRegistryItem, findByIdentity, getAdminCredential, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

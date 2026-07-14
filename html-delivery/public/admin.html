@@ -18,11 +18,12 @@ main{width:min(1180px,94vw);margin:auto;padding:calc(var(--sp-8) + var(--sp-8)) 
 <p id="statusLine" class="status-line" aria-live="polite"></p>
 <section id="loginPanel" class="admin-panel"><h2>관리자 로그인</h2><form id="loginForm"><div class="field"><label for="adminId">아이디</label><input id="adminId" name="id" autocomplete="username" required></div><div class="field"><label for="adminPassword">비밀번호</label><input id="adminPassword" name="password" type="password" autocomplete="current-password" required></div><div class="button-row"><button class="admin-button primary" type="submit">로그인</button></div></form></section>
 <section id="adminPanel" class="admin-grid hidden" aria-label="콘텐츠 관리 화면">
-<aside class="admin-panel"><h2>필터</h2><div class="filters"><div class="field"><label for="cohortFilter">코호트</label><select id="cohortFilter"></select></div><div class="field"><label for="searchInput">검색</label><input id="searchInput" type="search" placeholder="제목 또는 이름"></div></div><p id="contentCount" class="status-line"></p></aside>
+<aside class="admin-panel"><h2>필터</h2><div class="filters"><div class="field"><label for="cohortFilter">코호트</label><select id="cohortFilter"></select></div><div class="field"><label for="searchInput">검색</label><input id="searchInput" type="search" placeholder="제목 또는 이름"></div></div><p id="contentCount" class="status-line"></p><div class="button-row"><button id="openCohortButton" class="admin-button" type="button">코호트 추가</button></div></aside>
 <section class="admin-panel"><div class="toolbar"><h2>콘텐츠 목록</h2><button id="refreshButton" class="admin-button" type="button">새로고침</button></div><div class="table-wrap"><table><thead><tr><th>제목</th><th>이름</th><th>코호트</th><th>분류</th><th>버전</th><th>추천</th><th>업데이트</th><th>동작</th></tr></thead><tbody id="contentRows"></tbody></table></div></section>
 </section>
 </main>
 <dialog id="passwordModal" aria-labelledby="passwordModalTitle"><div class="password-modal-content"><h2 id="passwordModalTitle">관리자 비밀번호 변경</h2><form id="passwordChangeForm"><div class="field"><label for="currentAdminPassword">현재 비밀번호</label><input id="currentAdminPassword" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="newAdminPassword">새 비밀번호</label><input id="newAdminPassword" name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" required></div><div class="field"><label for="confirmAdminPassword">새 비밀번호 확인</label><input id="confirmAdminPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" required></div><p id="passwordChangeStatus" class="status-line" aria-live="polite"></p><div class="button-row"><button class="admin-button primary" type="submit">비밀번호 변경</button><button id="closePasswordButton" class="admin-button" type="button">취소</button></div></form></div></dialog>
+<dialog id="cohortModal" aria-labelledby="cohortModalTitle"><div class="password-modal-content"><h2 id="cohortModalTitle">코호트 추가</h2><form id="cohortForm"><div class="field"><label for="cohortName">이름</label><input id="cohortName" name="name" maxlength="60" required></div><div class="field"><label for="cohortDate">일자</label><input id="cohortDate" name="date" placeholder="6.24~25" maxlength="20"></div><p id="cohortStatus" class="status-line" aria-live="polite"></p><div class="button-row"><button class="admin-button primary" type="submit">추가</button><button id="closeCohortButton" class="admin-button" type="button">취소</button></div></form></div></dialog>
 <script>
 const statusLine=document.getElementById('statusLine');
 const loginPanel=document.getElementById('loginPanel');
@@ -32,6 +33,13 @@ const logoutButton=document.getElementById('logoutButton');
 const openPasswordButton=document.getElementById('openPasswordButton');
 const passwordModal=document.getElementById('passwordModal');
 const closePasswordButton=document.getElementById('closePasswordButton');
+const openCohortButton=document.getElementById('openCohortButton');
+const cohortModal=document.getElementById('cohortModal');
+const cohortForm=document.getElementById('cohortForm');
+const cohortName=document.getElementById('cohortName');
+const cohortDate=document.getElementById('cohortDate');
+const cohortStatus=document.getElementById('cohortStatus');
+const closeCohortButton=document.getElementById('closeCohortButton');
 const cohortFilter=document.getElementById('cohortFilter');
 const searchInput=document.getElementById('searchInput');
 const refreshButton=document.getElementById('refreshButton');
@@ -44,9 +52,10 @@ let cohorts=[];
 let categories=[];
 function setStatus(message,type){statusLine.textContent=message||'';statusLine.className=`status-line ${type||''}`.trim()}
 function setPasswordStatus(message,type){passwordChangeStatus.textContent=message||'';passwordChangeStatus.className=`status-line ${type||''}`.trim()}
+function setCohortStatus(message,type){cohortStatus.textContent=message||'';cohortStatus.className=`status-line ${type||''}`.trim()}
 function formatDate(value){const date=new Date(value);return Number.isNaN(date.getTime())?'시각 알 수 없음':new Intl.DateTimeFormat('ko-KR',{dateStyle:'medium',timeStyle:'short'}).format(date)}
 function showLoggedIn(){loginPanel.classList.add('hidden');adminPanel.classList.remove('hidden');openPasswordButton.hidden=false;logoutButton.hidden=false}
-function showLoggedOut(message){adminPanel.classList.add('hidden');loginPanel.classList.remove('hidden');openPasswordButton.hidden=true;logoutButton.hidden=true;if(passwordModal.open)passwordModal.close();if(message)setStatus(message,'error')}
+function showLoggedOut(message){adminPanel.classList.add('hidden');loginPanel.classList.remove('hidden');openPasswordButton.hidden=true;logoutButton.hidden=true;if(passwordModal.open)passwordModal.close();if(cohortModal.open)cohortModal.close();if(message)setStatus(message,'error')}
 async function api(path,options={}){const response=await fetch(path,{headers:{'content-type':'application/json',...(options.headers||{})},...options});let body=null;try{body=await response.json()}catch{}if(!response.ok){const error=new Error(body?.error||'요청을 처리하지 못했어요.');error.status=response.status;throw error}return body}
 function option(value,label){const item=document.createElement('option');item.value=value;item.textContent=label;return item}
 function fillFilters(){cohortFilter.replaceChildren(option('전체','전체 코호트'));cohorts.forEach(cohort=>cohortFilter.append(option(cohort.name,cohort.name)))}
@@ -70,6 +79,9 @@ loginForm.addEventListener('submit',async event=>{event.preventDefault();setStat
 openPasswordButton.addEventListener('click',()=>{passwordChangeForm.reset();setPasswordStatus('');passwordModal.showModal()});
 closePasswordButton.addEventListener('click',()=>passwordModal.close());
 passwordChangeForm.addEventListener('submit',async event=>{event.preventDefault();const currentPassword=passwordChangeForm.currentPassword.value;const newPassword=passwordChangeForm.newPassword.value;const confirmPassword=passwordChangeForm.confirmPassword.value;if(newPassword!==confirmPassword){setPasswordStatus('새 비밀번호 확인이 일치하지 않아요.','error');return}setPasswordStatus('비밀번호를 변경하는 중...');try{await api('/api/admin/change-password',{method:'POST',body:JSON.stringify({currentPassword,newPassword})});passwordChangeForm.reset();setPasswordStatus('관리자 비밀번호를 변경했어요.','success');passwordModal.close()}catch(error){setPasswordStatus(error.message,'error')}});
+openCohortButton.addEventListener('click',()=>{cohortForm.reset();setCohortStatus('');cohortModal.showModal()});
+closeCohortButton.addEventListener('click',()=>cohortModal.close());
+cohortForm.addEventListener('submit',async event=>{event.preventDefault();try{await api('/api/admin/cohorts',{method:'POST',body:JSON.stringify({name:cohortName.value,date:cohortDate.value})});cohortModal.close();await loadData();setStatus('코호트를 추가했어요.','success')}catch(error){setCohortStatus(error.message,'error')}});
 logoutButton.addEventListener('click',async()=>{try{await api('/api/admin/logout',{method:'POST'});}catch{}showLoggedOut('로그아웃했어요.')});
 refreshButton.addEventListener('click',async()=>{try{await loadData();setStatus('목록을 새로고침했어요.','success')}catch(error){setStatus(error.message,'error')}});
 cohortFilter.addEventListener('change',renderRows);searchInput.addEventListener('input',renderRows);

@@ -24,6 +24,12 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.match(admin, /button\('수정 저장','primary','submit'\)/);
   assert.match(admin, /<dialog id="passwordModal"/);
   assert.match(admin, /id="openPasswordButton"/);
+  assert.match(admin, /<dialog id="cohortModal"/);
+  assert.match(admin, /id="openCohortButton"/);
+  assert.match(admin, /id="cohortName"[^>]*maxlength="60"/);
+  assert.match(admin, /id="cohortDate"[^>]*maxlength="20"/);
+  assert.match(admin, /openCohortButton\.addEventListener\('click',[\s\S]*cohortModal\.showModal\(\)/);
+  assert.match(admin, /\/api\/admin\/cohorts/);
   assert.match(admin, /<dialog id="passwordModal"[\s\S]*id="passwordChangeForm"/);
   assert.match(admin, /openPasswordButton\.addEventListener\('click',[\s\S]*passwordModal\.showModal\(\)/);
   assert.match(admin, /openPasswordButton\.hidden=false/);

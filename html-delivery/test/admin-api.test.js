@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { createApp } = require('../server');
-const { LOCAL_ADMIN_CREDENTIAL, LOCAL_REGISTRY, hashPassword, verifyPassword } = require('../registry');
+const { cohortOptions, createApp } = require('../server');
+const { LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addCustomCohort, getCustomCohorts, hashPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -14,6 +14,7 @@ function runtimeSecret() { return crypto.randomBytes(18).toString('base64url'); 
 async function cleanLocalState() {
   await fs.rm(LOCAL_REGISTRY, { force: true });
   await fs.rm(LOCAL_ADMIN_CREDENTIAL, { force: true });
+  await fs.rm(LOCAL_COHORTS, { force: true });
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
 }
@@ -254,6 +255,71 @@ test('관리자 비밀번호 변경 API는 전용 로컬 파일에 오버라이�
     assert.equal(logs.join('\n').includes(nextSecret), false);
     assert.equal(logs.join('\n').includes(credential.passwordHash), false);
     assert.equal(logs.join('\n').includes(credential.salt), false);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+test('커스텀 코호트는 전용 로컬 파일에만 저장한다', async () => {
+  await cleanLocalState();
+  try {
+    assert.deepEqual(await getCustomCohorts(), []);
+    await addCustomCohort({ name: '2026-테스트 코호트', date: '8.1' });
+    const cohorts = await getCustomCohorts();
+    assert.equal(cohorts.length, 1);
+    assert.equal(cohorts[0].name, '2026-테스트 코호트');
+    assert.equal(cohorts[0].date, '8.1');
+    assert.match(cohorts[0].createdAt, /^\d{4}-\d{2}-\d{2}T/);
+    await addCustomCohort({ name: '2026-고대세종-ai', date: '무시' });
+    const merged = await cohortOptions();
+    assert.equal(merged.filter((cohort) => cohort.name === '2026-고대세종-ai').length, 1);
+    assert.equal(merged.find((cohort) => cohort.name === '2026-고대세종-ai').date, '6.24~25');
+    await assert.rejects(fs.stat(LOCAL_REGISTRY), { code: 'ENOENT' });
+  } finally {
+    await cleanLocalState();
+  }
+});
+
+test('관리자 코호트 추가 API는 인증·입력·중복을 검증하고 업로드에 반영한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (line) => logs.push(String(line));
+  try {
+    const request = (body, cookie) => fetch(`${baseUrl}/api/admin/cohorts`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    assert.equal((await request({ name: '2026-새 코호트' })).status, 401);
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const cookie = authenticated.cookie;
+    const empty = await request({ name: ' ' }, cookie);
+    assert.equal(empty.status, 400);
+    assert.equal((await empty.json()).error, '코호트 이름은 1~60자로 입력하세요.');
+    assert.equal((await request({ name: '가'.repeat(61) }, cookie)).status, 400);
+    const longDate = await request({ name: '2026-새 코호트', date: '1'.repeat(21) }, cookie);
+    assert.equal(longDate.status, 400);
+    assert.equal((await longDate.json()).error, '일자는 20자 이하로 입력하세요.');
+
+    const added = await request({ name: ' 2026-새 코호트 ', date: ' 8.1~2 ' }, cookie);
+    assert.equal(added.status, 200);
+    assert.deepEqual(await added.json(), { ok: true });
+    await assert.rejects(fs.stat(LOCAL_REGISTRY), { code: 'ENOENT' });
+    const cohorts = await (await fetch(`${baseUrl}/api/cohorts`)).json();
+    assert.equal(cohorts.cohorts.some((cohort) => cohort.name === '2026-새 코호트' && cohort.teams === null && cohort.date === '8.1~2'), true);
+    const duplicate = await request({ name: '2026-새 코호트' }, cookie);
+    assert.equal(duplicate.status, 409);
+    assert.equal((await duplicate.json()).error, '이미 있는 코호트예요.');
+
+    const uploaded = await uploadContent(baseUrl, { affiliation: '2026-새 코호트', secret: runtimeSecret() });
+    assert.equal(uploaded.response.status, 201);
+    assert.equal(logs.some((line) => JSON.parse(line).admin_action === 'add-cohort'), true);
   } finally {
     console.log = originalLog;
     await close(server);
