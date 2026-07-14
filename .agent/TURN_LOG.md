@@ -2091,3 +2091,40 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - read admin-auth.js·registry.js·server.js. write WO-031·저널. 커밋 예정 `docs: WO-030 완료·WO-031 발행`(main). 코더 워크트리 `wo/031` 분기 예정. AWS/배포 — 실행 안 함.
 ### Handoff
 - Hermes가 wo/031 구현 → npm test 그린 → 검증 대기. 검증·머지·배치배포는 Claude.
+
+---
+
+## 2026-07-14 16:15 KST — hermes (Coder) — WO-031 완료 (검증 대기)
+
+### Intent
+- 단일 env 관리자 구조를 동등 권한의 env+저장 계정 구조로 확장하고, 관리자 UI에서 신규 계정을 추가하도록 구현.
+
+### Files changed
+- `html-delivery/registry.js` — `admin#accounts` 단일 집계 아이템, 전용 `.local-admin-accounts.json`(0o600), `getAdminAccounts`/`addAdminAccount`/`updateAdminAccountPassword` 추가·export.
+- `html-delivery/admin-auth.js` — 신원 포함 세션·구 토큰 env 폴백, 다중 로그인, env/account 본인 비밀번호 변경 라우팅, id·중복·비밀번호 검증 `addAdmin` 추가.
+- `html-delivery/server.js` — 계정 저장 의존성 주입 및 인증 `POST /api/admin/admins` 라우트.
+- `html-delivery/public/admin.html` — 로그인 시 노출되는 관리자 추가 버튼, native `#adminModal`, password 초기 비밀번호 필드, 성공/오류 상태 배선.
+- `.gitignore` — `.local-admin-accounts.json` 추가.
+- `html-delivery/test/admin-auth.test.js`, `html-delivery/test/admin-api.test.js`, `html-delivery/test/admin-ui.test.js` — 세션 신원·구 토큰 폴백·env/account 로그인·본인 비번 변경·저장 파일 권한·API·감사 비노출·UI 구조 단언.
+- `.agent/work-orders/WO-031-admin-add-admin.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, 본 TURN_LOG — 검증 대기 상태·인계 기록.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view software-quality-and-debugging` — 협업·검증 절차 로드.
+- `read_file AGENTS.md → .agent/CURRENT_STATE.md → .agent/HANDOFF.md`, `git status --short --branch` — 규칙·상태·브랜치 대조; `wo/031` clean.
+- `read_file WO-031`, admin-auth/registry/server/.gitignore/admin 테스트와 `search_files` — 설계·기존 인증/저장/호출 경로 확인.
+- `patch registry.js .gitignore admin-auth.js server.js admin.html admin-auth/admin-api/admin-ui tests` — 저장·인증·API·모달·테스트 구현.
+- `node --test test/admin-auth.test.js test/admin-api.test.js test/admin-ui.test.js` — 첫 실행은 테스트 helper의 유효하지 않은 env id 때문에 중복 기대가 400으로 실패; helper를 유효 형식으로 수정 후 20/20 pass.
+- `cd html-delivery && npm test` — 44/44 pass.
+- OS temp `hermes-verify-*` Node 구조 단언 — `admin#accounts`, 3 exports, 0o600, 신원 세션, 인증 POST, admin dialog/password, innerHTML 부재 확인 후 pass; finally 삭제.
+- `git diff --check`, 범위·상태 확인 및 로컬 계정/레지스트리 파일 미잔존 확인.
+- `git add ... && git diff --cached --check && git commit -m "feat: 관리자 추가 기능 구현"` — `962d0de`.
+- 브라우저 시각 검증, AWS/terraform, push, main 머지, 배포 — 실행 안 함 (WO 지시상 Claude 담당).
+
+### Decisions / assumptions
+- env admin은 부트스트랩/root 계정으로 유지하고, 추가 계정만 `admin#accounts`에 저장한다. base 계정과 동일 id는 추가 시 거부한다.
+- 세션 payload에는 id만 추가하며, id 없는 기존 유효 토큰은 env admin으로 처리해 후방호환을 유지한다.
+- 감사 이벤트에는 action과 null contentId만 남긴다. 비밀값은 저장·로그·감사·저널에 기록하지 않는다.
+
+### Handoff
+- WO-031 상태: `검증 대기`.
+- Claude가 코드 `962d0de`와 후속 docs/journal을 독립 검증(npm test + Chrome env 로그인→관리자 추가→새 관리자 로그인→본인 비번 변경→새 비번 로그인)한 뒤, 통과 시 main 머지 및 WO-030과 배치 배포를 판단한다.

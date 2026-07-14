@@ -1,16 +1,14 @@
 # Handoff
 
 ## Current handoff summary
-WO-030(코호트 추가) 검증·머지 완료 — 배포는 WO-031과 배치 대기. WO-031(관리자 추가/다중 관리자) 발행, Hermes가 `wo/031`에서 구현.
+WO-030(코호트 추가) 검증·머지 완료 — 배포는 WO-031과 배치 대기. WO-031(관리자 추가/다중 관리자)은 Hermes가 `wo/031`에서 구현·커밋 완료(`962d0de`), Claude 검증 대기.
 
-## WO-031 지시 (Coder = Hermes) — 보안 민감
-단일 admin(env)→다중 관리자. 전원 동등 권한. 추가만(삭제·등급 없음).
-1. `registry.js`: `getAdminAccounts`/`addAdminAccount`/`updateAdminAccountPassword` (DynamoDB `admin#accounts` 집계 아이템 + DRY_RUN `.local-admin-accounts.json` mode 0o600). `.gitignore` 추가.
-2. `admin-auth.js`: 세션 토큰 payload에 `id` 추가, `requireAdmin`가 `req.adminId=payload.id??config.id`(구 토큰 폴백). `login` 다중 조회(env admin + account). `changePassword` 라우팅(env=saveAdminCredential, account=updateAdminAccountPassword). 신규 `addAdmin`(id 형식·중복 409·비번 8~72, 감사 `add-admin`).
-3. `server.js`: deps 주입 + `POST /api/admin/admins`.
-4. `admin.html`: `.site-tools`에 `관리자 추가` 버튼 → `<dialog id="adminModal">`(아이디+초기비번 type=password) → 성공 시 status. textContent만.
-- **평문/해시/솔트를 로그·감사·저널·코드에 남기지 말 것.** scrypt 해시만 저장. 내장 crypto만.
-- karin.kim/ella.kim 등 특정 계정 시드 금지 — 기능만. 범위: registry+admin-auth+server+admin.html+.gitignore+테스트.
+## WO-031 구현 결과 (Coder = Hermes) — 보안 민감
+- `registry.js`: `admin#accounts` 집계 아이템과 전용 `.local-admin-accounts.json`(0o600) 기반 `getAdminAccounts`/`addAdminAccount`/`updateAdminAccountPassword` 구현; `.gitignore` 반영.
+- `admin-auth.js`: env+account 로그인, 신원 포함 세션/구 토큰 env 폴백, 본인 비번 변경 분기, `addAdmin` 검증·중복·감사를 구현.
+- `server.js`: 의존성 주입 및 인증 `POST /api/admin/admins`; `admin.html`: `#adminModal`과 password 초기 비밀번호 필드·상태 UI 배선.
+- 비밀값은 저장 시 scrypt hash/salt만 사용하며, 감사는 action과 null contentId만 기록. 특정 계정 시드 없음.
+- 검증: focused 20/20, `cd html-delivery && npm test` 44/44, 임시 구조 단언 pass. 브라우저 검증은 미실행(Claude 담당).
 
 ## Verification 계획 (Verifier = Claude)
 1. diff 범위(위 파일만). 감사/로그/코드에 평문·해시·솔트 미노출 확인.
