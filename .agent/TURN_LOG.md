@@ -1912,3 +1912,34 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 설계 결정(사용자 확정): 실행=Hermes 디스패치, 비번 트리거 버튼=상단 `.site-tools`(로그아웃 옆). 오버플로=`overflow-x:auto` 봉합 + 동작 컬럼 폭 조정. 순수 프론트(admin.html + admin-ui.test.js)만, 백엔드/API/인프라 불변.
 - Commands: read admin.html/admin-ui.test.js/WO-000·027/README, write WO-028·CURRENT_STATE·HANDOFF. 커밋 예정 `docs: WO-028 ... 발행`(main). 코더 워크트리 `wo/028` 분기 예정. AWS/배포/머지 — 실행 안 함.
 - Handoff: Hermes가 wo/028에서 구현 → npm test 그린 → 검증 대기. 검증(diff·npm test·Chrome 시각)·머지·배포는 Claude.
+
+---
+
+## 2026-07-14 14:28 KST — hermes (Coder) — WO-028 완료 (검증 대기)
+
+### Intent
+- 관리자 비밀번호 변경 UI를 상단 툴바의 네이티브 dialog 모달로 옮기고, 콘텐츠 표 오버플로를 패널 내부 가로 스크롤로 봉합.
+
+### Files changed
+- `html-delivery/public/admin.html` — `#openPasswordButton`/`#passwordModal` 추가, 사이드바 인라인 폼 제거, 로그인 상태별 툴바 토글·열기/취소/성공 닫기 배선, dialog 스타일, `.table-wrap{overflow-x:auto}` 및 동작 열 180px+wrap 적용.
+- `html-delivery/test/admin-ui.test.js` — dialog/트리거/폼 포함·모달 API·로그인 상태 토글·close 및 오버플로 회귀 단언 갱신.
+- `.agent/work-orders/WO-028-admin-ui-modal-overflow.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 상태·인계 기록.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view software-quality-and-debugging` — 협업·검증 절차 로드.
+- `read_file AGENTS.md → .agent/CURRENT_STATE.md → .agent/HANDOFF.md`, `git status --short --branch` — 시작 규칙·상태·브랜치 대조; `wo/028` clean.
+- `read_file .agent/work-orders/WO-028-admin-ui-modal-overflow.md`, `.agent/work-orders/README.md`, `DESIGN.md`, `html-delivery/public/admin.html`, `html-delivery/test/admin-ui.test.js`, `html-delivery/package.json` 및 관련 `search_files` — 설계·기존 UI/테스트/명령 확인.
+- `patch html-delivery/public/admin.html html-delivery/test/admin-ui.test.js` — 모달·오버플로 구현과 구조 단언 반영.
+- `cd html-delivery && npm test` — 38/38 pass.
+- `git diff --check`, 구조 점검 Python — dialog/trigger/form 포함, `.table-wrap{overflow-x:auto}` 존재, `overflow-x:visible`·`innerHTML` 부재 확인.
+- `git add html-delivery/public/admin.html html-delivery/test/admin-ui.test.js && git diff --cached --check && git commit -m "feat: 관리자 비밀번호 변경 모달화"` — `c8d6559`.
+- `git add .agent/... && git diff --cached --check && git commit -m "docs: WO-028 검증 대기 기록"`, 이어서 상태 표현을 정정하는 `git commit --amend --no-edit` — docs/journal 커밋.
+- 브라우저 시각 검증, AWS/terraform, push, main 머지, 배포 — 실행 안 함 (WO 지시상 Claude 담당).
+
+### Decisions / assumptions
+- 기존 폼 필드 id·타입·길이 제약, submit 핸들러 및 `/api/admin/change-password` 호출은 유지했다.
+- 동작 버튼은 `flex-wrap:wrap`과 180px 최소 폭으로 데스크톱 열 폭을 줄이고, 좁은 폭은 table wrapper의 가로 스크롤로 폴백한다.
+
+### Handoff
+- WO-028 상태: `검증 대기`.
+- Claude가 `c8d6559`와 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 모달/오버플로)한 뒤, 통과 시 main 머지·Lambda 재배포를 수행한다.
