@@ -1,9 +1,9 @@
 # Handoff
 
 ## Current handoff summary
-WO-030(관리자 페이지 코호트 추가) 발행. Hermes가 `wo/030`에서 구현. WO-031(관리자 추가/다중 관리자)은 WO-030 머지 후 발행 예정.
+WO-030(관리자 페이지 코호트 추가) Hermes 구현 완료. `wo/030`의 `f25ce98`에서 registry/server/admin UI와 테스트를 반영했으며 Claude 독립 검증을 대기한다. WO-031(관리자 추가/다중 관리자)은 WO-030 머지 후 발행 예정.
 
-## WO-030 지시 (Coder = Hermes)
+## WO-030 구현 결과
 코호트를 base(하드코딩)+custom(DynamoDB) 병합 구조로 확장, 관리자가 이름+일자로 추가.
 1. `registry.js`: `getCustomCohorts`/`addCustomCohort` (DynamoDB `cohort#custom` 집계 아이템 + DRY_RUN `.local-cohorts.json`). `.gitignore` 추가.
 2. `server.js`: `cohortOptions()` async 병합(base+custom), `/api/cohorts` await, `validateUploadInput`/`validateAdminContentPatch`에 선택적 `validAffiliations=COHORTS` 파라미터(후방호환), 업로드/패치 라우트가 병합 이름 전달, `POST /api/admin/cohorts`(requireAdmin, 이름 1~60·중복 409·일자≤20, 감사 `add-cohort`).
@@ -16,6 +16,11 @@ WO-030(관리자 페이지 코호트 추가) 발행. Hermes가 `wo/030`에서 �
 2. `cd html-delivery && npm test` 전체 그린.
 3. Chrome DRY_RUN: 관리자 로그인 → 코호트 추가(이름+일자) → 필터·홈 카드 반영 확인.
 4. 통과 시 머지. 배포는 WO-031과 배치할지 사용자 확인 후.
+
+## Coder verification
+- `cd html-delivery && npm test` → 41/41 pass.
+- ad-hoc 구조 단언: `cohort#custom` 전용 저장/exports, async `cohortOptions`, 인증 코호트 POST, validAffiliations 후방호환, admin cohort dialog/submit/textContent, `innerHTML` 부재 통과.
+- 브라우저 시각 검증은 WO 지시대로 실행 안 함(Claude 담당).
 
 ## Collision risks / 금지 (상시)
 - push·main 머지·terraform·aws·배포는 Coder 금지(검증자 전담).

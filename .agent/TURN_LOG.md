@@ -2040,3 +2040,38 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - read admin-auth.js·registry.js·server.js(COHORTS/검증)·.gitignore·validation.test.js. write WO-030·저널. 커밋 예정 `docs: WO-030 발행`(main). 코더 워크트리 `wo/030` 분기 예정. AWS/배포/머지 — 실행 안 함.
 ### Handoff
 - Hermes가 wo/030 구현 → npm test 그린 → 검증 대기. 검증·머지는 Claude. WO-031(관리자 추가)은 WO-030 머지 후.
+
+---
+
+## 2026-07-14 15:41 KST — hermes (Coder) — WO-030 완료 (검증 대기)
+
+### Intent
+- 관리자에게 이름·일자 기반 커스텀 코호트 추가 기능을 제공하고, base+custom 병합 코호트를 기존 API·업로드·관리 UI에 연결.
+
+### Files changed
+- `html-delivery/registry.js` — `cohort#custom` 단일 집계 아이템과 전용 `.local-cohorts.json`의 `getCustomCohorts`/`addCustomCohort` 추가·export.
+- `html-delivery/server.js` — async `cohortOptions` base 우선 병합, custom 허용 검증 파라미터, `/api/cohorts` await, 업로드/패치 병합 이름 검증, 인증 `POST /api/admin/cohorts`(검증·409·감사) 추가.
+- `html-delivery/public/admin.html` — 필터 사이드바 `코호트 추가` 버튼과 native `#cohortModal`, 성공 시 loadData 갱신 배선.
+- `.gitignore` — `.local-cohorts.json` 추가.
+- `html-delivery/test/admin-api.test.js`, `html-delivery/test/admin-ui.test.js`, `html-delivery/test/validation.test.js` — 전용 로컬 저장·base 우선·API·custom 업로드·UI 구조·async 계약 단언.
+- `.agent/work-orders/WO-030-admin-add-cohort.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 상태·인계 기록.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view software-quality-and-debugging` — 협업·검증 절차 로드.
+- `read_file AGENTS.md → .agent/CURRENT_STATE.md → .agent/HANDOFF.md`, `git status --short --branch` — 시작 규칙·상태·브랜치 대조; `wo/030` clean.
+- `read_file .agent/work-orders/WO-030-admin-add-cohort.md`, `.agent/work-orders/README.md`, registry/server/admin/.gitignore 및 테스트, `search_files` — 설계·기존 호출 경로·테스트 구조 확인.
+- `patch registry.js server.js admin.html .gitignore admin-api/admin-ui/validation tests` — custom 저장·async 병합·API·모달·계약 반영.
+- `node --test test/admin-api.test.js test/admin-ui.test.js test/validation.test.js` — 29/29 pass (2회).
+- `cd html-delivery && npm test` — 41/41 pass.
+- 첫 두 `hermes-verify-*` 임시 구조 단언은 각각 잘못된 검사 대상(server.js에 registry 키 검색)과 공백 미포함 정규식으로 실패; 제품 테스트 실패 아님. 정정한 세 번째 임시 Node 구조 단언은 `cohort#custom`/exports, async 병합, 인증 POST, validAffiliations, cohort dialog·textContent·innerHTML 부재를 확인해 pass. 매번 finally에서 임시 파일 삭제.
+- `git diff --check`, 범위 확인 및 `test ! -e html-delivery/.local-cohorts.json/.local-registry.json` — 코드 범위 7파일, 로컬 런타임 파일 미잔존.
+- `git add ... && git diff --cached --check && git commit -m "feat: 관리자 코호트 추가 기능 구현"` — `f25ce98`.
+- 브라우저 시각 검증, AWS/terraform, push, main 머지, 배포 — 실행 안 함 (WO 지시상 Claude 담당).
+
+### Decisions / assumptions
+- `COHORTS`/팀/기존 일자 상수는 수정하지 않고 base로 유지하며, custom 이름이 base와 충돌하면 base만 반환한다.
+- custom 코호트는 팀이 없는 일반 코호트이며, 전용 로컬 파일을 사용해 콘텐츠 레지스트리·갤러리 스캔을 오염시키지 않는다.
+
+### Handoff
+- WO-030 상태: `검증 대기`.
+- Claude가 `f25ce98`과 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 코호트 추가·필터·홈 카드)한 뒤, 통과 시 main 머지한다. 배포는 WO-031과 배치 여부를 사용자에게 확인한다.
