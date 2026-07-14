@@ -1,24 +1,27 @@
 # Current State
 
-Updated: 2026-07-14 KST
+Updated: 2026-07-14 10:55 KST
 
 ## Active owners
-- Hermes (Coder): WO-026 관리자 진입 푸터 — 착수 대기 (`wo/026`)
-- Claude (Planner/Verifier): WO-026 발행·검증 대기, main 소유
+- Hermes (Coder): WO-026 관리자 진입 푸터 — 구현·로컬 검증 완료, `wo/026`에서 검증 대기
+- Claude (Planner/Verifier): WO-026 독립 재검증·main 머지·배포 판단 대기, main 소유
 
 ## Last verified repo state
-- Branch: `main` HEAD=`d38d8ea docs: 관리자 모드 개통 기록`
-- Hermes 워크트리: `wo/026`(main 기준 신규 브랜치)로 리셋
-- WO-025 병합·apply·프로덕션 실측 완료 (관리자 모드 개통)
+- Branch: `wo/026`
+- Base: `9c50132 docs: WO-026 관리자 진입 푸터 발행 및 저널 동기화`
+- Implementation commits: `5eb79d7 feat: 공통 푸터 마크업 추가`, `89bdb3b style: 푸터 관리자 링크 스타일 추가`, `980516d test: 관리자 푸터 노출 계약 갱신`
+- Journal/status docs commit: current HEAD `docs: WO-026 검증 대기 기록`
+- Working tree: docs/journal commit 후 clean
+- Tests last run: `npm test` in `html-delivery` → 35/35 pass
+- DRY_RUN browser: local `PORT=4173 DRY_RUN=true npm start` against `http://127.0.0.1:4173` → 4 scoped scenarios pass; server stopped
 
 ## Completed
-- WO-001~WO-024 완료 및 프로덕션 배포
-- WO-025: 관리자 인증·관리 API·UI·infra(env/IAM) — main 머지 + terraform apply + 프로덕션 실측 완료.
-  로그인 200/세션 유지/삭제 연쇄(S3 403·갤러리 소멸)/미인증 401 전부 통과. `https://showcase.nxtcloud.kr/admin.html`
+- WO-001~WO-025 완료 및 프로덕션 배포
+- WO-026 implementation: public pages `index.html`, `cohort.html`, `upload.html`, `view.html` have footer outside `main`; `admin.html` has no footer; theme.css footer/admin-link rules added with existing variables only.
 
 ## In progress
-- WO-026: 공개 4개 페이지(index·cohort·upload·view) 공통 푸터 + 저채도 '관리자' 링크 — 발행됨, Coder 착수 대기
+- WO-026: 검증자 재검증 대기
 
 ## Next safe action
-1. Hermes: `wo/026`에서 theme.css 푸터 규칙 + 4개 페이지 마크업 삽입 → DRY_RUN 실측 → 커밋 분리
-2. Claude: 재검증 통과 시 main 머지 + Lambda 재배포
+1. Claude: `wo/026` tip에서 diff, `npm test`, scoped browser checks 재검증
+2. 통과 시 Claude만 main 머지 + Lambda 재배포 수행

@@ -1787,3 +1787,52 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Commands/verification: git worktree/branch 상태 확인, theme.css·페이지 구조 조사(footer 부재·main 밖 삽입 지점 확정). 코드 변경 없음(발행만).
 - Decisions: 헤더 상시 노출/로고 트리거 대신 푸터 muted 링크(사용자 선택). 로그인 게이트로 링크 노출은 보안 위험 아님. theme.css 신규 규칙만·기존 변수만.
 - Handoff: Hermes가 wo/026에서 착수. 검증 통과 시 Claude가 main 머지 + Lambda 재배포.
+
+---
+
+## 2026-07-14 10:55 KST — hermes (Coder) — WO-026
+
+### Intent
+- 공개 갤러리 4개 페이지 하단에 공통 푸터와 저채도 `관리자` 링크를 추가하고, 로컬 DRY_RUN 실측 후 검증 대기 인계.
+
+### Files changed
+- `html-delivery/public/index.html` — `</script>` 뒤, `</body>` 앞에 공통 footer 추가.
+- `html-delivery/public/cohort.html` — `main` 밖, `</body>` 앞에 공통 footer 추가.
+- `html-delivery/public/upload.html` — `main` 밖, `</body>` 앞에 공통 footer 추가.
+- `html-delivery/public/view.html` — `main` 밖, `</body>` 앞에 공통 footer 추가.
+- `html-delivery/public/assets/theme.css` — 기존 줄 수정 없이 `body>.site-footer`, `.site-footer`, `.admin-link`, `.admin-link:hover` 신규 규칙 append. 새 색상 하드코딩 없음.
+- `html-delivery/test/admin-ui.test.js` — WO-026 변경에 맞춰 공개 4개 페이지 footer 노출·admin.html footer 미노출 계약으로 갱신.
+- `.agent/work-orders/WO-026-admin-footer-entry.md` — 상태를 `검증 대기`로 갱신.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — WO-026 구현·검증 결과 인계.
+
+### Commands / verification
+- `skill_view multi-agent-work-journal`, `skill_view software-quality-and-debugging`, `skill_view github-workflows` — 관련 협업·검증·git 절차 로드.
+- `read_file .agent/CURRENT_STATE.md`, `read_file .agent/HANDOFF.md`, `read_file .agent/work-orders/WO-026-admin-footer-entry.md`, `read_file .agent/work-orders/README.md`, `git status --short --branch && git rev-parse --short HEAD` — 시작 전 상태/WO/브랜치 대조; `wo/026`, HEAD `9c50132`.
+- `./check-journal.sh .agent || true` — 실패: 스크립트 없음(`/bin/bash: ./check-journal.sh: No such file or directory`).
+- `search_files '*.html'` — 실제 작업 파일이 `html-delivery/public/` 하위임을 확인.
+- `read_file html-delivery/public/assets/theme.css`, `read_file html-delivery/public/{index,cohort,upload,view}.html`, `read_file html-delivery/package.json` — 삽입 지점·스타일 구조·test script 확인.
+- `patch` 4개 HTML — footer 삽입.
+- `git status --short && git diff -- ...` — 마크업 diff 확인.
+- `git add html-delivery/public/index.html html-delivery/public/cohort.html html-delivery/public/upload.html html-delivery/public/view.html && git diff --cached --stat && git diff --cached --check && git commit -m "feat: 공통 푸터 마크업 추가"` — commit `5eb79d7`.
+- `patch html-delivery/public/assets/theme.css` — footer/admin-link 스타일 신규 규칙 append.
+- `git status --short && git diff -- html-delivery/public/assets/theme.css && git add html-delivery/public/assets/theme.css && git diff --cached --check && git commit -m "style: 푸터 관리자 링크 스타일 추가"` — commit `89bdb3b`.
+- `npm test` — 34/35 pass, 1 fail: 기존 `admin-ui.test.js`가 `index.html`에 `admin.html` 미노출을 요구해 WO-026와 충돌.
+- `read_file html-delivery/test/admin-ui.test.js`, `patch html-delivery/test/admin-ui.test.js` — 공개 4개 페이지 footer 노출·admin.html footer 미노출 계약으로 갱신.
+- `git status --short && git diff -- html-delivery/test/admin-ui.test.js && git add html-delivery/test/admin-ui.test.js && git diff --cached --check && git commit -m "test: 관리자 푸터 노출 계약 갱신"` — commit `980516d`.
+- `npm test` — 35/35 pass.
+- `PORT=4173 DRY_RUN=true npm start` — background server started, health probe `curl -I http://127.0.0.1:4173/` → HTTP 200.
+- Browser DRY_RUN scenario 1(index): `browser_navigate /`, computed style check → footer is `BODY` child after `SCRIPT`, display flex, wrap, z-index 1, href `/admin.html`, light muted `rgb(91,97,120)`; theme toggle dark → dark muted `rgb(174,181,204)`. CSS rules confirm `.admin-link:hover{color:var(--text);border-color:var(--line)}`.
+- Browser DRY_RUN scenario 2(admin route): DOM click on `.admin-link` → `http://127.0.0.1:4173/admin.html`; admin page title loaded and `hasFooter=false`. Browser tool direct click did not navigate while offscreen/stale ref, so DOM click was used for route proof.
+- Browser DRY_RUN scenario 3(other pages): `cohort.html`, `view.html?id=00000000`, `upload.html` each has footer as `BODY` child after `SCRIPT`, href `/admin.html`.
+- Browser DRY_RUN scenario 4(mobile): same-origin 360px iframe probe for `/` → footer width 360, `flexWrap=wrap`, admin link y-position below copy, wrapped=true.
+- `process kill proc_1862f52db19b`, `process poll`, `process list` — DRY_RUN server stopped; process list empty.
+- 실 AWS 호출, terraform plan/apply, aws CLI, push, main 머지, 배포 — 실행 안 함.
+
+### Decisions / assumptions
+- Work order의 “기존 줄 수정 금지”를 우선해 기존 mono selector 줄은 수정하지 않고 `.site-footer` font-family를 신규 규칙에 넣었다.
+- `admin.html`에는 footer를 넣지 않았고, 공개 4개 페이지에만 동일 footer 문자열을 삽입했다.
+- `admin-ui.test.js`의 “갤러리에서 admin.html 미노출” 단언은 WO-026 설계와 충돌하므로 공개 footer 계약 단언으로 갱신했다.
+
+### Handoff
+- WO-026 상태: `검증 대기`.
+- Claude가 `5eb79d7`, `89bdb3b`, `980516d` 및 본 docs/journal 커밋을 독립 재검증하고, 통과 시 main 머지·Lambda 재배포를 수행한다.
