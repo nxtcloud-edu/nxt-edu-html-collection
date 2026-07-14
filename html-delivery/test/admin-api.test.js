@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { cohortOptions, createApp } = require('../server');
-const { LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addCustomCohort, getCustomCohorts, hashPassword, verifyPassword } = require('../registry');
+const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, hashPassword, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -14,6 +14,7 @@ function runtimeSecret() { return crypto.randomBytes(18).toString('base64url'); 
 async function cleanLocalState() {
   await fs.rm(LOCAL_REGISTRY, { force: true });
   await fs.rm(LOCAL_ADMIN_CREDENTIAL, { force: true });
+  await fs.rm(LOCAL_ADMIN_ACCOUNTS, { force: true });
   await fs.rm(LOCAL_COHORTS, { force: true });
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
@@ -28,7 +29,7 @@ function withAdminEnv() {
     S3_BUCKET: process.env.S3_BUCKET,
     FEEDBACK_TABLE: process.env.FEEDBACK_TABLE,
   };
-  const id = runtimeSecret();
+  const id = `admin${crypto.randomBytes(8).toString('hex')}`;
   const secret = runtimeSecret();
   const hashed = hashPassword(secret);
   process.env.ADMIN_ID = id;
@@ -255,6 +256,82 @@ test('관리자 비밀번호 변경 API는 전용 로컬 파일에 오버라이�
     assert.equal(logs.join('\n').includes(nextSecret), false);
     assert.equal(logs.join('\n').includes(credential.passwordHash), false);
     assert.equal(logs.join('\n').includes(credential.salt), false);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+test('커스텀 관리자 계정은 전용 로컬 파일에 해시와 솔트만 저장한다', async () => {
+  await cleanLocalState();
+  try {
+    assert.deepEqual(await getAdminAccounts(), []);
+    const initialPassword = runtimeSecret();
+    await addAdminAccount({ id: 'local.admin', ...hashPassword(initialPassword) });
+    const stat = await fs.stat(LOCAL_ADMIN_ACCOUNTS);
+    assert.equal(stat.mode & 0o777, 0o600);
+    const accounts = await getAdminAccounts();
+    assert.equal(verifyPassword(initialPassword, accounts[0].passwordHash, accounts[0].salt), true);
+    assert.equal(JSON.stringify(accounts).includes(initialPassword), false);
+    const nextPassword = runtimeSecret();
+    assert.equal(await updateAdminAccountPassword('local.admin', hashPassword(nextPassword)), true);
+    assert.equal(verifyPassword(nextPassword, (await getAdminAccounts())[0].passwordHash, (await getAdminAccounts())[0].salt), true);
+    assert.equal(await updateAdminAccountPassword('missing.admin', hashPassword(runtimeSecret())), false);
+    await assert.rejects(fs.stat(LOCAL_REGISTRY), { code: 'ENOENT' });
+  } finally {
+    await cleanLocalState();
+  }
+});
+
+test('관리자 추가 API는 인증·입력·중복을 검증하고 새 관리자의 본인 비밀번호 변경을 처리한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (line) => logs.push(String(line));
+  try {
+    const request = (body, cookie) => fetch(`${baseUrl}/api/admin/admins`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    const initialPassword = runtimeSecret();
+    assert.equal((await request({ id: 'teacher.admin', password: initialPassword })).status, 401);
+    const root = await login(baseUrl, admin.id, admin.secret);
+    const cookie = root.cookie;
+    assert.equal((await request({ id: 'Bad_ID', password: initialPassword }, cookie)).status, 400);
+    assert.equal((await request({ id: 'teacher.admin', password: 'short7' }, cookie)).status, 400);
+    assert.equal((await request({ id: admin.id, password: initialPassword }, cookie)).status, 409);
+    const added = await request({ id: 'teacher.admin', password: initialPassword }, cookie);
+    assert.equal(added.status, 200);
+    assert.deepEqual(await added.json(), { ok: true });
+    const stored = (await getAdminAccounts()).find((account) => account.id === 'teacher.admin');
+    assert.equal(verifyPassword(initialPassword, stored.passwordHash, stored.salt), true);
+    assert.equal(JSON.stringify(stored).includes(initialPassword), false);
+    assert.equal((await request({ id: 'teacher.admin', password: initialPassword }, cookie)).status, 409);
+
+    const accountLogin = await login(baseUrl, 'teacher.admin', initialPassword);
+    assert.equal(accountLogin.response.status, 200);
+    const replacementPassword = runtimeSecret();
+    const changed = await fetch(`${baseUrl}/api/admin/change-password`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: accountLogin.cookie },
+      body: JSON.stringify({ currentPassword: initialPassword, newPassword: replacementPassword }),
+    });
+    assert.equal(changed.status, 200);
+    assert.equal((await login(baseUrl, 'teacher.admin', initialPassword)).response.status, 401);
+    assert.equal((await login(baseUrl, 'teacher.admin', replacementPassword)).response.status, 200);
+    const logText = logs.join('\n');
+    assert.equal(logText.includes(initialPassword), false);
+    assert.equal(logText.includes(replacementPassword), false);
+    assert.equal(logText.includes(stored.passwordHash), false);
+    assert.equal(logText.includes(stored.salt), false);
+    const audit = logs.map((line) => JSON.parse(line));
+    assert.equal(audit.some((entry) => entry.admin_action === 'add-admin' && entry.contentId === null), true);
+    assert.equal(audit.some((entry) => entry.admin_action === 'change-password' && entry.contentId === null), true);
   } finally {
     console.log = originalLog;
     await close(server);

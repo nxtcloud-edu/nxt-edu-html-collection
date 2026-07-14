@@ -18,7 +18,7 @@ function withEnvConfig(pair = configuredSecretPair()) {
     ADMIN_PASSWORD_SALT: process.env.ADMIN_PASSWORD_SALT,
     SESSION_SECRET: process.env.SESSION_SECRET,
   };
-  process.env.ADMIN_ID = runtimeSecret();
+  process.env.ADMIN_ID = `admin${crypto.randomBytes(8).toString('hex')}`;
   process.env.ADMIN_PASSWORD_HASH = pair.passwordHash;
   process.env.ADMIN_PASSWORD_SALT = pair.salt;
   process.env.SESSION_SECRET = runtimeSecret();
@@ -58,12 +58,12 @@ async function call(handler, request) {
 test('관리자 세션 토큰은 서명된 payload와 12시간 만료를 검증한다', () => {
   const secret = runtimeSecret();
   const now = () => 1_800_000_000_000;
-  const token = createSessionToken({ now, secret });
+  const token = createSessionToken({ id: 'root.admin', now, secret });
   const [payloadBase64] = token.split('.');
   const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf8'));
 
   assert.equal(payload.exp, Math.floor((now() + SESSION_TTL_MS) / 1000));
-  assert.equal(verifySessionToken(token, { now, secret }), true);
+  assert.deepEqual(verifySessionToken(token, { now, secret }), payload);
 });
 
 test('관리자 세션 토큰은 변조와 만료를 거부한다', () => {
@@ -100,6 +100,9 @@ test('관리자 로그인은 오버라이드가 있으면 오버라이드 자격
   const auth = createAdminAuth({
     getAdminCredential: async () => override,
     saveAdminCredential: async () => {},
+    getAdminAccounts: async () => [],
+    addAdminAccount: async () => {},
+    updateAdminAccountPassword: async () => false,
     hashPassword,
   });
   try {
@@ -126,6 +129,9 @@ test('change-password는 현재 비밀번호와 새 비밀번호를 검증하고
   const auth = createAdminAuth({
     getAdminCredential: async () => saved,
     saveAdminCredential: async (credential) => { saved = credential; },
+    getAdminAccounts: async () => [],
+    addAdminAccount: async () => {},
+    updateAdminAccountPassword: async () => false,
     hashPassword,
     auditAdminAction: (admin_action, contentId) => auditLogs.push({ admin_action, contentId }),
   });
@@ -155,6 +161,67 @@ test('change-password는 현재 비밀번호와 새 비밀번호를 검증하고
     assert.equal(oldLogin.statusCode, 401);
     const newLogin = await call(auth.login, req({ body: { id: env.id, password: newSecret } }));
     assert.equal(newLogin.statusCode, 200);
+  } finally {
+    env.restore();
+  }
+});
+
+test('다중 관리자는 신원 세션으로 로그인·비밀번호 변경·관리자 추가를 처리한다', async () => {
+  const env = withEnvConfig();
+  const accountPassword = runtimeSecret();
+  const account = { id: 'operator.1', ...hashPassword(accountPassword), createdAt: new Date().toISOString() };
+  const accounts = [account];
+  const auditLogs = [];
+  let savedEnvCredential = null;
+  const auth = createAdminAuth({
+    getAdminCredential: async () => savedEnvCredential,
+    saveAdminCredential: async (credential) => { savedEnvCredential = credential; },
+    getAdminAccounts: async () => accounts,
+    addAdminAccount: async (next) => { accounts.push({ ...next, createdAt: new Date().toISOString() }); },
+    updateAdminAccountPassword: async (id, credential) => {
+      const existing = accounts.find((item) => item.id === id);
+      if (!existing) return false;
+      Object.assign(existing, credential);
+      return true;
+    },
+    hashPassword,
+    auditAdminAction: (adminAction, contentId) => auditLogs.push({ adminAction, contentId }),
+  });
+  try {
+    const envLogin = await call(auth.login, req({ body: { id: env.id, password: env.secret } }));
+    assert.equal(envLogin.statusCode, 200);
+    const accountLogin = await call(auth.login, req({ body: { id: account.id, password: accountPassword } }));
+    assert.equal(accountLogin.statusCode, 200);
+    const accountToken = parseCookies(accountLogin.headers['set-cookie'])[SESSION_COOKIE_NAME];
+    assert.equal(verifySessionToken(accountToken, { secret: process.env.SESSION_SECRET }).id, account.id);
+    const protectedRequest = req({ cookie: accountLogin.headers['set-cookie'] });
+    let nextCalled = false;
+    auth.requireAdmin(protectedRequest, res(), () => { nextCalled = true; });
+    assert.equal(nextCalled, true);
+    assert.equal(protectedRequest.adminId, account.id);
+    const legacyRequest = req({ cookie: sessionCookie(createSessionToken({ secret: process.env.SESSION_SECRET })) });
+    auth.requireAdmin(legacyRequest, res(), () => {});
+    assert.equal(legacyRequest.adminId, env.id);
+    assert.equal((await call(auth.login, req({ body: { id: 'missing.admin', password: accountPassword } }))).statusCode, 401);
+    assert.equal((await call(auth.login, req({ body: { id: account.id, password: runtimeSecret() } }))).statusCode, 401);
+
+    const replacementPassword = runtimeSecret();
+    const changed = await call(auth.changePassword, { ...req({ body: { currentPassword: accountPassword, newPassword: replacementPassword } }), adminId: account.id });
+    assert.equal(changed.statusCode, 200);
+    assert.equal(verifyPassword(replacementPassword, account.passwordHash, account.salt), true);
+    assert.equal((await call(auth.login, req({ ip: '127.0.0.2', body: { id: account.id, password: accountPassword } }))).statusCode, 401);
+    assert.equal((await call(auth.login, req({ ip: '127.0.0.2', body: { id: account.id, password: replacementPassword } }))).statusCode, 200);
+
+    assert.equal((await call(auth.addAdmin, req({ body: { id: 'Bad_ID', password: runtimeSecret() } }))).statusCode, 400);
+    assert.equal((await call(auth.addAdmin, req({ body: { id: 'new.admin', password: 'short7' } }))).statusCode, 400);
+    assert.equal((await call(auth.addAdmin, req({ body: { id: env.id, password: runtimeSecret() } }))).statusCode, 409);
+    const initialPassword = runtimeSecret();
+    const added = await call(auth.addAdmin, req({ body: { id: 'new.admin', password: initialPassword } }));
+    assert.equal(added.statusCode, 200);
+    const addedAccount = accounts.find((item) => item.id === 'new.admin');
+    assert.equal(verifyPassword(initialPassword, addedAccount.passwordHash, addedAccount.salt), true);
+    assert.equal(JSON.stringify(addedAccount).includes(initialPassword), false);
+    assert.deepEqual(auditLogs, [{ adminAction: 'change-password', contentId: null }, { adminAction: 'add-admin', contentId: null }]);
   } finally {
     env.restore();
   }

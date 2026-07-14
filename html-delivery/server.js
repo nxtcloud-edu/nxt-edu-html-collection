@@ -5,7 +5,7 @@ const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { addCustomCohort, deleteRegistryItem, findByIdentity, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
+const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
@@ -222,7 +222,7 @@ async function deleteFeedbackForContent(contentId) {
 
 function createApp() {
   const app = express();
-  const adminAuth = createAdminAuth({ getAdminCredential, saveAdminCredential, hashPassword, auditAdminAction });
+  const adminAuth = createAdminAuth({ getAdminCredential, saveAdminCredential, getAdminAccounts, addAdminAccount, updateAdminAccountPassword, hashPassword, auditAdminAction });
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
   const likeByContent = createSlidingWindowLimiter({ limit: 3, windowMs: 60_000 });
   const likeByIp = createSlidingWindowLimiter({ limit: 30, windowMs: 60_000 });
@@ -234,6 +234,7 @@ function createApp() {
   app.get('/api/admin/session', adminAuth.requireAdmin, (_req, res) => res.json({ ok: true }));
   app.post('/api/admin/logout', adminAuth.requireAdmin, adminAuth.logout);
   app.post('/api/admin/change-password', adminAuth.requireAdmin, adminAuth.changePassword);
+  app.post('/api/admin/admins', adminAuth.requireAdmin, adminAuth.addAdmin);
   app.post('/api/admin/reset-password', adminAuth.requireAdmin, async (req, res, next) => {
     if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
     if (!validateNewPassword(req.body?.newPassword)) return res.status(400).json({ error: '비밀번호는 4~30자로 입력하세요.' });

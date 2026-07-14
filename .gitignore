@@ -8,6 +8,7 @@ html-delivery/uploads.log.jsonl
 html-delivery/.local-feedback.jsonl
 html-delivery/.local-registry.json
 html-delivery/.local-admin-credential.json
+html-delivery/.local-admin-accounts.json
 html-delivery/.local-cohorts.json
 html-delivery/node_modules/
 

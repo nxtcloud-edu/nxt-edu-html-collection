@@ -6,8 +6,10 @@ const { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, ScanComma
 
 const LOCAL_REGISTRY = path.join(__dirname, '.local-registry.json');
 const LOCAL_ADMIN_CREDENTIAL = path.join(path.dirname(LOCAL_REGISTRY), '.local-admin-credential.json');
+const LOCAL_ADMIN_ACCOUNTS = path.join(path.dirname(LOCAL_REGISTRY), '.local-admin-accounts.json');
 const LOCAL_COHORTS = path.join(path.dirname(LOCAL_REGISTRY), '.local-cohorts.json');
 const ADMIN_CREDENTIAL_KEY = { contentKey: 'admin#credential', createdAt: 'meta' };
+const ADMIN_ACCOUNTS_KEY = { contentKey: 'admin#accounts', createdAt: 'meta' };
 const CUSTOM_COHORT_KEY = { contentKey: 'cohort#custom', createdAt: 'meta' };
 const TABLE_NAME = process.env.FEEDBACK_TABLE;
 
@@ -66,6 +68,39 @@ async function saveAdminCredential({ passwordHash, salt, updatedAt }) {
     return;
   }
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+}
+
+async function getAdminAccounts() {
+  if (!TABLE_NAME) {
+    try {
+      const accounts = JSON.parse(await fs.readFile(LOCAL_ADMIN_ACCOUNTS, 'utf8'));
+      return Array.isArray(accounts) ? accounts : [];
+    } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  }
+  const response = await documentClient().send(new GetCommand({ TableName: TABLE_NAME, Key: ADMIN_ACCOUNTS_KEY }));
+  return Array.isArray(response.Item?.accounts) ? response.Item.accounts : [];
+}
+
+async function writeAdminAccounts(accounts) {
+  if (!TABLE_NAME) {
+    await fs.writeFile(LOCAL_ADMIN_ACCOUNTS, JSON.stringify(accounts), { encoding: 'utf8', mode: 0o600 });
+    await fs.chmod(LOCAL_ADMIN_ACCOUNTS, 0o600);
+    return;
+  }
+  await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...ADMIN_ACCOUNTS_KEY, accounts } }));
+}
+
+async function addAdminAccount({ id, passwordHash, salt }) {
+  await writeAdminAccounts([...await getAdminAccounts(), { id, passwordHash, salt, createdAt: new Date().toISOString() }]);
+}
+
+async function updateAdminAccountPassword(id, { passwordHash, salt }) {
+  const accounts = await getAdminAccounts();
+  const index = accounts.findIndex((account) => account.id === id);
+  if (index === -1) return false;
+  accounts[index] = { ...accounts[index], passwordHash, salt, updatedAt: new Date().toISOString() };
+  await writeAdminAccounts(accounts);
+  return true;
 }
 
 async function getCustomCohorts() {
@@ -264,4 +299,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
