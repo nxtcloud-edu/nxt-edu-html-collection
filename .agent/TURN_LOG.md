@@ -1943,3 +1943,35 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-028 상태: `검증 대기`.
 - Claude가 `c8d6559`와 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 모달/오버플로)한 뒤, 통과 시 main 머지·Lambda 재배포를 수행한다.
+
+## 2026-07-14 14:40 KST — Claude (Verifier) — WO-028 검증·머지 완료(배포 대기)
+### Intent
+- WO-028 독립 검증 → main ff 머지. 프로덕션 배포는 사용자 승인 대기.
+
+### Commands / verification
+- `git diff main..wo/028` — 코드 변경 admin.html(18)+admin-ui.test.js(13)만, 나머지는 저널. 범위 정합.
+- admin-ui.test.js diff 검토 — test2에 `<dialog id="passwordModal"`·`openPasswordButton`·showModal·hidden 토글·close 단언 추가, test3에 `.table-wrap{overflow-x:auto}`·`overflow-x:visible` 부재·새 `.actions-cell{white-space:normal;min-width:180px}` 반영.
+- 구조 점검(grep): admin.html `overflow-x:auto`=1, `overflow-x:visible`=0, `id="passwordModal"`=1, `id="openPasswordButton"`=1, `innerHTML`=0.
+- `cd html-delivery && npm test` — 38/38 pass.
+- Chrome DRY_RUN 실측: 로컬 서버(생성 자격, FEEDBACK_TABLE 미설정, 시드 4건) → 로그인 → 툴바 `비밀번호 변경`→모달 개폐(취소 닫힘·backdrop 딤), 콘텐츠 목록 표의 헤더·동작 버튼(삭제 포함) 2×2 줄바꿈으로 패널 내부 확인. 사이드바는 필터만.
+- Cleanup: 서버 종료(포트 3210), `.local-registry.json`·env 파일 삭제, 워크트리 clean 확인.
+- `git merge --ff-only wo/028` — main `7c912cc`→`9992c16` (base==main, 리베이스 불필요).
+- terraform/apply/aws/push — 실행 안 함 (배포는 사용자 승인 대기).
+
+### Decisions
+- 정적 자산(admin.html) 변경이므로 프로덕션 반영엔 Lambda 재배포 필요 → 사용자 승인 후 수행. WO-029와 배치 배포 가능.
+
+### Handoff
+- WO-028: 검증·머지 완료, 배포 대기. WO-029 발행으로 이어감.
+
+## 2026-07-14 14:40 KST — Claude (Planner) — WO-029 발행 (수업별 카드 일자)
+### Intent
+- 사용자 지시: 홈 `수업별 모아보기` 카드에 수업 일자 표기. WO-029 발행, Hermes 디스패치.
+### Files changed
+- `.agent/work-orders/WO-029-cohort-card-dates.md`(신규), `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, 본 TURN_LOG. WO-028 doc 상태를 완료(배포 대기)로 갱신.
+### Decisions
+- 일자는 코호트 메타데이터 → server.js `COHORT_DATES` 단일 소스 + `cohortOptions().date` + index.html 렌더 + validation.test.js deepEqual. 기업인턴십 "07"은 사용자 확정으로 `7.1~31`(전 카드 숫자 범위 통일).
+### Commands / verification
+- 코드 조사: server.js COHORTS/TEAM_COHORTS/cohortOptions, index.html renderCohorts, validation.test.js deepEqual. write WO-029·CURRENT_STATE·HANDOFF. 커밋 예정 `docs: WO-028 완료·WO-029 발행`(main). 코더 워크트리 `wo/029` 분기 예정.
+### Handoff
+- Hermes가 wo/029에서 구현 → npm test 그린 → 검증 대기. 검증·머지·배포는 Claude.
