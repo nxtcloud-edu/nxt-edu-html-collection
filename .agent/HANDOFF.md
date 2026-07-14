@@ -1,33 +1,22 @@
 # Handoff
 
 ## Current handoff summary
-WO-028(관리자 UI 정돈)은 검증 통과·main ff 머지 완료 — **프로덕션 배포만 사용자 승인 대기**. WO-029(수업별 카드 일자 표기)는 Hermes 구현 완료(`wo/029` `a8d0cf3`), Claude 독립 검증을 대기한다.
+WO-028(관리자 UI 정돈)·WO-029(수업별 카드 일자 표기) 모두 검증·머지·배포 완료. 프로덕션(https://showcase.nxtcloud.kr) 라이브 확인. 진행 중 WO 없음 — 다음 지시 대기. 코더 워크트리는 `hermes/idle`로 파킹.
 
-## WO-028 결과 (완료·배포 대기)
-- 비번 변경: 상단 `.site-tools` 버튼(`#openPasswordButton`)→네이티브 `<dialog id="passwordModal">` 모달, 사이드바 인라인 폼 제거, `/api/admin/change-password` 불변.
-- 표 오버플로: `.table-wrap{overflow-x:auto}` + `.row-actions` 줄바꿈(2×2) + `.actions-cell{white-space:normal;min-width:180px}` → 헤더·삭제 버튼 패널 내부.
-- 검증: npm test 38/38, 구조 단언, Chrome DRY_RUN 시각 실측 통과. 커밋 `c8d6559`(feat)+`9992c16`(docs).
-- 배포: 정적 자산(admin.html) 변경이라 Lambda 재배포 필요 — 사용자 승인 후 Claude가 수행.
+## 방금 배포 (배치)
+- `terraform -chdir=infra apply` → `aws_lambda_function.uploader` in-place 갱신(source_code_hash), 0 add/1 change/0 destroy. IAM/S3/CloudFront/Route53 변경 없음.
+- 프로덕션 실측: admin.html에 `passwordModal`·`openPasswordButton`·`overflow-x:auto` 존재·`overflow-x:visible` 부재; `/api/cohorts` 6개 일자 노출; 홈 200.
 
-## WO-029 구현 결과
-1. `server.js`: `TEAM_COHORTS` 옆 `COHORT_DATES` 맵 추가, `cohortOptions()`에 `date` 필드. 값=아래 표.
-2. `index.html` `renderCohorts`: 카드에 `cohort.date` 있으면 `.cohort-date` span 추가(textContent, 널 세이프).
-3. `validation.test.js`: `cohortOptions()` deepEqual(59~66행)에 `date` 반영. `npm test` 전체 그린.
-- 일자: `2026-고대세종-ai`=`6.24~25`, `2026-한이음-ai-중급`=`7.12`, `2026-고대세종-기업인턴십`=`7.1~31`, `2026-고대세종-아이디어톤`=`6.26`, `2026-국민대-ai워크플로우`=`6.24~30`, `2026-서남-해커톤`=`7.10`.
-- 범위: server.js + index.html + validation.test.js 3파일. admin/upload/cohort.html·API 로직 불변.
+## 다음 안전 액션
+- 새 WO: 명령서 커밋 → `git -C <coder-worktree> checkout -b wo/NNN main` → Hermes 세션 `ai-literacy-hermes`에 착수 지시.
+- 코더 워크트리는 `hermes/idle`(=main) 파킹 상태. 게이트(`.agent-coder-guard`)·훅·저널 유지.
+- 정리 여지: 머지된 `wo/028`·`wo/029` 브랜치 삭제(선택).
 
-## Verification 계획 (Verifier = Claude)
-1. diff 범위: `server.js`·`index.html`·`validation.test.js`만.
-2. `cd html-delivery && npm test` 전체 그린.
-3. Chrome DRY_RUN: 홈 `수업별 모아보기` 탭 카드 6종에 일자 표기 확인.
-4. 통과 시 main 머지 + Lambda 재배포(WO-028과 배치 가능).
+## 운영 메모 (이번 세션 함정)
+- Hermes 런타임은 파일이 세션 도중 갱신되면(예: 부분 update) 구모듈 캐시로 `cannot import name ...` 초기화 실패 → **프로세스 재시작**이 해결책(`/quit` 후 `hermes` 재기동).
+- 완료 감지: `.agent/scripts/watcher.sh`의 신호 grep은 **플래너 발행 헤더("WO-NNN 발행")와 겹쳐 조기 오탐** 가능. TURN_LOG 커밋 여부 + 세션 활성표시(`Ctrl+C cancel`) 소멸(ASCII, 로케일 무관)로 판정하는 편이 안전.
+- `tmux send-keys`의 `grep "❯"` 유휴판정은 이 환경 로케일에서 멀티바이트 매칭 실패 — 직접 입력 후 캡처로 확인.
 
-## Coder verification
-- `cd html-delivery && npm test` → 38/38 pass.
-- ad-hoc 구조 단언: `cohortOptions()`의 6개 name/date 계약, `cohort.date` 널 세이프 `textContent` 렌더, `.cohort-date` CSS, `innerHTML` 부재 통과.
-- 브라우저 시각 검증은 WO 지시대로 실행 안 함(Claude 담당).
-
-## Collision risks / 금지
+## Collision risks / 금지 (상시)
 - push·main 머지·terraform plan/apply·aws CLI·배포는 Coder 금지(검증자 전담).
-- WO-029는 코호트명/팀/카테고리 등 기존 데이터 변경 금지(일자 추가만). admin/upload/cohort/view.html·새 API 금지. innerHTML·외부 라이브러리 금지.
 - 브라우저 검증 과잉 루프 금지(WO-023 환류): 코더는 npm test 그린 + 구조 단언까지. 시각 확인은 검증자.

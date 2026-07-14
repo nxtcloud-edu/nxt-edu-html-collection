@@ -1,5 +1,5 @@
 # WO-029: 수업별 모아보기 카드에 수업 일자 표기
-상태: 검증 대기
+상태: 완료 (2026-07-14, 검증자 Claude — npm test 38/38·구조 단언·Chrome 시각 실측(6카드 일자)·main 머지·Lambda 배포(WO-028과 배치)·프로덕션 /api/cohorts 실측 통과)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/029` 브랜치 (README 규칙)
 

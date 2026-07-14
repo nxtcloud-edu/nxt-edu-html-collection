@@ -2007,3 +2007,23 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-029 상태: `검증 대기`.
 - Claude가 `a8d0cf3`와 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 카드 일자)한 뒤, 통과 시 main 머지 및 사용자 승인 후 WO-028과 배치 배포를 수행한다.
+
+## 2026-07-14 15:04 KST — Claude (Verifier) — WO-029 검증·머지 + WO-028·029 배치 배포 완료
+### Intent
+- WO-029 독립 검증 → main ff 머지. 사용자 승인(배치)대로 WO-028+WO-029를 한 번에 Lambda 재배포 → 프로덕션 실측.
+
+### Commands / verification
+- WO-029 diff: server.js `COHORT_DATES`(6종)+`cohortOptions().date`, index.html `renderCohorts` `.cohort-date` 널 세이프 span + CSS, validation.test.js deepEqual date 반영. 범위 3파일+저널 정합. innerHTML 부재.
+- `cd html-delivery && npm test` — 38/38 pass.
+- Chrome DRY_RUN(포트 3211, 시드 3건): 홈 `#classes` 카드 6종 일자 실측 — 고대세종-ai 6.24~25 / 한이음-ai-중급 7.12 / 기업인턴십 7.1~31 / 아이디어톤 6.26 / 국민대 6.24~30 / 서남 7.10. 개수 줄 아래 muted 표기. 서버 종료·로컬 파일 정리.
+- `git merge --ff-only wo/029` — main `9d7ccdd`→`d1611eb`.
+- 배포 전: package.json devDeps 없음 확인(node_modules prod-only), 워크트리 clean.
+- `terraform -chdir=infra plan` — `Plan: 0 add/1 change/0 destroy`, `aws_lambda_function.uploader` source_code_hash만 변경(IAM/S3/CloudFront/Route53 무변경).
+- `terraform -chdir=infra apply -auto-approve` — Lambda 갱신 완료(7s). outputs: service_url=https://showcase.nxtcloud.kr.
+- 프로덕션 비파괴 실측: `/api/cohorts` 6개 일자 노출(WO-029), admin.html `passwordModal`·`openPasswordButton`·`overflow-x:auto` 존재·`overflow-x:visible` 부재(WO-028), 홈 200.
+
+### Decisions
+- WO-028(관리자 UI)과 WO-029(홈 카드 일자)를 한 apply로 배치 배포(사용자 선택) — 프로덕션 배포 1회로 최소화.
+
+### Handoff
+- WO-028·WO-029 완료·배포. 진행 중 WO 없음. 코더 워크트리 `hermes/idle` 파킹. 머지된 wo/028·wo/029 브랜치 삭제는 선택.
