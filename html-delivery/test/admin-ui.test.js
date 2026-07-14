@@ -22,6 +22,18 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.match(admin, /button\('수정 저장','primary','submit'\)/);
 });
 
+test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버플로를 제어한다', async () => {
+  const admin = await readFile(path.join(__dirname, '../public/admin.html'), 'utf8');
+  assert.match(admin, /th\{white-space:nowrap\}/);
+  assert.match(admin, /td\{word-break:keep-all\}/);
+  assert.match(admin, /\.row-actions\{flex-wrap:nowrap\}/);
+  assert.match(admin, /\.actions-cell\{white-space:nowrap;min-width:210px\}/);
+  assert.match(admin, /table\{width:100%;border-collapse:collapse\}/);
+  assert.equal(admin.includes('min-width:940px'), false);
+  assert.match(admin, /repeat\(auto-fit,minmax\(180px,1fr\)\)/);
+  assert.match(admin, /\.edit-form \.admin-button\.primary\{justify-self:end;width:auto\}/);
+});
+
 test('관리자 비밀번호 해시 스크립트는 stdin 비밀번호를 해시와 salt로 변환한다', () => {
   const password = runtimeSecret();
   const result = spawnSync(process.execPath, [path.join(__dirname, '../scripts/hash-admin-password.js')], {
