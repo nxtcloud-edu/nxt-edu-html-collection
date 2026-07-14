@@ -1975,3 +1975,35 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 코드 조사: server.js COHORTS/TEAM_COHORTS/cohortOptions, index.html renderCohorts, validation.test.js deepEqual. write WO-029·CURRENT_STATE·HANDOFF. 커밋 예정 `docs: WO-028 완료·WO-029 발행`(main). 코더 워크트리 `wo/029` 분기 예정.
 ### Handoff
 - Hermes가 wo/029에서 구현 → npm test 그린 → 검증 대기. 검증·머지·배포는 Claude.
+
+---
+
+## 2026-07-14 14:45 KST — hermes (Coder) — WO-029 완료 (검증 대기)
+
+### Intent
+- 홈 수업별 모아보기 카드에 서버 단일 소스의 코호트 수업 일자를 콘텐츠 개수 아래에 널 세이프로 표기.
+
+### Files changed
+- `html-delivery/server.js` — `COHORT_DATES` 6개 코호트 일자 맵 추가, `cohortOptions()` 반환값에 `date` 포함.
+- `html-delivery/public/index.html` — `.cohort-date` muted 소형 스타일 및 `renderCohorts()`의 `cohort.date` 조건부 `textContent` 렌더 추가.
+- `html-delivery/test/validation.test.js` — 코호트 API deepEqual 계약에 6개 `date` 값 추가.
+- `.agent/work-orders/WO-029-cohort-card-dates.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 상태·인계 기록.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view software-quality-and-debugging` — 협업·검증 절차 로드.
+- `read_file AGENTS.md → .agent/CURRENT_STATE.md → .agent/HANDOFF.md`, `git status --short --branch` — 시작 규칙·상태·브랜치 대조; `wo/029` clean.
+- `read_file .agent/work-orders/WO-029-cohort-card-dates.md`, `.agent/work-orders/README.md`, `html-delivery/server.js`, `html-delivery/public/index.html`, `html-delivery/test/validation.test.js`, `html-delivery/package.json` 및 관련 `search_files` — 설계·기존 데이터/렌더/테스트 확인.
+- `patch html-delivery/server.js html-delivery/public/index.html html-delivery/test/validation.test.js` — 일자 메타데이터·조건부 카드 렌더·API 계약 반영.
+- `cd html-delivery && npm test` — 38/38 pass.
+- `hermes-verify-*` 임시 Node 구조 단언 — 6개 name/date 계약, `cohort.date` 널 세이프 `textContent` 렌더, `.cohort-date` CSS, `innerHTML` 부재 통과; 임시 스크립트 삭제.
+- `git diff --check`, 코드 diff 범위 확인 — `server.js`, `index.html`, `validation.test.js` 3파일만.
+- `git add html-delivery/server.js html-delivery/public/index.html html-delivery/test/validation.test.js && git diff --cached --check && git commit -m "feat: 코호트 카드에 수업 일자 추가"` — `a8d0cf3`.
+- 브라우저 시각 검증, AWS/terraform, push, main 머지, 배포 — 실행 안 함 (WO 지시상 Claude 담당).
+
+### Decisions / assumptions
+- 일자는 API 응답의 코호트 메타데이터로만 확장했으며, 기존 코호트명·팀 구성·카테고리·라우트는 변경하지 않았다.
+- `date`가 없는 API 항목은 카드 일자 span을 만들지 않아 기존/향후 일자 없는 코호트에 안전하다.
+
+### Handoff
+- WO-029 상태: `검증 대기`.
+- Claude가 `a8d0cf3`와 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 카드 일자)한 뒤, 통과 시 main 머지 및 사용자 승인 후 WO-028과 배치 배포를 수행한다.

@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current handoff summary
-WO-028(관리자 UI 정돈)은 검증 통과·main ff 머지 완료 — **프로덕션 배포만 사용자 승인 대기**. 이어서 WO-029(수업별 카드 일자 표기)를 발행, Hermes가 `wo/029`에서 구현한다.
+WO-028(관리자 UI 정돈)은 검증 통과·main ff 머지 완료 — **프로덕션 배포만 사용자 승인 대기**. WO-029(수업별 카드 일자 표기)는 Hermes 구현 완료(`wo/029` `a8d0cf3`), Claude 독립 검증을 대기한다.
 
 ## WO-028 결과 (완료·배포 대기)
 - 비번 변경: 상단 `.site-tools` 버튼(`#openPasswordButton`)→네이티브 `<dialog id="passwordModal">` 모달, 사이드바 인라인 폼 제거, `/api/admin/change-password` 불변.
@@ -9,7 +9,7 @@ WO-028(관리자 UI 정돈)은 검증 통과·main ff 머지 완료 — **프로
 - 검증: npm test 38/38, 구조 단언, Chrome DRY_RUN 시각 실측 통과. 커밋 `c8d6559`(feat)+`9992c16`(docs).
 - 배포: 정적 자산(admin.html) 변경이라 Lambda 재배포 필요 — 사용자 승인 후 Claude가 수행.
 
-## WO-029 지시 (Coder = Hermes)
+## WO-029 구현 결과
 1. `server.js`: `TEAM_COHORTS` 옆 `COHORT_DATES` 맵 추가, `cohortOptions()`에 `date` 필드. 값=아래 표.
 2. `index.html` `renderCohorts`: 카드에 `cohort.date` 있으면 `.cohort-date` span 추가(textContent, 널 세이프).
 3. `validation.test.js`: `cohortOptions()` deepEqual(59~66행)에 `date` 반영. `npm test` 전체 그린.
@@ -21,6 +21,11 @@ WO-028(관리자 UI 정돈)은 검증 통과·main ff 머지 완료 — **프로
 2. `cd html-delivery && npm test` 전체 그린.
 3. Chrome DRY_RUN: 홈 `수업별 모아보기` 탭 카드 6종에 일자 표기 확인.
 4. 통과 시 main 머지 + Lambda 재배포(WO-028과 배치 가능).
+
+## Coder verification
+- `cd html-delivery && npm test` → 38/38 pass.
+- ad-hoc 구조 단언: `cohortOptions()`의 6개 name/date 계약, `cohort.date` 널 세이프 `textContent` 렌더, `.cohort-date` CSS, `innerHTML` 부재 통과.
+- 브라우저 시각 검증은 WO 지시대로 실행 안 함(Claude 담당).
 
 ## Collision risks / 금지
 - push·main 머지·terraform plan/apply·aws CLI·배포는 Coder 금지(검증자 전담).
