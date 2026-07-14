@@ -2075,3 +2075,19 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-030 상태: `검증 대기`.
 - Claude가 `f25ce98`과 후속 docs/journal 커밋을 독립 검증(npm test + Chrome 코호트 추가·필터·홈 카드)한 뒤, 통과 시 main 머지한다. 배포는 WO-031과 배치 여부를 사용자에게 확인한다.
+
+## 2026-07-14 15:55 KST — Claude (Verifier→Planner) — WO-030 검증·머지 완료 + WO-031 발행
+### Intent
+- WO-030 독립 검증 → main ff 머지(배포는 WO-031과 배치 대기, 사용자 확정). 이어 WO-031(관리자 추가/다중 관리자) 발행·디스패치.
+### WO-030 검증
+- diff 범위: registry.js·server.js·admin.html·.gitignore·테스트3 + 저널. `cohortOptions` async 병합·중복 필터·validAffiliations 후방호환·`POST /api/admin/cohorts`(401·1~60·409·일자≤20)·admin.html cohortModal 확인. `npm test` 41/41.
+- Chrome DRY_RUN(포트 3212, 시드 2건): env admin 로그인 → 코호트 추가(2026-테스트-워크숍 / 8.1~2) → 상태 "코호트를 추가했어요", `/api/cohorts` 7개(custom teams=null·date=8.1~2), `.local-cohorts.json` 영속, `/api/games`=2(갤러리 미유출). 서버 종료·로컬 파일 정리.
+- `git merge --ff-only wo/030` — main `5dbec30`→`7db4b1d`.
+### WO-031 발행 (설계)
+- 단일 admin(env)→다중(DynamoDB `admin#accounts`). 전원 동등. 로그인 env+account 조회, 세션 토큰에 id(구 토큰 폴백), 본인 비번변경 라우팅, `POST /api/admin/admins`(id 형식·중복 409·비번 8~72), admin.html 관리자 추가 모달(type=password). scrypt 해시만·평문/해시/솔트 로그·감사 금지. karin/ella는 배포 후 사용자 UI 추가(계정 생성·비번은 안전 원칙상 Claude 불가).
+### Files changed
+- `.agent/work-orders/WO-031-admin-add-admin.md`(신규), WO-030 doc 상태=완료(배포대기), CURRENT_STATE·HANDOFF·본 TURN_LOG.
+### Commands
+- read admin-auth.js·registry.js·server.js. write WO-031·저널. 커밋 예정 `docs: WO-030 완료·WO-031 발행`(main). 코더 워크트리 `wo/031` 분기 예정. AWS/배포 — 실행 안 함.
+### Handoff
+- Hermes가 wo/031 구현 → npm test 그린 → 검증 대기. 검증·머지·배치배포는 Claude.
