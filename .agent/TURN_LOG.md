@@ -2027,3 +2027,16 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - WO-028·WO-029 완료·배포. 진행 중 WO 없음. 코더 워크트리 `hermes/idle` 파킹. 머지된 wo/028·wo/029 브랜치 삭제는 선택.
+
+## 2026-07-14 15:30 KST — Claude (Planner) — WO-030 발행 (코호트 추가)
+### Intent
+- 사용자 지시: 관리자 페이지에서 코호트 추가(+관리자 추가). 코호트 추가를 WO-030으로, 관리자 추가는 WO-031(후속)로 분리 발행. 이번 턴은 WO-030 디스패치.
+### 조사·설계 결정 (사용자 확정)
+- 코호트 입력 = 이름 + 일자(팀 수 미입력, 일반 코호트). 저장 = DynamoDB `cohort#custom` 집계 아이템(base 하드코딩 + custom 병합), `cohortOptions()` async화. 검증은 `validAffiliations=COHORTS` 선택적 파라미터로 후방호환. DRY_RUN `.local-cohorts.json`. 인프라/IAM/env/새 테이블 불변(WO-027 오버라이드 패턴 재사용).
+- 현재 구조 확인: admin-auth.js는 단일 admin(env, 세션에 신원 없음) → WO-031에서 다중화 필요. COHORTS는 server.js 상수(업로드/패치 검증·팀·일자에 사용).
+### Files changed
+- `.agent/work-orders/WO-030-admin-add-cohort.md`(신규), `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, 본 TURN_LOG.
+### Commands
+- read admin-auth.js·registry.js·server.js(COHORTS/검증)·.gitignore·validation.test.js. write WO-030·저널. 커밋 예정 `docs: WO-030 발행`(main). 코더 워크트리 `wo/030` 분기 예정. AWS/배포/머지 — 실행 안 함.
+### Handoff
+- Hermes가 wo/030 구현 → npm test 그린 → 검증 대기. 검증·머지는 Claude. WO-031(관리자 추가)은 WO-030 머지 후.
