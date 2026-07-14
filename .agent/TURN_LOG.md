@@ -1897,3 +1897,10 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-027 상태: `검증 대기`.
 - Claude가 `6ec4835`, `ed6dae6` 및 본 docs/journal 커밋을 독립 재검증하고, 통과 시 main 머지·Lambda 재배포를 수행한다.
+
+## 2026-07-14 — Claude (Verifier) — WO-027 완료
+- Intent: wo/027 독립 재검증 → main 머지 → Lambda 재배포 → 프로덕션 비파괴 실측.
+- Verification: diff 스펙 정합(오버라이드 우선/env 폴백, 현재 비번 재검증 401, 새 비번 8~72·상이 400, deps·감사 로그 값 미포함, DRY_RUN 전용 파일 0o600·레지스트리 미오염). npm test 38/38. DRY_RUN 스크립트 9/9(env 로그인·변경·새 비번 로그인·구 비번 401·현재 비번 틀림 401·짧은/동일 400·미인증 401·갤러리 유출 없음·0600·파일 평문 없음). 감사 로그 {admin_action:change-password, contentId:null}.
+- Files/commands: git merge --ff-only wo/027 (main=fd89849, GOTCHAS 4 흡수 위해 먼저 리베이스). terraform plan(0/1/0 — Lambda 코드 해시만) → apply(1 changed). 프로덕션: 미인증 change-password 401, admin.html passwordChangeForm 렌더, 갤러리 유출 없음. 실제 비번 변경은 미수행(프로덕션 자격 보호).
+- Decisions: 사용자 승인 후 배포. 인프라/IAM/env 변경 없음 확인.
+- Handoff: WO-027 완료·개통. 로컬 폴더명 rename(nxt-edu-html-collection) 대기 — clean 체크포인트 도달.

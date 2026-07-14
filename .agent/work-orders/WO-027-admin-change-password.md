@@ -1,5 +1,5 @@
 # WO-027: 관리자 페이지에서 관리자 로그인 비밀번호 변경
-상태: 검증 대기
+상태: 완료 (2026-07-14, 검증자 Claude — DRY_RUN 9/9·npm test 38/38·main 머지·apply·프로덕션 비파괴 실측 통과)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/027` 브랜치
 
