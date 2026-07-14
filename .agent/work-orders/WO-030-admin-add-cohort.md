@@ -1,5 +1,5 @@
 # WO-030: 관리자 페이지에서 코호트 추가
-상태: 검증 통과·main 머지 완료 — 프로덕션 배포 대기(WO-031과 배치) (2026-07-14, 검증자 Claude — npm test 41/41·구조 단언·Chrome DRY_RUN 실측(코호트 추가→/api/cohorts 7개·영속·갤러리 미유출) 통과)
+상태: 완료 (2026-07-14, 검증자 Claude — npm test 41/41·Chrome DRY_RUN 실측·WO-031과 배치 Lambda 배포·프로덕션 비파괴 실측(cohortModal·POST 401·/api/cohorts) 통과)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/030` 브랜치 (README 규칙)
 

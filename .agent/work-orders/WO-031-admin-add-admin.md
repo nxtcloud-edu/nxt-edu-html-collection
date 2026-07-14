@@ -1,5 +1,5 @@
 # WO-031: 관리자 페이지에서 관리자 추가 (다중 관리자)
-상태: 검증 대기
+상태: 완료 (2026-07-14, 검증자 Claude — npm test 44/44·admin-auth 로직 정독·API E2E(다중 로그인·추가 200·중복 409·미인증 401·틀린비번 401·본인 비번변경·해시만 저장 0600·rate limit·갤러리 미유출)·main 머지·WO-030과 배치 Lambda 배포·프로덕션 실측(adminModal·POST 401) 통과)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/031` 브랜치 (README 규칙)
 

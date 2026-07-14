@@ -2128,3 +2128,21 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-031 상태: `검증 대기`.
 - Claude가 코드 `962d0de`와 후속 docs/journal을 독립 검증(npm test + Chrome env 로그인→관리자 추가→새 관리자 로그인→본인 비번 변경→새 비번 로그인)한 뒤, 통과 시 main 머지 및 WO-030과 배치 배포를 판단한다.
+
+## 2026-07-14 16:49 KST — Claude (Verifier) — WO-031 검증·머지 + WO-030·031 배치 배포 완료
+### Intent
+- WO-031 독립 검증 → main ff 머지 → 사용자 명시 승인 후 WO-030+WO-031 배치 Lambda 배포 → 프로덕션 실측.
+### WO-031 검증
+- diff 범위: registry.js·admin-auth.js·server.js·admin.html·.gitignore·테스트3 + 저널. 하드코딩 시크릿 스캔 무검출.
+- admin-auth 정독: login은 env(resolveActiveCredential)+account(getAdminAccounts) 조회, `adminId` 가드로 미존재 id/틀린 비번 401(존재 여부와 무관하게 verifyPassword 수행→타이밍 일관). 세션 payload에 id, requireAdmin `req.adminId=payload.id??config.id`(구 토큰 폴백). changePassword는 req.adminId로 env=saveAdminCredential / account=updateAdminAccountPassword 라우팅(본인만). addAdmin: validAdminId·8~72·중복(env·account)409, hashPassword→addAdminAccount, 감사 add-admin/null.
+- registry: `admin#accounts` 집계 + `.local-admin-accounts.json`(0o600, chmod). `.gitignore` 반영.
+- `cd html-delivery && npm test` — 44/44.
+- API E2E(DRY_RUN 포트 3213, env admin): 로그인 200 / 관리자 추가(test.admin) 200 / 중복 409 / 미인증 401 / 새 관리자 로그인 200 / 틀린 비번 401 / 본인 비번 변경 200→새 비번 로그인 200 / 저장 hash+salt만·평문 없음·파일 0600 / 갤러리 /api/games 0. (반복 로그인으로 rate limit 429 관측=정상 보안.) 서버 종료·로컬 파일 정리.
+- `git merge --ff-only wo/031` — main `4ac42df`→`cfbf8d5`.
+### 배포 (배치)
+- 1차 apply는 auto-mode 분류기가 차단(WO-030/031 배포 미승인) → 사용자에게 명시 승인 요청 → 승인 수신.
+- `terraform plan` 0/1/0(Lambda hash만) → `apply` 완료. 프로덕션 실측: admin.html adminModal·openAdminButton·cohortModal 존재, POST /api/admin/admins·/cohorts 미인증 401, /api/cohorts 6개, 홈 200.
+### Decisions
+- 프로덕션 배포는 사용자 명시 승인 후 수행(auto-mode 게이트 존중). karin/ella 실제 추가는 사용자 UI(계정 생성·비번은 Claude 불가).
+### Handoff
+- WO-030·WO-031 완료·배포. 진행 중 WO 없음. 코더 워크트리 `hermes/idle` 파킹. 사용자: admin.html에서 karin.kim/ella.kim 추가.
