@@ -26,6 +26,14 @@ const TEAM_COHORTS = {
   '2026-국민대-ai워크플로우': teamNames(5),
   '2026-서남-해커톤': teamNames(6),
 };
+const COHORT_DATES = {
+  '2026-고대세종-ai': '6.24~25',
+  '2026-한이음-ai-중급': '7.12',
+  '2026-고대세종-기업인턴십': '7.1~31',
+  '2026-고대세종-아이디어톤': '6.26',
+  '2026-국민대-ai워크플로우': '6.24~30',
+  '2026-서남-해커톤': '7.10',
+};
 const CATEGORIES = ['미니게임', '웹페이지'];
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
@@ -45,7 +53,7 @@ function contentTitle(content) {
 }
 
 function cohortOptions() {
-  return COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null }));
+  return COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
 }
 
 function validateUploadInput({ affiliation, category, name, title, password, file }) {
