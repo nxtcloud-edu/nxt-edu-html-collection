@@ -2207,3 +2207,6 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - `git merge --ff-only wo/032` — main `c9d62f3`→`4ee3768`. terraform/apply/aws — 실행 안 함(배포 미승인).
 ### Handoff
 - WO-032 검증·머지 완료. 프로덕션 배포는 사용자 명시 승인 후. 코더 워크트리 `hermes/idle` 파킹.
+
+## 2026-07-17 01:05 KST — Claude (Verifier) — WO-032 배포 완료
+- `terraform plan` 0/1/0 → 사용자 명시 승인 후 `apply`(Lambda 갱신). 프로덕션 정적 실측: cohort.html upload-link·`upload.html?c=`, upload.html `location.assign`·`URLSearchParams` 존재, 홈/코호트/업로드 200. WO-032 완료·라이브.
