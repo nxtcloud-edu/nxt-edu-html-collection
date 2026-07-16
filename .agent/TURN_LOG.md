@@ -2193,3 +2193,17 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-032 상태: `검증 대기`.
 - Claude가 구현·저널 커밋의 범위와 server.js 불변을 확인한 뒤 `npm test` 및 Chrome DRY_RUN(코호트 버튼→미리 선택, 업로드→뷰어 이동, 같은 이름·다른 제목 새 생성)을 독립 검증한다. 통과 후에만 main 머지, 배포는 사용자 명시 승인 후 수행.
+
+## 2026-07-17 01:00 KST — Claude (Verifier) — WO-032 검증·머지 완료 (배포 대기)
+### Intent
+- WO-032 독립 검증 → main ff 머지. 프로덕션 배포는 사용자 명시 승인 대기.
+### Commands / verification
+- diff 범위: registry.js·upload.html·cohort.html + 테스트2 + 저널. **server.js 불변 확인**.
+- registry `findByIdentity`에 `item.title === title` 추가. upload.html: 성공 시 `window.location.assign(data.url)`(널 세이프)·`?c=` 미리선택. cohort.html: `.site-tools` upload-link + `uploadLink.href='upload.html?c='+encodeURIComponent(cohort)`.
+- `cd html-delivery && npm test` — 46/46(신규: 같은 name+다른 title=별 contentId·같은 title 맞는비번=v2·틀린비번=403).
+- Chrome DRY_RUN(포트 3214): cohort.html?c=2026-고대세종-ai에 `내 콘텐츠 업로드` 버튼(href `upload.html?c=...`) → 클릭 시 upload.html 소속(수업) `2026-고대세종-ai` 미리선택 확인. curl 업로드로 같은 name(E2E팀)+다른 title(알파/베타)=다른 contentId(24e90cec/359e2446), 같은 title 재업로드=v2 확인, 코호트 페이지에 별개 카드 2장 렌더.
+- 업로드→뷰어 자동 이동: `window.location.assign(data.url)` 코드 + curl로 API가 `url` 반환 확인(결정론적). 브라우저 파일 업로드 실측은 file_upload 도구가 호스트 경로 미지원으로 미실행.
+- Cleanup: 서버 종료·로컬 파일/`.local-deploy` 정리.
+- `git merge --ff-only wo/032` — main `c9d62f3`→`4ee3768`. terraform/apply/aws — 실행 안 함(배포 미승인).
+### Handoff
+- WO-032 검증·머지 완료. 프로덕션 배포는 사용자 명시 승인 후. 코더 워크트리 `hermes/idle` 파킹.

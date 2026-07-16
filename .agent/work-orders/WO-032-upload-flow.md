@@ -1,5 +1,5 @@
 # WO-032: 업로드 흐름 개선 — 배포 후 자동 이동 + 코호트 업로드 버튼 + 제목별 생성
-상태: 검증 대기
+상태: 검증 통과·main 머지 완료 — 프로덕션 배포 대기(사용자 승인) (2026-07-17, 검증자 Claude — npm test 46/46·server.js 불변·registry title identity·Chrome 실측(코호트 업로드 버튼→upload.html 코호트 미리선택, 같은이름 다른제목 별개 카드/다른 contentId) 통과; 업로드→뷰어 이동은 코드+curl API 검증(브라우저 파일업로드는 도구 제약))
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/032` 브랜치 (README 규칙)
 

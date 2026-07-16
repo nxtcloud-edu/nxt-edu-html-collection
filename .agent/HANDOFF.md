@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current handoff summary
-WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선)은 Hermes가 `wo/032`에 구현하고 `npm test` 46/46 및 구조 단언을 통과했다. 구현·저널 커밋 후 Claude 독립 검증 대기.
+WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선)은 검증(npm test 46/46 + Chrome 실측 + curl API)·main ff 머지 완료 — **프로덕션 배포만 사용자 명시 승인 대기**. 진행 중 WO 없음, 코더 워크트리 `hermes/idle` 파킹.
 
 ## WO-032 구현 결과 (Coder = Hermes, 검증 대기)
 1. `upload.html`: 업로드 성공(`data.url`) 시 `window.location.assign(data.url)`로 뷰어 즉시 이동(링크/복사 성공 UI 제거). `?c=` 코호트 미리 선택(loadOptions 후 URLSearchParams). 오류 경로 그대로.
