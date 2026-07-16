@@ -1,13 +1,13 @@
 # Handoff
 
 ## Current handoff summary
-WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선) 발행, Hermes가 `wo/032`에서 구현.
+WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선)은 Hermes가 `wo/032`에 구현하고 `npm test` 46/46 및 구조 단언을 통과했다. 구현·저널 커밋 후 Claude 독립 검증 대기.
 
-## WO-032 지시 (Coder = Hermes)
+## WO-032 구현 결과 (Coder = Hermes, 검증 대기)
 1. `upload.html`: 업로드 성공(`data.url`) 시 `window.location.assign(data.url)`로 뷰어 즉시 이동(링크/복사 성공 UI 제거). `?c=` 코호트 미리 선택(loadOptions 후 URLSearchParams). 오류 경로 그대로.
 2. `cohort.html`: nav `.site-tools`에 `<a class="upload-link" id="uploadLink" href="upload.html">내 콘텐츠 업로드</a>`, 스크립트에서 `uploadLink.href='upload.html?c='+encodeURIComponent(cohort)`. `.upload-link`는 theme.css 공유.
 3. `registry.js`: `findByIdentity`에 `&& item.title === title` 추가(destructure title). → 같은 이름+다른 제목=새 콘텐츠, 같은 제목=버전업(비번). **server.js 불변**(result에 title 이미 포함).
-4. 테스트: 같은 name+다른 title=새 contentId / 같은 name+같은 title+맞는 비번=v2 / 틀린 비번=403. 기존 버전업 테스트 title 고정. (선택) admin-ui.test 구조 단언. `npm test` 그린.
+4. `admin-api.test.js`에 같은 name+다른 title=새 contentId(v1) / 같은 name+같은 title+맞는 비번=v2 / 틀린 비번=403 회귀를 추가했고, `admin-ui.test.js`에 URL 이동·코호트 전달 구조 단언을 추가. `npm test` 46/46 통과.
 - 범위: registry.js + upload.html + cohort.html + 테스트. innerHTML·외부 라이브러리 금지.
 
 ## Verification 계획 (Verifier = Claude)

@@ -59,7 +59,7 @@
       <input id="title" name="title" maxlength="60" placeholder="예: 박스 피하기 리믹스" required>
       <label for="password">소유 비밀번호</label>
       <input id="password" name="password" type="password" minlength="4" maxlength="30" autocomplete="new-password" required>
-      <p class="hint">같은 수업·이름(또는 팀)·분류로 다시 올리면 이 비밀번호를 확인하고 새 버전으로 업데이트됩니다.</p>
+      <p class="hint">같은 수업·이름(또는 팀)·분류·제목으로 다시 올리면 이 비밀번호를 확인하고 새 버전으로 업데이트됩니다.</p>
       <label for="file">HTML 파일</label>
       <input id="file" name="file" type="file" accept=".html,text/html" required>
       <p class="hint">HTML 파일 1개 · 최대 1MB</p>
@@ -109,6 +109,11 @@ async function loadOptions() {
     affiliation.disabled = false;
     category.disabled = false;
     submitButton.disabled = false;
+    const requestedCohort = new URLSearchParams(location.search).get('c');
+    if (requestedCohort && cohortOptions.some((cohort) => cohort.name === requestedCohort)) {
+      affiliation.value = requestedCohort;
+      updateNameField();
+    }
   } catch {
     affiliation.options[0].textContent = '선택 목록을 불러오지 못했습니다';
     category.options[0].textContent = '선택 목록을 불러오지 못했습니다';
@@ -130,20 +135,9 @@ form.addEventListener('submit', async (event) => {
     const response = await fetch('/api/upload', { method: 'POST', body: new FormData(form) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || '업로드에 실패했습니다.');
-    result.replaceChildren('배포 완료: ');
-    const link = document.createElement('a');
-    link.href = data.url;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.textContent = data.url;
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.textContent = 'URL 복사';
-    copyButton.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(data.url);
-      copyButton.textContent = '복사 완료!';
-    });
-    result.append(link, copyButton);
+    if (!data.url) throw new Error('콘텐츠 페이지 주소를 받지 못했습니다.');
+    result.textContent = '배포 완료 — 콘텐츠 페이지로 이동합니다…';
+    window.location.assign(data.url);
   } catch (error) {
     result.className = 'error';
     result.textContent = error.message;

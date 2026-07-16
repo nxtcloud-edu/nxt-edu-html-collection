@@ -65,6 +65,18 @@ test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버
   assert.match(admin, /\.edit-form \.admin-button\.primary\{justify-self:end;width:auto\}/);
 });
 
+test('업로드 페이지와 코호트 페이지는 코호트 전달 및 성공 이동 계약을 유지한다', async () => {
+  const [upload, cohort] = await Promise.all(['upload.html', 'cohort.html'].map((file) => readFile(path.join(__dirname, '../public', file), 'utf8')));
+  assert.match(upload, /new URLSearchParams\(location\.search\)\.get\('c'\)/);
+  assert.match(upload, /affiliation\.value = requestedCohort/);
+  assert.match(upload, /updateNameField\(\)/);
+  assert.match(upload, /if \(!data\.url\) throw new Error/);
+  assert.match(upload, /window\.location\.assign\(data\.url\)/);
+  assert.equal(upload.includes('URL 복사'), false);
+  assert.match(cohort, /<a class="upload-link" id="uploadLink" href="upload\.html">내 콘텐츠 업로드<\/a>/);
+  assert.match(cohort, /uploadLink\.href='upload\.html\?c='\+encodeURIComponent\(cohort\)/);
+});
+
 test('관리자 비밀번호 해시 스크립트는 stdin 비밀번호를 해시와 salt로 변환한다', () => {
   const password = runtimeSecret();
   const result = spawnSync(process.execPath, [path.join(__dirname, '../scripts/hash-admin-password.js')], {

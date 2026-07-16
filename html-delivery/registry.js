@@ -137,9 +137,10 @@ async function listContents() {
   return (await listRegistryItems()).map(publicContent);
 }
 
-async function findByIdentity({ affiliation, name, category }, normalizeCategory = (value) => value) {
+async function findByIdentity({ affiliation, name, category, title }, normalizeCategory = (value) => value) {
   return (await listRegistryItems()).find((item) => item.affiliation === affiliation
     && item.name === name
+    && item.title === title
     && normalizeCategory(item.category) === normalizeCategory(category)) || null;
 }
 

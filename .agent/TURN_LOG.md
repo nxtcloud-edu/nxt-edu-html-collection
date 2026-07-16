@@ -2160,3 +2160,36 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - read upload.html·cohort.html·registry.js·server.js·theme.css·테스트. write WO-032·저널. 커밋 예정 `docs: WO-032 발행`(main). 코더 워크트리 `wo/032` 분기 예정. AWS/배포 — 실행 안 함.
 ### Handoff
 - Hermes가 wo/032 구현 → npm test 그린 → 검증 대기. 검증·머지는 Claude, 배포는 사용자 승인 후.
+
+---
+
+## 2026-07-17 00:57 KST — hermes (Coder) — WO-032 완료 (검증 대기)
+
+### Intent
+- 업로드 완료 즉시 뷰어 이동, 코호트별 업로드 진입·미리 선택, 제목을 포함한 업로드 identity를 구현.
+
+### Files changed
+- `html-delivery/registry.js` — `findByIdentity`가 affiliation·name·category·title 모두 일치할 때만 기존 콘텐츠를 찾도록 변경.
+- `html-delivery/public/upload.html` — `?c=` 유효 코호트 미리 선택 및 팀 필드 갱신, 성공 `data.url` 존재 시 이동, URL 누락 오류 처리, 복사 UI 제거·정확한 버전업 안내 반영.
+- `html-delivery/public/cohort.html` — `.site-tools`에 공유 `.upload-link`를 추가하고 현재 코호트를 `upload.html?c=`로 전달.
+- `html-delivery/test/admin-api.test.js` — 제목별 생성·동일 제목 v2·잘못된 비밀번호 403 회귀 테스트 추가.
+- `html-delivery/test/admin-ui.test.js` — 업로드 이동·코호트 전달 구조 단언 추가.
+- `.agent/work-orders/WO-032-upload-flow.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, 본 TURN_LOG — 검증 대기 상태·인계 기록.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view software-quality-and-debugging`; `read_file AGENTS.md → CURRENT_STATE.md → HANDOFF.md → WO-032`, 대상 코드·테스트 호출 경로 `read_file`/`search_files`, `git status --short --branch` — 규칙·상태·브랜치 `wo/032` 대조.
+- `./.agent/check-journal.sh .agent` — 실행 경로에 스크립트 없음(exit 127); AGENTS 규정상 검증자 전용이며 Coder 검증에는 미사용.
+- `patch registry.js upload.html cohort.html admin-api.test.js admin-ui.test.js` — identity·UI·회귀 테스트 구현. 최초 복합 patch는 테스트 hunk 모호성으로 전체 미적용, 재독 후 범위 patch 적용.
+- `cd html-delivery && node --test test/admin-api.test.js test/admin-ui.test.js` — 15/15 pass.
+- `cd html-delivery && npm test` — 46/46 pass.
+- `search_files` 구조 단언 — upload.html의 `URLSearchParams`·`window.location.assign(data.url)`, cohort.html의 `upload-link`·`uploadLink.href`, registry.js의 `item.title === title` 확인.
+- `git diff --check`, server.js diff 없음, 로컬 runtime registry/admin/cohort 파일 미잔존 확인 — pass.
+- Chrome 시각 검증, AWS/terraform, push, main 머지, 배포 — 실행 안 함 (WO 지시상 Claude 담당).
+
+### Decisions / assumptions
+- 기존 콘텐츠의 버전업 identity는 제목까지 동일해야 한다. 제목 변경은 의도적으로 새 콘텐츠를 생성한다.
+- `data.url`이 없으면 이동하지 않고 기존 catch 경로에서 오류를 표시한다.
+
+### Handoff
+- WO-032 상태: `검증 대기`.
+- Claude가 구현·저널 커밋의 범위와 server.js 불변을 확인한 뒤 `npm test` 및 Chrome DRY_RUN(코호트 버튼→미리 선택, 업로드→뷰어 이동, 같은 이름·다른 제목 새 생성)을 독립 검증한다. 통과 후에만 main 머지, 배포는 사용자 명시 승인 후 수행.

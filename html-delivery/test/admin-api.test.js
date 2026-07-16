@@ -218,6 +218,36 @@ test('관리 API는 미인증 401, 콘텐츠 수정, 비밀번호 재설정, 피
   }
 });
 
+test('업로드 identity는 제목별로 새 콘텐츠를 만들고 같은 제목만 비밀번호 검증 후 버전업한다', async () => {
+  await cleanLocalState();
+  const { server, baseUrl } = await listen(createApp());
+  try {
+    const name = runtimeSecret().slice(0, 12);
+    const firstTitle = runtimeSecret().slice(0, 12);
+    const secondTitle = runtimeSecret().slice(0, 12);
+    const firstSecret = runtimeSecret();
+    const secondSecret = runtimeSecret();
+    const first = await uploadContent(baseUrl, { name, title: firstTitle, secret: firstSecret });
+    assert.equal(first.response.status, 201);
+    assert.equal(first.body.version, 1);
+
+    const differentTitle = await uploadContent(baseUrl, { ...first.identity, title: secondTitle, secret: secondSecret });
+    assert.equal(differentTitle.response.status, 201);
+    assert.equal(differentTitle.body.version, 1);
+    assert.notEqual(differentTitle.body.contentId, first.body.contentId);
+
+    const versioned = await uploadContent(baseUrl, { ...first.identity, title: firstTitle, secret: firstSecret });
+    assert.equal(versioned.response.status, 201);
+    assert.equal(versioned.body.contentId, first.body.contentId);
+    assert.equal(versioned.body.version, 2);
+
+    const wrongPassword = await uploadContent(baseUrl, { ...first.identity, title: firstTitle, secret: runtimeSecret() });
+    assert.equal(wrongPassword.response.status, 403);
+  } finally {
+    await close(server);
+    await cleanLocalState();
+  }
+});
 
 test('관리자 비밀번호 변경 API는 전용 로컬 파일에 오버라이드 자격을 저장하고 감사 로그에 secret을 남기지 않는다', async () => {
   await cleanLocalState();
