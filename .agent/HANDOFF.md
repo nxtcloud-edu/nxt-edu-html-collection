@@ -1,30 +1,30 @@
 # Handoff
 
 ## Current handoff summary
-WO-030(코호트 추가)·WO-031(관리자 추가/다중 관리자) 검증·머지·배포 완료. 프로덕션(https://showcase.nxtcloud.kr) 라이브. 진행 중 WO 없음. 코더 워크트리 `hermes/idle` 파킹.
+WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선) 발행, Hermes가 `wo/032`에서 구현.
 
-## 방금 배포 (WO-030+WO-031 배치, 사용자 명시 승인)
-- `terraform apply` → `aws_lambda_function.uploader` in-place(source_code_hash), 0/1/0. IAM/S3/CloudFront/Route53 무변경.
-- 프로덕션 실측: admin.html `adminModal`·`openAdminButton`·`cohortModal` 존재; `POST /api/admin/admins`·`/api/admin/cohorts` 미인증 401; `/api/cohorts` 6개(일자); 홈 200.
+## WO-032 지시 (Coder = Hermes)
+1. `upload.html`: 업로드 성공(`data.url`) 시 `window.location.assign(data.url)`로 뷰어 즉시 이동(링크/복사 성공 UI 제거). `?c=` 코호트 미리 선택(loadOptions 후 URLSearchParams). 오류 경로 그대로.
+2. `cohort.html`: nav `.site-tools`에 `<a class="upload-link" id="uploadLink" href="upload.html">내 콘텐츠 업로드</a>`, 스크립트에서 `uploadLink.href='upload.html?c='+encodeURIComponent(cohort)`. `.upload-link`는 theme.css 공유.
+3. `registry.js`: `findByIdentity`에 `&& item.title === title` 추가(destructure title). → 같은 이름+다른 제목=새 콘텐츠, 같은 제목=버전업(비번). **server.js 불변**(result에 title 이미 포함).
+4. 테스트: 같은 name+다른 title=새 contentId / 같은 name+같은 title+맞는 비번=v2 / 틀린 비번=403. 기존 버전업 테스트 title 고정. (선택) admin-ui.test 구조 단언. `npm test` 그린.
+- 범위: registry.js + upload.html + cohort.html + 테스트. innerHTML·외부 라이브러리 금지.
 
-## 사용자 후속 액션 (필수)
-- karin.kim / ella.kim은 **사용자가 직접 추가**: admin.html → env admin 로그인 → `관리자 추가` 버튼 → 아이디(소문자·숫자·점 3~30자) + 초기 비밀번호(8~72자). 추가 후 본인 로그인 → `비밀번호 변경`으로 변경 권장.
-- 계정 생성·비밀번호 입력은 안전 원칙상 Claude가 대신 수행 불가.
+## Verification 계획 (Verifier = Claude)
+1. diff 범위(위 파일만), server.js 불변 확인.
+2. `cd html-delivery && npm test` 전체 그린.
+3. Chrome DRY_RUN: 코호트 페이지 업로드 버튼→upload.html 코호트 선택됨 / 업로드 성공→뷰어 이동 / 같은 이름 다른 제목 업로드→새 콘텐츠 생성.
+4. 통과 시 머지 → 사용자 명시 승인 후 배포(프로덕션 배포는 매번 승인 필요).
 
-## 다음 안전 액션 (신규 WO)
-- 명령서 커밋 → `git -C <coder-worktree> checkout -b wo/NNN main` → Hermes 세션 `ai-literacy-hermes` 착수 지시.
-- 코더 워크트리 `hermes/idle`(=main) 파킹. 게이트·훅·저널 유지. 머지된 wo/030·wo/031 삭제(선택).
-
-## 관리자 인증 구조 (현행)
-- env admin(부트스트랩, `ADMIN_ID`+비번 override) + DynamoDB `admin#accounts`(추가 관리자). 전원 동등 권한.
-- 세션 토큰 payload `{exp, id}`(HMAC). 로그인 시 env/account 조회, changePassword는 `req.adminId`로 본인 store 라우팅(env=`admin#credential` override, account=`admin#accounts` 갱신).
-- 커스텀 코호트 `cohort#custom`. 셋 다 `content#` 아님 → 갤러리 스캔 미노출.
-
-## 금지 (상시)
-- push·main 머지·terraform·aws·배포는 Coder 금지(검증자 전담). 프로덕션 배포는 **사용자 명시 승인** 필요.
+## Collision risks / 금지 (상시)
+- push·main 머지·terraform·aws·배포는 Coder 금지(검증자 전담). **프로덕션 배포는 사용자 명시 승인 필요**(auto-mode 게이트).
+- 계정 생성·비밀번호 입력은 Claude 직접 불가.
 - 브라우저 검증 과잉 루프 금지(WO-023): 코더는 npm test 그린 + 구조 단언까지. 시각 확인은 검증자.
 
+## 사용자 대기 액션 (WO-031 후속)
+- karin.kim/ella.kim은 admin.html → env admin 로그인 → `관리자 추가`로 직접 추가(초기 비번 설정).
+
 ## 운영 메모 (세션 함정)
-- Hermes 런타임: 세션 중 파일 갱신 시 구모듈 캐시 초기화 실패 → `/quit` 후 `hermes` 재기동. 사용량 한도(429)면 모델/플랜 조치 필요.
-- 완료 감지: watcher 신호가 플래너 "WO-NNN 발행" 헤더와 겹쳐 조기 오탐 → TURN_LOG 커밋 + 세션 `Ctrl+C cancel` 소멸 + **워킹트리 지문 무변화**(편집 중 오탐 방지)로 판정.
-- tmux `grep "❯"` 유휴판정 멀티바이트 실패 — 직접 입력 후 캡처. Chrome은 스크린샷/뷰포트 좌표 스케일 불일치 → ref 기반 form_input/click 사용.
+- Hermes: 세션 중 파일 갱신 시 구모듈 캐시 초기화 실패 → `/quit` 후 `hermes` 재기동. 사용량 한도(429)면 모델/플랜 조치.
+- 완료 감지: TURN_LOG 커밋 + 세션 `Ctrl+C cancel` 소멸 + 워킹트리 지문 무변화로 판정(편집 중 오탐 방지).
+- tmux `grep "❯"` 멀티바이트 실패 — 직접 입력 후 캡처. Chrome은 좌표 스케일 불일치 → ref 기반 form_input/click.

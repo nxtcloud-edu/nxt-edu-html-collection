@@ -2146,3 +2146,17 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 프로덕션 배포는 사용자 명시 승인 후 수행(auto-mode 게이트 존중). karin/ella 실제 추가는 사용자 UI(계정 생성·비번은 Claude 불가).
 ### Handoff
 - WO-030·WO-031 완료·배포. 진행 중 WO 없음. 코더 워크트리 `hermes/idle` 파킹. 사용자: admin.html에서 karin.kim/ella.kim 추가.
+
+## 2026-07-17 00:33 KST — Claude (Planner) — WO-032 발행 (업로드 흐름 개선)
+### Intent
+- 사용자 지시 3건: ① 업로드 완료 시 뷰어로 즉시 이동 ② 코호트 페이지에 업로드 버튼 ③ 같은 이름+다른 제목은 새로 생성. 업로드 흐름 개선 WO-032로 묶어 발행·디스패치.
+### 조사 (현재 동작)
+- `/api/upload`는 이미 `url`(뷰어) 반환. upload.html은 성공 시 링크만 표시(자동 이동 없음). cohort.html nav엔 업로드 링크 없음(`.upload-link`는 theme.css 공유). `registry.js findByIdentity`는 {affiliation,name,category}만 매치 → 같은 이름=기존 콘텐츠 버전으로 강제. server.js 업로드 라우트는 이미 title 포함 result를 findByIdentity에 넘김 → registry 1줄로 해결.
+### 설계 결정
+- upload.html 성공 시 `window.location.assign(data.url)` + `?c=` 미리 선택. cohort.html `.site-tools`에 upload-link(+`?c=` href). registry `findByIdentity`에 `item.title===title` 추가(server 불변). 버전업은 제목 동일 시에만.
+### Files changed
+- `.agent/work-orders/WO-032-upload-flow.md`(신규), CURRENT_STATE·HANDOFF·본 TURN_LOG.
+### Commands
+- read upload.html·cohort.html·registry.js·server.js·theme.css·테스트. write WO-032·저널. 커밋 예정 `docs: WO-032 발행`(main). 코더 워크트리 `wo/032` 분기 예정. AWS/배포 — 실행 안 함.
+### Handoff
+- Hermes가 wo/032 구현 → npm test 그린 → 검증 대기. 검증·머지는 Claude, 배포는 사용자 승인 후.
