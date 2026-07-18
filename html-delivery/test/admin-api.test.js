@@ -249,6 +249,45 @@ test('업로드 identity는 제목별로 새 콘텐츠를 만들고 같은 제�
   }
 });
 
+test('콘텐츠 보기 페이지의 업데이트 버튼과 동일한 흐름(/api/content 조회 후 /api/upload)이 새 버전을 만든다', async () => {
+  await cleanLocalState();
+  const { server, baseUrl } = await listen(createApp());
+  try {
+    const secret = runtimeSecret();
+    const created = await uploadContent(baseUrl, { secret });
+    assert.equal(created.response.status, 201);
+
+    const fetched = await fetch(`${baseUrl}/api/content?id=${created.body.contentId}`);
+    const game = (await fetched.json()).content;
+
+    const formData = new FormData();
+    formData.set('affiliation', game.affiliation);
+    formData.set('category', game.category);
+    formData.set('name', game.name);
+    formData.set('title', game.title || game.name);
+    formData.set('password', secret);
+    formData.set('file', htmlBlob(), 'content.html');
+    const updated = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: formData });
+    const updatedBody = await updated.json();
+    assert.equal(updated.status, 201);
+    assert.equal(updatedBody.contentId, created.body.contentId);
+    assert.equal(updatedBody.version, 2);
+
+    const wrongPassword = new FormData();
+    wrongPassword.set('affiliation', game.affiliation);
+    wrongPassword.set('category', game.category);
+    wrongPassword.set('name', game.name);
+    wrongPassword.set('title', game.title || game.name);
+    wrongPassword.set('password', runtimeSecret());
+    wrongPassword.set('file', htmlBlob(), 'content.html');
+    const rejected = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: wrongPassword });
+    assert.equal(rejected.status, 403);
+  } finally {
+    await close(server);
+    await cleanLocalState();
+  }
+});
+
 test('관리자 비밀번호 변경 API는 전용 로컬 파일에 오버라이드 자격을 저장하고 감사 로그에 secret을 남기지 않는다', async () => {
   await cleanLocalState();
   const admin = withAdminEnv();

@@ -65,6 +65,19 @@ test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버
   assert.match(admin, /\.edit-form \.admin-button\.primary\{justify-self:end;width:auto\}/);
 });
 
+test('콘텐츠 보기 페이지는 비밀번호 확인 후 새 파일을 /api/upload로 업데이트하는 버튼을 제공한다', async () => {
+  const view = await readFile(path.join(__dirname, '../public/view.html'), 'utf8');
+  assert.match(view, /<button id="updateButton" type="button" hidden>파일 업데이트<\/button>/);
+  assert.match(view, /<input id="updatePassword" name="password" type="password"[^>]*required>/);
+  assert.match(view, /<input id="updateFile" name="file" type="file" accept="\.html,text\/html" required>/);
+  assert.match(view, /currentGame=game;updateButton\.hidden=false/);
+  assert.match(view, /updateButton\.addEventListener\('click',\(\)=>\{updatePanel\.hidden=false;updateButton\.hidden=true/);
+  assert.match(view, /formData\.set\('affiliation',currentGame\.affiliation\)/);
+  assert.match(view, /formData\.set\('password',updateForm\.password\.value\)/);
+  assert.match(view, /fetch\('\/api\/upload',\{method:'POST',body:formData\}\)/);
+  assert.equal(view.includes('innerHTML'), false);
+});
+
 test('업로드 페이지와 코호트 페이지는 코호트 전달 및 성공 이동 계약을 유지한다', async () => {
   const [upload, cohort] = await Promise.all(['upload.html', 'cohort.html'].map((file) => readFile(path.join(__dirname, '../public', file), 'utf8')));
   assert.match(upload, /new URLSearchParams\(location\.search\)\.get\('c'\)/);
