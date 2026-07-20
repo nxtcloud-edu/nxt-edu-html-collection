@@ -37,3 +37,23 @@
   새 코더/세션이면 과거 TURN_LOG의 `^## .*(Coder)` 헤더를 먼저 grep해 정확한 표기를 확인한 뒤 워처를 건다.
 - **교훈**: Gotcha 9(느슨한 패턴)의 반대 실패 — 너무 엄격/불일치한 리터럴도 무력화된다.
   식별자는 "관측된 실제 문자열"에서 복사한다. (2026-07-14)
+
+## 5. theme.css의 !important 공유 규칙 때문에 페이지별 로컬 CSS 누락이 눈에 안 띈다 (2026-07-20)
+- **증상**: `내 콘텐츠 업로드` 버튼이 index.html과 cohort.html에서 다르게 보임. view.html의
+  `♥ 추천` 버튼은 브라우저 기본(Arial, 3D outset 테두리)으로, "← 갤러리" 링크는 기본 파란
+  밑줄 링크로 렌더링됨 — 코드 리뷰만으로는 "스타일이 있다"고 착각하기 쉬움.
+- **근본 원인**: `theme.css`가 `.upload-link`, `input,select,textarea`, `.filter` 등 다수
+  선택자를 `!important`로 강제한다. 그래서 어떤 페이지의 로컬 `<style>`이 해당 클래스를
+  정의해도(예: index.html의 `.upload-link{background:var(--pink)...}`) 배경·둥근모서리 등은
+  항상 theme.css로 덮어써지고, 로컬 규칙 중 `!important`가 아닌 나머지 속성(padding,
+  font-weight 등)만 살아남는다. 반대로 cohort.html처럼 로컬 규칙 자체가 없는 페이지는
+  theme.css가 정의하지 않은 속성(padding 등)이 통째로 비어 렌더링이 달라진다. `#likeButton`,
+  view.html의 갤러리 백링크처럼 **theme.css도 로컬 CSS도 아예 없는 요소**는 브라우저 기본
+  스타일이 그대로 노출되는데도 grep으로 클래스명만 확인하면 "스타일 있음"으로 오판하기 쉽다.
+- **해결**: 페이지 간 공유돼야 하는 요소는 로컬 `<style>`에 부분 정의하지 말고 theme.css
+  한 곳에서 완전히 정의한다. 새 인터랙티브 요소(button/a)를 추가할 때는 반드시
+  `getComputedStyle()`로 실제 렌더 결과를 찍어 브라우저 기본값(Arial, outset border,
+  `rgb(0,0,238)` 링크색 등)이 새어나오지 않는지 확인한다.
+- **교훈**: `!important`가 있는 공유 스타일시트에서는 "로컬에 규칙이 있다"가 "의도한 대로
+  렌더된다"를 보장하지 않는다. 정적 코드 리뷰 대신 실제 렌더링된 `getComputedStyle` 대조로
+  디자인 일치를 검증할 것.

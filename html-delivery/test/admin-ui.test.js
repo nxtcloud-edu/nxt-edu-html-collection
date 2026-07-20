@@ -65,17 +65,22 @@ test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버
   assert.match(admin, /\.edit-form \.admin-button\.primary\{justify-self:end;width:auto\}/);
 });
 
-test('콘텐츠 보기 페이지는 비밀번호 확인 후 새 파일을 /api/upload로 업데이트하는 버튼을 제공한다', async () => {
+test('콘텐츠 보기 페이지는 비밀번호 확인 후 새 파일을 /api/upload로 업데이트하는 모달을 제공한다', async () => {
   const view = await readFile(path.join(__dirname, '../public/view.html'), 'utf8');
+  assert.equal(view.includes('innerHTML'), false);
   assert.match(view, /<button id="updateButton" type="button" hidden>파일 업데이트<\/button>/);
+  assert.match(view, /#updateButton\{[^}]*background:var\(--pink\)/);
+  assert.match(view, /<dialog id="updateModal" aria-labelledby="updateModalTitle">/);
   assert.match(view, /<input id="updatePassword" name="password" type="password"[^>]*required>/);
   assert.match(view, /<input id="updateFile" name="file" type="file" accept="\.html,text\/html" required>/);
+  assert.match(view, /id="updateCancel" class="cancel" type="button">취소/);
   assert.match(view, /currentGame=game;updateButton\.hidden=false/);
-  assert.match(view, /updateButton\.addEventListener\('click',\(\)=>\{updatePanel\.hidden=false;updateButton\.hidden=true/);
+  assert.match(view, /updateButton\.addEventListener\('click',\(\)=>\{updateForm\.reset\(\);updateStatus\.textContent='';updateModal\.showModal\(\)\}\)/);
+  assert.match(view, /updateCancel\.addEventListener\('click',\(\)=>updateModal\.close\(\)\)/);
   assert.match(view, /formData\.set\('affiliation',currentGame\.affiliation\)/);
   assert.match(view, /formData\.set\('password',updateForm\.password\.value\)/);
   assert.match(view, /fetch\('\/api\/upload',\{method:'POST',body:formData\}\)/);
-  assert.equal(view.includes('innerHTML'), false);
+  assert.match(view, /updateModal\.close\(\);window\.location\.reload\(\)/);
 });
 
 test('업로드 페이지와 코호트 페이지는 코호트 전달 및 성공 이동 계약을 유지한다', async () => {
@@ -88,6 +93,27 @@ test('업로드 페이지와 코호트 페이지는 코호트 전달 및 성공 
   assert.equal(upload.includes('URL 복사'), false);
   assert.match(cohort, /<a class="upload-link" id="uploadLink" href="upload\.html">내 콘텐츠 업로드<\/a>/);
   assert.match(cohort, /uploadLink\.href='upload\.html\?c='\+encodeURIComponent\(cohort\)/);
+});
+
+test('콘텐츠 보기 페이지의 추천 버튼과 갤러리 링크는 브라우저 기본 스타일이 아니라 앱 테마 스타일을 갖는다', async () => {
+  const view = await readFile(path.join(__dirname, '../public/view.html'), 'utf8');
+  assert.match(view, /#likeButton\{[^}]*border:1px solid var\(--line\)[^}]*border-radius:10px/);
+  assert.match(view, /#likeButton:hover\{border-color:var\(--cyan\)\}/);
+  assert.match(view, /#likeButton:disabled\{opacity:\.55;cursor:not-allowed\}/);
+  assert.match(view, /\.site-tools a\{[^}]*color:var\(--muted\);text-decoration:none\}/);
+  assert.match(view, /\.site-tools a:hover\{color:var\(--cyan\)\}/);
+});
+
+test('내 콘텐츠 업로드 버튼은 index/cohort 전 페이지에서 theme.css 공유 스타일 하나로만 디자인이 정해진다', async () => {
+  const [index, cohort, theme] = await Promise.all([
+    readFile(path.join(__dirname, '../public/index.html'), 'utf8'),
+    readFile(path.join(__dirname, '../public/cohort.html'), 'utf8'),
+    readFile(path.join(__dirname, '../public/assets/theme.css'), 'utf8'),
+  ]);
+  assert.equal(/\.upload-link\{[^}]*\}/.test(index), false, 'index.html에는 upload-link 전용 로컬 CSS가 없어야 한다');
+  assert.equal(/\.upload-link\{[^}]*\}/.test(cohort), false, 'cohort.html에는 upload-link 전용 로컬 CSS가 없어야 한다');
+  assert.match(theme, /\.upload-link\{padding:var\(--sp-3\) var\(--sp-4\);font-weight:700;text-decoration:none\}/);
+  assert.match(theme, /\.upload-link,#uploadForm #submitButton\{border-radius:10px!important;background:#0f172a!important/);
 });
 
 test('관리자 비밀번호 해시 스크립트는 stdin 비밀번호를 해시와 salt로 변환한다', () => {
