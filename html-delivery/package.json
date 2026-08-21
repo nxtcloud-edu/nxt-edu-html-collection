@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js"
+    "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js",
+    "migrate:content-objects": "node scripts/copy-legacy-content-objects.js"
   },
   "engines": {
     "node": ">=20"
