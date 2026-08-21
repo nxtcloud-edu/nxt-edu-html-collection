@@ -2392,3 +2392,26 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 콘텐츠 쓰기는 affiliation과 기존 cohortId 조건을 확인하며, 커스텀 코호트 목록도 dry-run 이후 바뀌면 덮어쓰지 않는다.
 - 운영 반영은 코드 배포 후 additive apply, 다시 dry-run 대상 0 확인 순서로 별도 수행한다.
 - Phase 4 구현을 `feat: 코호트 ID 백필 준비` 독립 커밋으로 기록했다. push·배포·운영 apply는 실행하지 않았다.
+
+## 2026-08-21 13:38 KST — Codex — Phase 1~4 push 및 Phase 4 운영 반영
+
+### Intent
+- 사용자 승인에 따라 로컬 Phase 커밋을 push하고 Phase 4 코드를 배포한 뒤 cohortId additive backfill과 운영 재검증을 완료한다.
+
+### Commands / verification
+- `git push origin main` — `f30159a..c9cbbfb`, Phase 1~4 커밋 push 완료.
+- 첫 sandbox `terraform validate` — provider plugin protocol 제한으로 실패. 권한을 올린 재실행은 validate pass.
+- Terraform 저장 plan — Lambda source code hash 1건만 in-place, 0 add·1 change·0 destroy.
+- 저장 plan apply — Lambda 1 changed, 오류 없음.
+- 배포 직후 `GET /api/health` 200, `GET /api/cohorts` 15개 모두 유효한 cohortId 확인.
+- 운영 조건부 backfill apply — 커스텀 코호트 9개·콘텐츠 283개 갱신, unresolved/conflict 0.
+- 재 dry-run — cohortsToUpdate 0, contentsToUpdate 0, unchanged 283, unresolved/conflict 0.
+- 공개 `/api/games` — 200, 283개, cohortId 누락 0, 기존 `games/*` 최신 키 283개.
+- 관리자 `admin.html` 200·현황 UI 반영, 미인증 `/api/admin/cohort-overview` 401.
+- 최종 `terraform plan -detailed-exitcode` — no changes.
+- S3 객체 복사·이동·삭제, Phase 5 작업 — 실행 안 함.
+
+### Decisions / handoff
+- Phase 4 운영 게이트를 통과했다. 기존 affiliation·공유 URL·S3 키는 유지됐다.
+- 다음 단계는 Phase 5 신규 쓰기 전환이며 레거시 객체 마이그레이션과 삭제는 포함하지 않는다.
+- 운영 상태를 `docs: Phase 4 운영 반영 상태 기록` 문서 전용 커밋으로 정리하고 origin/main에 push했다.

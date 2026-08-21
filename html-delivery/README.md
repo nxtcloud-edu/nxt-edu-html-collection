@@ -54,4 +54,6 @@ FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-i
 FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-ids -- --apply --confirm=BACKFILL_COHORT_IDS --summary-only
 ```
 
+운영 테이블은 2026-08-21 backfill을 완료했습니다. 코호트 15개와 콘텐츠 283개가 모두 ID를 가지며 재 dry-run 결과 `contentsToUpdate: 0`, `unresolved: 0`, `conflicts: 0`입니다.
+
 실 S3 호출, Lambda 배포, 버킷 생성, AWS CLI 실행은 코더 검증 범위가 아닙니다.

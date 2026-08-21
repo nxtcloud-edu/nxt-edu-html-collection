@@ -243,4 +243,6 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - 콘텐츠 갱신은 기존 `affiliation`이 그대로이고 `cohortId`가 없거나 같은 경우에만 조건부로 수행한다.
 - DynamoDB Scan은 페이지 끝까지 순회하며 커스텀 코호트 목록도 dry-run 이후 변경 시 덮어쓰지 않는다.
 - 2026-08-21 운영 dry-run: 코호트 15개, 콘텐츠 283개, 갱신 대상 코호트 9개·콘텐츠 283개, unresolved 0, conflict 0.
-- 운영 apply·Lambda 배포는 실행하지 않았다.
+- 2026-08-21 Lambda 배포 후 운영 apply 완료: 커스텀 코호트 9개와 콘텐츠 283개에 `cohortId`를 추가했다.
+- 재 dry-run은 `cohortsToUpdate: 0`, `contentsToUpdate: 0`, `unchanged: 283`, unresolved/conflict 0이다.
+- 공개 API 283개 콘텐츠의 `cohortId` 존재와 기존 `games/*` 키 283개 보존을 확인했다. S3 객체는 변경하지 않았다.

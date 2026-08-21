@@ -9,7 +9,7 @@
 - 개편 Phase 1에서 `CONTENT_MODEL_V2.md`, `REFACTOR_ROADMAP.md`와 제품 결정 4건을 작성했다. 런타임·DynamoDB·S3 변경 없음.
 - 개편 Phase 2에서 `domain/content.js`, `repositories/content-repository.js`를 추가하고 `server.js` 콘텐츠 저장 호출을 repository 경계로 연결했다. 외부 계약 불변, 전체 테스트 62/62.
 - 개편 Phase 3에서 인증된 `GET /api/admin/cohort-overview`와 관리자 요약 카드·저장 키 열을 추가했다. 전체 테스트 63/63이며 DynamoDB·S3·Terraform·배포 변경은 없다.
-- 개편 Phase 4에서 불변 cohortId 발급, paginated dry-run, 중복·충돌 차단, 조건부 additive apply 도구를 구현했다. 운영 dry-run은 코호트 15개·콘텐츠 283개, unresolved/conflict 0이었다. 실제 apply·배포는 하지 않았다.
+- 개편 Phase 4에서 불변 cohortId 발급·조건부 backfill을 구현하고 배포했다. 커스텀 코호트 9개와 콘텐츠 283개 apply 후 재 dry-run 대상·unresolved·conflict가 모두 0이다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -18,6 +18,6 @@
 - 브라우저 자동 검증에서는 로그아웃 상태였지만, 이후 사용자가 운영 환경에서 실제 ZIP 다운로드를 직접 검증했다고 확인했다.
 
 ## Next safe action
-1. Phase 4 구현은 `feat: 코호트 ID 백필 준비` 독립 커밋으로 완료됐다.
-2. 운영 반영 시 코드 배포 → 조건부 apply → dry-run `contentsToUpdate: 0` 재검증 순서를 지킨다.
-3. apply 명령은 `--apply --confirm=BACKFILL_COHORT_IDS`가 필요하며 dry-run 이후 변경된 레코드는 덮어쓰지 않는다.
+1. Phase 4 운영 상태 문서 커밋·push와 clean 상태 확인까지 완료됐다.
+2. 다음 Phase 5는 신규 콘텐츠만 `contents/{contentId}/v{version}.html`로 쓰고 레거시 콘텐츠의 버전은 기존 prefix를 유지하는 계약부터 구현한다.
+3. 기존 S3 객체 복사·삭제는 Phase 7 이후이며 Phase 5에서 수행하지 않는다.
