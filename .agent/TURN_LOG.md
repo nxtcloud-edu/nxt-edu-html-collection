@@ -2363,3 +2363,32 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 저장 키는 관리자에게만 표시하고, 집계 응답에서는 비밀번호 hash·salt와 DynamoDB 키를 제외한다.
 - 다음 Phase 4는 dry-run과 unresolved 0 확인을 먼저 만들며 운영 레코드 수정은 별도 실행 단계로 둔다.
 - Phase 3을 `feat: 관리자 코호트 운영 현황 추가` 독립 커밋으로 기록했다. push·배포는 실행하지 않았다.
+
+## 2026-08-21 13:28 KST — Codex — 개편 Phase 4 cohortId backfill 준비
+
+### Intent
+- 기존 이름 기반 코호트와 콘텐츠에 불변 `cohortId`를 additive로 넣을 수 있는 재실행 가능 도구를 만들고 운영 dry-run으로 충돌 여부를 확인한다.
+
+### Files changed
+- `domain/cohort.js` — ID 형식, 레거시 결정적 ID, 신규 랜덤 ID.
+- `migrations/cohort-id-backfill.js`, `scripts/backfill-cohort-ids.js` — 계획·unresolved 판정·조건부 apply·확인 문자열 CLI.
+- `registry.js`, `server.js` — DynamoDB pagination, 조건부 cohortId 저장, 신규 코호트·신규 콘텐츠 ID 부여, additive 코호트 API 필드.
+- backfill·관리자·validation 테스트와 README·v2 계약·로드맵·결정 문서.
+
+### Commands / verification
+- backfill 테스트 첫 실행 — 모듈 부재 `MODULE_NOT_FOUND`로 예상 실패(red).
+- 순수 backfill·CLI 안전장치 테스트 — 6/6 pass.
+- 코호트 추가·이름 변경 집중 회귀 — 3/3 pass.
+- 빈 로컬 레지스트리 dry-run — cohort 6, content 0, unresolved 0.
+- 운영 DynamoDB 읽기 전용 dry-run — cohort 15, cohort update 9, content 283, content update 283, unresolved 0, conflict 0.
+- 첫 전체 `npm test` — 68/69. additive `cohortId`를 기존 정확 일치 기대값에 반영하지 않은 계약 테스트 1건 실패.
+- 계약 기대값 수정 후 전체 `npm test` — 69/69 pass.
+- `git diff --check` — pass. Terraform 소스 diff 없음.
+- 운영 DynamoDB apply, S3 변경, Terraform apply, 배포, push — 실행 안 함.
+
+### Decisions / handoff
+- 레거시 ID는 이름 기반 결정적 값, 신규 코호트 ID는 랜덤 값으로 발급한다. 저장 후 이름 변경에도 ID를 보존한다.
+- 중복 이름·중복 ID·미등록 affiliation·기존 ID 불일치는 자동 보정하지 않고 unresolved로 차단한다.
+- 콘텐츠 쓰기는 affiliation과 기존 cohortId 조건을 확인하며, 커스텀 코호트 목록도 dry-run 이후 바뀌면 덮어쓰지 않는다.
+- 운영 반영은 코드 배포 후 additive apply, 다시 dry-run 대상 0 확인 순서로 별도 수행한다.
+- Phase 4 구현을 `feat: 코호트 ID 백필 준비` 독립 커밋으로 기록했다. push·배포·운영 apply는 실행하지 않았다.

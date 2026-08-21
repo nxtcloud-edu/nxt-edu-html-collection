@@ -8,6 +8,7 @@ const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/cl
 const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
+const { COHORT_ID_PATTERN, deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
 const { normalizeLegacyCategory } = require('./domain/content');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 const { createContentRepository } = require('./repositories/content-repository');
@@ -110,9 +111,9 @@ function contentTitle(content) {
 }
 
 async function cohortOptions() {
-  const base = COHORTS.map((name) => ({ name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
+  const base = COHORTS.map((name) => ({ cohortId: deriveLegacyCohortId(name), name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
   const names = new Set(COHORTS);
-  const custom = (await getCustomCohorts()).filter((cohort) => cohort?.name && !names.has(cohort.name)).map((cohort) => ({ name: cohort.name, teams: null, date: cohort.date || null }));
+  const custom = (await getCustomCohorts()).filter((cohort) => cohort?.name && !names.has(cohort.name)).map((cohort) => ({ cohortId: COHORT_ID_PATTERN.test(cohort.cohortId || '') ? cohort.cohortId : deriveLegacyCohortId(cohort.name), name: cohort.name, teams: null, date: cohort.date || null }));
   return [...base, ...custom];
 }
 
@@ -361,7 +362,7 @@ function createApp() {
     if (date !== null && date.length > 20) return res.status(400).json({ error: '일자는 20자 이하로 입력하세요.' });
     try {
       if ((await cohortOptions()).some((cohort) => cohort.name === name)) return res.status(409).json({ error: '이미 있는 코호트예요.' });
-      await addCustomCohort({ name, date: date || null });
+      await addCustomCohort({ cohortId: newCohortId(), name, date: date || null });
       auditAdminAction('add-cohort', null);
       return res.json({ ok: true });
     } catch (error) { return next(error); }
@@ -450,9 +451,11 @@ function createApp() {
   });
   app.post('/api/upload', upload.single('file'), async (req, res, next) => {
     try {
-      const cohortNames = (await cohortOptions()).map((cohort) => cohort.name);
+      const cohorts = await cohortOptions();
+      const cohortNames = cohorts.map((cohort) => cohort.name);
       const result = validateUploadInput({ ...req.body, file: req.file }, cohortNames);
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
+      const selectedCohort = cohorts.find((cohort) => cohort.name === result.affiliation);
       const existing = await contentRepository.findByIdentity(result, normalizeCategory);
       if (existing && !verifyPassword(req.body.password, existing.passwordHash, existing.salt)) {
         return res.status(403).json({ error: '이미 등록된 이름입니다. 비밀번호가 맞지 않아요.' });
@@ -464,7 +467,7 @@ function createApp() {
       const credentials = existing ? { passwordHash: existing.passwordHash, salt: existing.salt } : hashPassword(req.body.password);
       const item = {
         contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
-        name: result.name, title: result.title, affiliation: result.affiliation, category: result.category,
+        cohortId: selectedCohort.cohortId, name: result.name, title: result.title, affiliation: result.affiliation, category: result.category,
         ...credentials, latestVersion: version, latestKey: key, likes: existing?.likes || 0,
         createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
       };

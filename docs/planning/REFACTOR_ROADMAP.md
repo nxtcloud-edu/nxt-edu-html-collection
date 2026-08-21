@@ -30,4 +30,5 @@
 - Phase 1 완료: 데이터 모델·API·마이그레이션 계약 확정.
 - Phase 2 완료: domain normalizer, legacy adapter, content repository 경계와 단위 테스트 도입. 기존 API·S3 키·운영 데이터 불변.
 - Phase 3 완료: 인증된 관리자 코호트 현황 API와 UI에서 콘텐츠 유형·누적 버전·최신 저장 키·레거시/신규 저장 방식·ZIP 준비 상태를 읽기 전용으로 확인한다.
-- 다음 작업은 Phase 4 코호트 ID additive backfill이다. dry-run과 unresolved 0 확인 전 운영 레코드를 수정하지 않는다.
+- Phase 4 구현 및 운영 dry-run 완료: 코호트 15개·콘텐츠 283개 중 unresolved 0, conflict 0. 운영 apply·배포는 아직 실행하지 않았다.
+- 다음 안전 작업은 Phase 4 코드 배포와 조건부 additive apply를 별도로 승인·실행한 뒤 재실행 결과 `contentsToUpdate: 0`을 확인하는 것이다. 그 전에는 Phase 5 신규 `contents/*` 쓰기를 시작하지 않는다.

@@ -40,4 +40,18 @@ S3 객체에는 `affiliation`, `name`, `uploadedAt` Metadata와 `text/html; char
 npm test
 ```
 
+## cohortId backfill
+
+기본 실행은 읽기 전용 dry-run입니다. 대상·충돌·미해결 건수만 확인하려면 다음처럼 실행합니다.
+
+```bash
+FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-ids -- --summary-only
+```
+
+`unresolved: 0`, `conflicts: 0`을 확인한 뒤에만 additive 갱신을 실행합니다. apply는 확인 문자열이 없으면 거부되며 기존 `affiliation`이나 `cohortId`가 dry-run 이후 바뀐 레코드를 덮어쓰지 않습니다.
+
+```bash
+FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-ids -- --apply --confirm=BACKFILL_COHORT_IDS --summary-only
+```
+
 실 S3 호출, Lambda 배포, 버킷 생성, AWS CLI 실행은 코더 검증 범위가 아닙니다.

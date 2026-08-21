@@ -232,6 +232,15 @@ Gate A에서 다음 내부 계약을 도입했다.
 - v2 `Content`를 기존 공개 DTO로 변환하는 adapter
 - `game | webpage`와 레거시 한글 분류 양방향 매핑
 - 코호트 ID가 없는 레거시 레코드의 명시적 처리
-- 현재 55개 테스트를 유지하면서 계약 단위 테스트 추가
+- 기존 전체 테스트를 유지하면서 계약 단위 테스트 추가
 
-Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 변경하지 않았다. 다음 작업은 Phase 3 관리자 코호트 상세·운영 가시성 개선이다.
+Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 변경하지 않았다.
+
+## 10. Gate B 구현 결과
+
+- 레거시 코호트 이름은 결정적 `cohortId`, 신규 코호트는 랜덤 불변 `cohortId`를 사용한다.
+- dry-run은 누락·중복·기존 ID 충돌을 분리하고 `unresolved > 0`이면 apply를 차단한다.
+- 콘텐츠 갱신은 기존 `affiliation`이 그대로이고 `cohortId`가 없거나 같은 경우에만 조건부로 수행한다.
+- DynamoDB Scan은 페이지 끝까지 순회하며 커스텀 코호트 목록도 dry-run 이후 변경 시 덮어쓰지 않는다.
+- 2026-08-21 운영 dry-run: 코호트 15개, 콘텐츠 283개, 갱신 대상 코호트 9개·콘텐츠 283개, unresolved 0, conflict 0.
+- 운영 apply·Lambda 배포는 실행하지 않았다.

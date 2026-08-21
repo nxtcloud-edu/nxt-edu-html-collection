@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js"
   },
   "engines": {
     "node": ">=20"

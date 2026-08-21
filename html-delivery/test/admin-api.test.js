@@ -4,9 +4,10 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const AdmZip = require('adm-zip');
+const { COHORT_ID_PATTERN } = require('../domain/cohort');
 const { cohortOptions, createApp } = require('../server');
 const { LOCAL_EXPORT_DIR } = require('../cohort-export');
-const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, hashPassword, renameCustomCohort, updateAdminAccountPassword, verifyPassword } = require('../registry');
+const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, getRegistryItem, hashPassword, renameCustomCohort, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -421,6 +422,7 @@ test('커스텀 코호트는 전용 로컬 파일에만 저장한다', async () 
     assert.equal(cohorts.length, 1);
     assert.equal(cohorts[0].name, '2026-테스트 코호트');
     assert.equal(cohorts[0].date, '8.1');
+    assert.match(cohorts[0].cohortId, COHORT_ID_PATTERN);
     assert.match(cohorts[0].createdAt, /^\d{4}-\d{2}-\d{2}T/);
     await addCustomCohort({ name: '2026-고대세종-ai', date: '무시' });
     const merged = await cohortOptions();
@@ -441,6 +443,7 @@ test('renameCustomCohort는 이름만 바꾸고 일자·생성시각은 유지�
     assert.equal(await renameCustomCohort('2026-테스트 코호트', '2026-바뀐 코호트'), true);
     const [after] = await getCustomCohorts();
     assert.equal(after.name, '2026-바뀐 코호트');
+    assert.equal(after.cohortId, before.cohortId);
     assert.equal(after.date, before.date);
     assert.equal(after.createdAt, before.createdAt);
   } finally {
@@ -478,12 +481,15 @@ test('관리자 코호트 추가 API는 인증·입력·중복을 검증하고 �
     await assert.rejects(fs.stat(LOCAL_REGISTRY), { code: 'ENOENT' });
     const cohorts = await (await fetch(`${baseUrl}/api/cohorts`)).json();
     assert.equal(cohorts.cohorts.some((cohort) => cohort.name === '2026-새 코호트' && cohort.teams === null && cohort.date === '8.1~2'), true);
+    assert.equal(cohorts.cohorts.every((cohort) => COHORT_ID_PATTERN.test(cohort.cohortId)), true);
     const duplicate = await request({ name: '2026-새 코호트' }, cookie);
     assert.equal(duplicate.status, 409);
     assert.equal((await duplicate.json()).error, '이미 있는 코호트예요.');
 
     const uploaded = await uploadContent(baseUrl, { affiliation: '2026-새 코호트', secret: runtimeSecret() });
     assert.equal(uploaded.response.status, 201);
+    const stored = await getRegistryItem(uploaded.body.contentId);
+    assert.equal(stored.cohortId, cohorts.cohorts.find((cohort) => cohort.name === '2026-새 코호트').cohortId);
     assert.equal(logs.some((line) => JSON.parse(line).admin_action === 'add-cohort'), true);
   } finally {
     console.log = originalLog;

@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
 
 const LOCAL_REGISTRY = path.join(__dirname, '.local-registry.json');
 const LOCAL_ADMIN_CREDENTIAL = path.join(path.dirname(LOCAL_REGISTRY), '.local-admin-credential.json');
@@ -114,8 +115,7 @@ async function getCustomCohorts() {
   return Array.isArray(response.Item?.cohorts) ? response.Item.cohorts : [];
 }
 
-async function addCustomCohort({ name, date }) {
-  const cohorts = [...await getCustomCohorts(), { name, date: date || null, createdAt: new Date().toISOString() }];
+async function saveCustomCohorts(cohorts) {
   if (!TABLE_NAME) {
     await fs.writeFile(LOCAL_COHORTS, JSON.stringify(cohorts), { encoding: 'utf8', mode: 0o600 });
     return;
@@ -123,31 +123,84 @@ async function addCustomCohort({ name, date }) {
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...CUSTOM_COHORT_KEY, cohorts } }));
 }
 
+async function replaceCustomCohortsIfUnchanged(cohorts, expectedCohorts) {
+  if (!TABLE_NAME) {
+    const current = await getCustomCohorts();
+    if (JSON.stringify(current) !== JSON.stringify(expectedCohorts)) return false;
+    await saveCustomCohorts(cohorts);
+    return true;
+  }
+  try {
+    await documentClient().send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { ...CUSTOM_COHORT_KEY, cohorts },
+      ConditionExpression: 'attribute_not_exists(contentKey) OR cohorts = :expected',
+      ExpressionAttributeValues: { ':expected': expectedCohorts },
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
+}
+
+async function addCustomCohort({ name, date, cohortId = newCohortId() }) {
+  const cohorts = [...await getCustomCohorts(), { cohortId, name, date: date || null, createdAt: new Date().toISOString() }];
+  await saveCustomCohorts(cohorts);
+}
+
 async function renameCustomCohort(oldName, newName) {
   const cohorts = await getCustomCohorts();
   const index = cohorts.findIndex((cohort) => cohort.name === oldName);
   if (index === -1) return false;
-  cohorts[index] = { ...cohorts[index], name: newName };
-  if (!TABLE_NAME) {
-    await fs.writeFile(LOCAL_COHORTS, JSON.stringify(cohorts), { encoding: 'utf8', mode: 0o600 });
-    return true;
-  }
-  await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...CUSTOM_COHORT_KEY, cohorts } }));
+  cohorts[index] = { ...cohorts[index], cohortId: cohorts[index].cohortId || deriveLegacyCohortId(oldName), name: newName };
+  await saveCustomCohorts(cohorts);
   return true;
 }
 
 async function listRegistryItems() {
   if (!TABLE_NAME) return Object.values(await readLocalRegistry());
-  const response = await documentClient().send(new ScanCommand({
-    TableName: TABLE_NAME,
-    FilterExpression: 'begins_with(contentKey, :prefix) AND createdAt = :meta',
-    ExpressionAttributeValues: { ':prefix': 'content#', ':meta': 'meta' },
-  }));
-  return response.Items || [];
+  const items = [];
+  let exclusiveStartKey;
+  do {
+    const response = await documentClient().send(new ScanCommand({
+      TableName: TABLE_NAME,
+      FilterExpression: 'begins_with(contentKey, :prefix) AND createdAt = :meta',
+      ExpressionAttributeValues: { ':prefix': 'content#', ':meta': 'meta' },
+      ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+    }));
+    items.push(...(response.Items || []));
+    exclusiveStartKey = response.LastEvaluatedKey;
+  } while (exclusiveStartKey);
+  return items;
 }
 
 async function listContents() {
   return (await listRegistryItems()).map(publicContent);
+}
+
+async function setContentCohortId({ contentId, affiliation, cohortId }) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    const item = registry[contentId];
+    if (!item || item.affiliation !== affiliation || (item.cohortId && item.cohortId !== cohortId)) return false;
+    registry[contentId] = { ...item, cohortId };
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  try {
+    await documentClient().send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      UpdateExpression: 'SET cohortId = :cohortId',
+      ExpressionAttributeValues: { ':cohortId': cohortId, ':affiliation': affiliation },
+      ConditionExpression: 'attribute_exists(contentKey) AND affiliation = :affiliation AND (attribute_not_exists(cohortId) OR cohortId = :cohortId)',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
 }
 
 async function findByIdentity({ affiliation, name, category, title }, normalizeCategory = (value) => value) {
@@ -313,4 +366,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

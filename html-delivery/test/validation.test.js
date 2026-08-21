@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const { deriveLegacyCohortId } = require('../domain/cohort');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
 const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
@@ -56,14 +57,15 @@ test('행사별 팀 코호트는 지정된 마지막 팀까지만 허용한다',
 });
 
 test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', async () => {
-  assert.deepEqual(await cohortOptions(), [
+  const expected = [
     { name: '2026-고대세종-ai', teams: null, date: '6.24~25' },
     { name: '2026-한이음-ai-중급', teams: null, date: '7.12' },
     { name: '2026-고대세종-기업인턴십', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'], date: '7.1~31' },
     { name: '2026-고대세종-아이디어톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀'], date: '6.26' },
     { name: '2026-국민대-ai워크플로우', teams: ['1팀', '2팀', '3팀', '4팀', '5팀'], date: '6.24~30' },
     { name: '2026-서남-해커톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀'], date: '7.10' },
-  ]);
+  ];
+  assert.deepEqual(await cohortOptions(), expected.map((cohort) => ({ cohortId: deriveLegacyCohortId(cohort.name), ...cohort })));
 });
 
 test('커스텀 코호트 이름은 확장된 업로드 검증에서만 수용한다', () => {

@@ -1,15 +1,15 @@
 # Current State
 
-Updated: 2026-08-21 13:01 KST
+Updated: 2026-08-21 13:28 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 1·2·3 독립 커밋 완료. origin/main보다 3커밋 앞섬.
-- Worktree: Phase 3 상태 기록까지 같은 커밋에 반영한 뒤 clean 확인 예정. 운영 데이터·S3·Terraform 변경 없음.
-- Tests: Phase 3 전체 `npm test` 63/63.
+- Branch: `main`, Phase 1·2·3·4 구현 독립 커밋 완료. origin/main보다 4커밋 앞섬.
+- Worktree: Phase 4 상태 기록까지 같은 커밋에 반영한 뒤 clean 확인 예정. Terraform 소스·S3 변경 없음.
+- Tests: Phase 4 전체 `npm test` 69/69.
 - Terraform: apply 완료(1 add, 4 change, 0 destroy) 후 호환 수정 Lambda 재배포(0 add, 1 change, 0 destroy). 최종 plan no changes.
 - Prod: health 200, games 283개, `admin.html` 200 및 ZIP UI/API 코드 확인, 미인증 export API 401, 브라우저 로그인 화면 렌더링 확인.
 - User verification: 사용자가 운영 환경에서 실제 코호트 ZIP 다운로드를 직접 검증했다고 확인.
@@ -21,6 +21,8 @@ Updated: 2026-08-21 13:01 KST
 - 개편 Phase 1 완료: v2 콘텐츠·코호트·버전 모델, API 호환 계약, S3 무삭제 마이그레이션 게이트와 전체 로드맵 문서화.
 - 개편 Phase 2 완료: 콘텐츠 domain normalizer·legacy adapter·repository 경계 도입, 기존 API와 S3 키 불변.
 - 개편 Phase 3 완료: 인증된 관리자 화면에서 코호트별 콘텐츠 수·게임/웹페이지·누적 버전·최신 수정·저장 키 방식·ZIP 준비 상태 확인 가능.
+- 개편 Phase 4 구현·운영 dry-run 완료: 코호트 15개, 콘텐츠 283개, 갱신 대상 코호트 9개·콘텐츠 283개, unresolved 0, conflict 0. 운영 apply·배포는 미실행.
 
 ## Next safe action
-1. Phase 4 코호트 ID additive backfill은 dry-run 도구와 unresolved 판정부터 구현하고 운영 레코드는 아직 수정하지 않는다.
+1. 별도 승인 후 Phase 4 코드를 먼저 배포하고 조건부 additive apply를 실행한 뒤 dry-run 대상 0을 재검증한다.
+2. Phase 4 운영 검증 전에는 Phase 5 신규 `contents/*` 쓰기를 시작하지 않는다.
