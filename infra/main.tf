@@ -127,6 +127,8 @@ data "archive_file" "lambda" {
     ".local-exports",
     ".local-feedback.jsonl",
     ".local-registry.json",
+    "README.md",
+    "migrations",
     "scripts",
     "test",
     "uploads.log.jsonl",

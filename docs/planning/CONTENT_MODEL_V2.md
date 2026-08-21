@@ -222,6 +222,15 @@ v2 도입 중에도 다음 계약은 제거하지 않는다.
 - 검증 완료 콘텐츠만 새 키를 우선 조회한다.
 - 레거시 fallback과 기존 URL을 유지한다.
 
+2026-08-21 운영 실행 결과:
+
+- 복사본 size·SHA-256을 다시 검증한 뒤 283개 레코드에 `latestObjectKey=contents/{contentId}/vN.html`을 조건부 추가했다. 실패·차단·충돌은 0건이다.
+- 기존 `latestKey=games/{contentId}-vN.html` 283개는 변경하지 않고 fallback·rollback 기준으로 보존했다.
+- v2 API와 레거시 API 모두 283개 콘텐츠에 새 URL을 반환하고 내부 `latestObjectKey`는 공개하지 않는다.
+- 관리자 export는 새 키를 우선 읽고 객체가 없을 때 기존 키를 fallback하며 manifest에는 실제 사용한 키를 기록한다.
+- 후속 버전은 새 `contents/*`에 저장하고 기존 레거시 포인터는 유지한다. 관리자 명시 삭제 시에는 양쪽 저장 경로를 함께 정리한다.
+- 인앱 브라우저에서 갤러리 283개와 `contents/*` iframe의 실제 웹페이지 렌더링을 확인했다.
+
 ### Gate F — 보안 전환
 
 - 직접 S3 URL 사용 현황을 조사한 뒤 CloudFront OAC와 버킷 완전 비공개를 별도 배포한다.

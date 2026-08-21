@@ -2581,3 +2581,34 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - Phase 7은 로컬 운영 CLI와 S3 복사 작업이며 Lambda·정적 UI 런타임 변경이 없어 Terraform 재배포는 수행하지 않았다.
 - 다음 작업은 Phase 8 읽기 포인터 전환이며 아직 시작하지 않았다.
+
+## 2026-08-21 16:33 KST — Codex — Phase 8 새 키 우선 읽기 전환
+
+### Intent
+- 검증 완료 콘텐츠만 새 `contents/*` 키를 우선 읽게 전환하고 기존 `games/*` 포인터와 URL을 fallback으로 보존한다.
+
+### Files changed
+- `domain/content-storage.js`, `server.js`, `registry.js` — 우선·fallback 키 해석, 조건부 포인터, 후속 버전·공개 API·관리자 삭제 호환.
+- `cohort-export.js` — 새 키 우선 읽기와 레거시 fallback, 실제 사용 키 manifest 기록.
+- `migrations/content-read-switch.js`, `scripts/switch-content-read-pointers.js` — 전수 복사 검증 기반 dry-run·조건부 apply·재실행 CLI.
+- 관련 테스트와 `package.json` — 포인터·fallback·충돌·직렬 전체 스위트 고정.
+- 계획·운영 문서와 Terraform Lambda archive 제외 목록.
+
+### Commands / verification
+- 집중 테스트 — 28/28 pass.
+- 전체 `npm test` — `--test-concurrency=1`, 85/85 pass. 병렬 실행의 공유 로컬 registry 경합을 제거.
+- 운영 포인터 dry-run — ready 283, switched 0, blocked·conflict 0; S3 size·SHA-256 재검증 통과.
+- `git commit` — `224dc90 feat: 새 콘텐츠 키 읽기 포인터 전환`; origin/main push 완료.
+- `terraform validate` — pass. 저장 plan 0 add·1 Lambda in-place·0 destroy, apply 성공.
+- 포인터 적용 전 health 정상, v2 API 283개 모두 `games/*` fallback URL 확인.
+- 운영 포인터 apply — attempted/succeeded 283/283, failed 0. 재 dry-run switched 283, ready·blocked·conflict 0.
+- v2·레거시 API — 각각 283개 모두 `contents/*` URL, 레거시 API 내부 포인터 노출 0.
+- DynamoDB 읽기 검증 — 283개 모두 `latestKey=games/*`와 `latestObjectKey=contents/*` 동시 보존.
+- 인앱 브라우저 — 갤러리 283개, 실제 웹페이지 iframe `contents/0e040222/v5.html` 로드·내부 DOM 렌더링 확인. 사용자 탭은 `/upload.html`로 복귀.
+- S3 객체 이동·덮어쓰기·삭제, 운영 업로드·추천·피드백 쓰기 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 레지스트리 `latestKey`는 rollback 가능한 fallback으로 유지하고 `latestObjectKey`만 additive 추가한다.
+- 포인터 적용 전 런타임을 먼저 배포해 전환 순간의 API·export·후속 버전 쓰기 호환을 보장했다.
+- 다음 Phase 9은 비동기 export·모니터링이며 Phase 11 삭제는 별도 승인 사항이다.

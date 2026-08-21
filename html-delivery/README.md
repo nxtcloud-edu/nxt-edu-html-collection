@@ -84,4 +84,20 @@ S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm
 
 2026-08-21 운영에서 등록 콘텐츠 283개의 396개 버전을 복사했고 재 dry-run 결과 `verifiedCopies: 396`, `pendingCopies: 0`, `blocked: 0`, `conflicts: 0`입니다. 레지스트리에 연결되지 않은 과거 무버전 객체 2개는 복사하지 않았고 원본 `games/*` 전체는 삭제·변경하지 않았습니다. 최신 포인터 전환은 Phase 8의 별도 작업입니다.
 
+## 콘텐츠 읽기 포인터 전환
+
+기본 실행은 S3 복사본의 size·SHA-256을 다시 검증하고 포인터 변경 대상을 계산하는 dry-run입니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run migrate:content-read-pointers -- --summary-only
+```
+
+`blocked: 0`, `conflicts: 0`인 경우에만 조건부 additive 갱신을 실행합니다. 기존 `latestKey`는 덮어쓰지 않습니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run migrate:content-read-pointers -- --apply --confirm=SWITCH_CONTENT_READ_POINTERS --summary-only
+```
+
+2026-08-21 운영에서 283/283개 포인터 전환에 성공했습니다. 재 dry-run은 `switched: 283`, `ready: 0`, `blocked: 0`, `conflicts: 0`이며 기존 `games/*` fallback 283개와 새 `contents/*` 우선 포인터 283개를 함께 보존합니다.
+
 `npm test`는 실 S3 호출, Lambda 배포, 버킷 생성이나 AWS CLI 실행을 수행하지 않습니다.
