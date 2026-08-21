@@ -2282,3 +2282,9 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 협업 저널을 별도 docs 커밋한 뒤 main push와 clean 상태 확인 예정.
+
+## 2026-08-21 12:34 KST — Codex — main 원격 동기화
+
+- `6267c94 docs: 코호트 운영 기능 배포 상태 기록` 커밋.
+- `git push origin main` — `eb98a32..6267c94`, 기존 로컬 20커밋과 이번 2커밋을 origin/main에 push 완료.
+- 최종 상태 기록 커밋·push 후 clean/sync를 확인하고 전체 계획 재검토로 전환한다.
