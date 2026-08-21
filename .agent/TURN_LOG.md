@@ -2469,3 +2469,26 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 신규 `contents/*` 실제 쓰기 E2E는 별도 테스트 데이터를 생성·삭제하는 운영 변이이므로 이번 읽기 중심 브라우저 검증에는 포함하지 않았다.
 - Phase 6 시작 전 테스트 콘텐츠 1건의 생성·버전 추가·ZIP·삭제 E2E를 완료한다.
 - Phase 5 배포 상태를 `docs: Phase 5 운영 배포 상태 기록` 문서 전용 커밋으로 기록하고 origin/main에 push한다.
+
+## 2026-08-21 14:56 KST — Codex — Phase 5 운영 쓰기 E2E 완료
+
+### Intent
+- Phase 6 진입 전 신규 `contents/*` 생성·버전 추가·ZIP 포함·삭제 게이트를 전용 테스트 콘텐츠로 검증한다.
+
+### Files changed
+- README·v2 계약·개편 로드맵과 협업 상태 문서 — Phase 5 운영 E2E 결과와 Phase 6 진입 상태 기록.
+
+### Commands / verification
+- 운영 `POST /api/upload` 2회 — 테스트 콘텐츠 `0ba6f272` v1·v2 생성, 두 응답 201, 동일 contentId·순차 버전 확인.
+- S3 공개 URL — `contents/0ba6f272/v1.html`, `v2.html` 모두 200 `text/html`.
+- 공개 `/api/games` — 최신 키 `contents/0ba6f272/v2.html`, latestVersion 2, cohortId 존재 확인.
+- 로그인된 관리자 UI — 신규 저장 키 표시, 대상 코호트 콘텐츠 12개·신규 저장 1개·누적 버전 25개 확인.
+- 코호트 ZIP — 최신 HTML 12개 생성·다운로드 시작 성공, 테스트 v2가 관리자 export 대상에 포함됨.
+- 사용자 확인 후 관리자 삭제 — 성공 메시지와 필터 결과 0개 확인.
+- AWS `head-object` — 테스트 v1·v2 모두 404 Not Found.
+- 삭제 후 공개 목록 — 전체 283개, 테스트 ID 0개, 기존 `games/*` 283개, `contents/*` 0개.
+
+### Decisions / handoff
+- Phase 5의 구현·배포·운영 E2E 게이트를 모두 통과했다.
+- 테스트 콘텐츠만 삭제했으며 기존 283개 콘텐츠와 레거시 S3 객체는 변경하지 않았다.
+- 다음 단계는 Phase 6 v2 API와 학생·갤러리 UX 전환이다.

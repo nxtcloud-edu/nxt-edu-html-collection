@@ -31,5 +31,5 @@
 - Phase 2 완료: domain normalizer, legacy adapter, content repository 경계와 단위 테스트 도입. 기존 API·S3 키·운영 데이터 불변.
 - Phase 3 완료: 인증된 관리자 코호트 현황 API와 UI에서 콘텐츠 유형·누적 버전·최신 저장 키·레거시/신규 저장 방식·ZIP 준비 상태를 읽기 전용으로 확인한다.
 - Phase 4 완료: Lambda 배포와 조건부 additive backfill 후 코호트 15개·콘텐츠 283개가 모두 `cohortId`를 가진다. 재 dry-run은 갱신 대상·unresolved·conflict 모두 0이며 기존 `games/*` 키는 유지됐다.
-- Phase 5 구현·배포 완료: 신규 `contents/*` 쓰기, 레거시 prefix 고정, 이중 키 조회·ZIP·삭제, S3/IAM 정책을 반영했다. 배포 후 기존 콘텐츠 283개와 `games/*` 키 283개가 그대로이며 Terraform 최종 plan은 no changes다.
-- 다음 안전 작업은 별도 테스트 콘텐츠 1건으로 생성·버전 추가·ZIP·삭제를 운영 검증하는 것이다. 그 전에는 Phase 6을 시작하지 않는다.
+- Phase 5 완료: 신규 `contents/*` 쓰기, 레거시 prefix 고정, 이중 키 조회·ZIP·삭제, S3/IAM 정책을 배포했다. 운영 테스트 콘텐츠의 v1·v2 생성, 최신 포인터, 관리자 목록, ZIP 포함, 삭제를 검증했고 기존 콘텐츠 283개로 원복했다.
+- 다음 작업은 Phase 6 v2 API와 학생·갤러리 UX 전환이다. 기존 API와 공유 URL은 호환 adapter로 유지한다.

@@ -12,6 +12,7 @@
 - 개편 Phase 4에서 불변 cohortId 발급·조건부 backfill을 구현하고 배포했다. 커스텀 코호트 9개와 콘텐츠 283개 apply 후 재 dry-run 대상·unresolved·conflict가 모두 0이다.
 - 개편 Phase 5에서 신규 `contents/*` 쓰기와 레거시 `games/*` prefix 고정, 이중 키 조회·ZIP·삭제, S3/IAM 권한을 구현·배포했다. 전체 테스트 73/73, Terraform apply 0 add·3 change·0 destroy, 최종 plan no changes다.
 - 배포 후 health 200, 공개 API 콘텐츠 283개·cohortId 누락 0·기존 `games/*` 키 283개를 확인했다. 인앱 브라우저에서 갤러리 283개와 관리자 로그인 화면을 확인했다.
+- Phase 5 운영 E2E에서 테스트 콘텐츠 `0ba6f272`를 `contents/*` v1·v2로 생성하고 최신 포인터·관리자 목록·12개 ZIP 포함을 확인한 뒤 삭제했다. S3 두 객체 404와 기존 283개 원복을 확인했다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -20,6 +21,6 @@
 - 브라우저 자동 검증에서는 로그아웃 상태였지만, 이후 사용자가 운영 환경에서 실제 ZIP 다운로드를 직접 검증했다고 확인했다.
 
 ## Next safe action
-1. Phase 5 구현·배포는 완료됐지만 운영 신규 콘텐츠 쓰기 E2E는 운영 데이터 변이를 피하기 위해 실행하지 않았다.
-2. Phase 6 시작 전 별도 테스트 콘텐츠 1건으로 생성·버전 추가·ZIP·삭제를 검증한다.
-3. 기존 S3 객체 복사·삭제는 Phase 7 이후이며 Phase 5 배포에서도 수행하지 않았다.
+1. Phase 5 구현·배포·운영 E2E가 완료됐다.
+2. 다음 단계는 Phase 6 v2 공개 조회·신규 생성·명시적 버전 추가 API와 학생·갤러리 UX 전환이다.
+3. 기존 S3 객체 복사·삭제는 Phase 7 이후이며 Phase 5에서도 수행하지 않았다.

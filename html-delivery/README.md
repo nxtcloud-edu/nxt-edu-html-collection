@@ -56,6 +56,6 @@ FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-i
 
 운영 테이블은 2026-08-21 backfill을 완료했습니다. 코호트 15개와 콘텐츠 283개가 모두 ID를 가지며 재 dry-run 결과 `contentsToUpdate: 0`, `unresolved: 0`, `conflicts: 0`입니다.
 
-Phase 5 신규 저장 경로는 2026-08-21 운영에 배포했습니다. 기존 콘텐츠 283개의 `games/*` 키는 변경하지 않았고, 신규 콘텐츠부터 `contents/{contentId}/v1.html`을 사용합니다. 배포 후 health, 공개 API, 갤러리 렌더링과 Terraform 무변경 상태를 확인했으며 기존 S3 객체 복사·이동·삭제는 수행하지 않았습니다.
+Phase 5 신규 저장 경로는 2026-08-21 운영에 배포했습니다. 기존 콘텐츠 283개의 `games/*` 키는 변경하지 않았고, 신규 콘텐츠부터 `contents/{contentId}/v1.html`을 사용합니다. 테스트 콘텐츠로 v1·v2 생성, 최신 포인터, 관리자 목록, ZIP 포함, 삭제까지 검증했으며 삭제 후 기존 283개 상태로 원복했습니다. 기존 S3 객체 복사·이동·삭제는 수행하지 않았습니다.
 
 `npm test`는 실 S3 호출, Lambda 배포, 버킷 생성이나 AWS CLI 실행을 수행하지 않습니다.
