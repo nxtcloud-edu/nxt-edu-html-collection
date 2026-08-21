@@ -554,6 +554,58 @@ test('관리자 코호트 이름 변경 API는 인증·기본 코호트 보호·
   }
 });
 
+test('관리자 코호트 현황 API는 유형·버전·저장 방식과 export 준비 상태를 읽기 전용으로 제공한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    const cohort = '2026-고대세종-ai';
+    const ownerSecret = runtimeSecret();
+    const game = await uploadContent(baseUrl, { affiliation: cohort, category: '미니게임', title: '게임', secret: ownerSecret });
+    assert.equal(game.response.status, 201);
+    const gameV2 = await uploadContent(baseUrl, { ...game.identity, secret: ownerSecret });
+    assert.equal(gameV2.body.version, 2);
+    const webpage = await uploadContent(baseUrl, { affiliation: cohort, category: '웹페이지', title: '웹페이지', secret: runtimeSecret() });
+    assert.equal(webpage.response.status, 201);
+
+    const endpoint = `${baseUrl}/api/admin/cohort-overview?cohort=${encodeURIComponent(cohort)}`;
+    assert.equal((await fetch(endpoint)).status, 401);
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const response = await fetch(endpoint, { headers: { cookie: authenticated.cookie } });
+    assert.equal(response.status, 200);
+    const { overview } = await response.json();
+    assert.equal(overview.cohort.name, cohort);
+    assert.deepEqual(overview.summary, {
+      totalContents: 2,
+      gameCount: 1,
+      webpageCount: 1,
+      totalVersions: 3,
+      latestUpdatedAt: webpage.body.uploadedAt,
+      exportReady: true,
+    });
+    assert.deepEqual(overview.storage, { legacyGames: 2, v2Contents: 0, unknown: 0 });
+    assert.equal(overview.contents.length, 2);
+    assert.equal(overview.contents.every((content) => content.storageScheme === 'legacy-games'), true);
+    assert.equal(overview.contents.every((content) => content.latestKey.startsWith('games/')), true);
+    assert.equal(overview.contents.every((content) => content.viewerUrl.startsWith(`${baseUrl}/view.html?id=`)), true);
+    assert.equal(JSON.stringify(overview).includes('passwordHash'), false);
+    assert.equal(JSON.stringify(overview).includes('salt'), false);
+
+    const empty = await fetch(`${baseUrl}/api/admin/cohort-overview?cohort=${encodeURIComponent('2026-국민대-ai워크플로우')}`, { headers: { cookie: authenticated.cookie } });
+    assert.equal(empty.status, 200);
+    assert.equal((await empty.json()).overview.summary.exportReady, false);
+    const missing = await fetch(`${baseUrl}/api/admin/cohort-overview?cohort=${encodeURIComponent('2026-없는 코호트')}`, { headers: { cookie: authenticated.cookie } });
+    assert.equal(missing.status, 404);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
 test('관리자 코호트 export는 최신 HTML을 읽기 쉬운 파일명과 manifest로 ZIP 다운로드한다', async () => {
   await cleanLocalState();
   const admin = withAdminEnv();

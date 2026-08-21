@@ -63,6 +63,48 @@ function normalizeContent(content) {
   return { ...content, category: normalizeCategory(content.category) };
 }
 
+function storageSchemeForKey(key) {
+  if (typeof key !== 'string') return 'unknown';
+  if (key.startsWith('games/')) return 'legacy-games';
+  if (key.startsWith('contents/')) return 'v2-contents';
+  return 'unknown';
+}
+
+function buildCohortOverview({ cohort = null, contents, appBaseUrl }) {
+  const normalized = contents.map(normalizeContent).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  const storage = { legacyGames: 0, v2Contents: 0, unknown: 0 };
+  const overviewContents = normalized.map((content) => {
+    const storageScheme = storageSchemeForKey(content.latestKey);
+    if (storageScheme === 'legacy-games') storage.legacyGames += 1;
+    else if (storageScheme === 'v2-contents') storage.v2Contents += 1;
+    else storage.unknown += 1;
+    return {
+      contentId: content.contentId,
+      title: contentTitle(content),
+      name: content.name,
+      category: content.category,
+      latestVersion: content.latestVersion,
+      latestKey: content.latestKey,
+      storageScheme,
+      updatedAt: content.updatedAt,
+      viewerUrl: `${appBaseUrl.replace(/\/$/, '')}/view.html?id=${content.contentId}`,
+    };
+  });
+  return {
+    cohort,
+    summary: {
+      totalContents: normalized.length,
+      gameCount: normalized.filter((content) => content.category === '미니게임').length,
+      webpageCount: normalized.filter((content) => content.category === '웹페이지').length,
+      totalVersions: normalized.reduce((total, content) => total + (Number(content.latestVersion) || 0), 0),
+      latestUpdatedAt: normalized[0]?.updatedAt || null,
+      exportReady: Boolean(cohort && normalized.length),
+    },
+    storage,
+    contents: overviewContents,
+  };
+}
+
 function contentTitle(content) {
   return content.title || content.name;
 }
@@ -302,6 +344,16 @@ function createApp() {
     try { return res.json({ cohorts: await cohortOptions() }); }
     catch (error) { return next(error); }
   });
+  app.get('/api/admin/cohort-overview', adminAuth.requireAdmin, async (req, res, next) => {
+    const requestedCohort = typeof req.query.cohort === 'string' ? req.query.cohort.trim() : '';
+    try {
+      const cohorts = await cohortOptions();
+      const cohort = requestedCohort ? cohorts.find((item) => item.name === requestedCohort) : null;
+      if (requestedCohort && !cohort) return res.sendStatus(404);
+      const contents = (await contentRepository.list()).filter((content) => !cohort || content.affiliation === cohort.name);
+      return res.json({ overview: buildCohortOverview({ cohort, contents, appBaseUrl: requestBaseUrl(req) }) });
+    } catch (error) { return next(error); }
+  });
   app.post('/api/admin/cohorts', adminAuth.requireAdmin, async (req, res, next) => {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const date = typeof req.body?.date === 'string' ? req.body.date.trim() : null;
@@ -442,4 +494,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateAdminContentPatch, validateFeedbackInput, validateNewPassword, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildCohortOverview, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, storageSchemeForKey, validateAdminContentPatch, validateFeedbackInput, validateNewPassword, validateUploadInput, viewerUrl };

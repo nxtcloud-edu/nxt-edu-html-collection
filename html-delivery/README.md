@@ -29,6 +29,7 @@ S3 객체에는 `affiliation`, `name`, `uploadedAt` Metadata와 `text/html; char
 
 - `GET /api/health` → `{ "ok": true }`
 - `POST /api/upload` multipart 필드 `affiliation`, `name`, `file` → `201 { url, key, uploadedAt }`
+- `GET /api/admin/cohort-overview?cohort={코호트명}` → 콘텐츠 수·유형·누적 버전·저장 키 방식·ZIP 준비 상태 (관리자 인증 필요, `cohort` 생략 시 전체)
 - `POST /api/admin/exports` JSON 필드 `cohort` → 해당 코호트 최신 HTML의 ZIP 생성 결과 (관리자 인증 필요)
 - `GET /api/admin/exports/:exportId/download` → 로컬 모드에서 생성한 ZIP 다운로드 (관리자 인증 필요)
 - 파일은 `.html`만 허용하며 최대 1MB, 소속·이름은 trim 후 각각 1~40자입니다.

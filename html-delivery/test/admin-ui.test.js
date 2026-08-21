@@ -51,6 +51,14 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.match(admin, /openExportButton\.addEventListener\('click',[\s\S]*exportModal\.showModal\(\)/);
   assert.match(admin, /exportForm\.addEventListener\('submit',[\s\S]*\/api\/admin\/exports/);
   assert.match(admin, /link\.download=data\.fileName/);
+  assert.match(admin, /id="cohortOverview"/);
+  assert.match(admin, /id="overviewTotal"/);
+  assert.match(admin, /id="overviewTypes"/);
+  assert.match(admin, /id="overviewVersions"/);
+  assert.match(admin, /id="overviewStorage"/);
+  assert.match(admin, /<th>저장 키<\/th>/);
+  assert.match(admin, /\/api\/admin\/cohort-overview\?cohort=/);
+  assert.match(admin, /cohortFilter\.addEventListener\('change',[\s\S]*loadCohortOverview/);
   assert.match(admin, /<dialog id="passwordModal"[\s\S]*id="passwordChangeForm"/);
   assert.match(admin, /openPasswordButton\.addEventListener\('click',[\s\S]*passwordModal\.showModal\(\)/);
   assert.match(admin, /openPasswordButton\.hidden=false/);

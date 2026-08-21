@@ -2338,3 +2338,28 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 지원하지 않는 콘텐츠 분류는 임의 기본값으로 바꾸지 않고 명시적으로 오류 처리한다.
 - 다음 Phase 3은 관리자 운영 가시성이며 코호트 backfill은 Phase 4까지 금지한다.
 - Phase 2를 `refactor: 콘텐츠 도메인 저장소 경계 도입` 독립 커밋으로 기록했다.
+
+## 2026-08-21 13:01 KST — Codex — 개편 Phase 3 관리자 코호트 운영 현황
+
+### Intent
+- 관리자 기능에서 코호트별 콘텐츠 구성과 실제 저장 키를 파일 단위로 파악할 수 있게 하되 운영 데이터는 변경하지 않는다.
+
+### Files changed
+- `html-delivery/server.js` — 인증된 코호트 현황 읽기 API, 유형·버전·저장 방식·ZIP 준비 집계 추가.
+- `html-delivery/public/admin.html` — 코호트 요약 지표와 콘텐츠별 최신 저장 키 표시.
+- `html-delivery/test/admin-api.test.js`, `test/admin-ui.test.js` — 인증·집계·민감정보 제외·빈/없는 코호트·UI 계약 검증.
+- README·개편 로드맵 — API와 Phase 3 완료 상태 반영.
+
+### Commands / verification
+- 구현 전 집중 테스트 — API 404, UI 계약 누락으로 예상 실패(red).
+- 구현 후 첫 집중 테스트 — UI pass, 샌드박스 로컬 포트 제한 `listen EPERM`으로 API 중단.
+- 포트 허용 재실행 — 집중 테스트 2/2 pass.
+- `npm test` — 63/63 pass.
+- `git diff --check` — pass.
+- Terraform, AWS, DynamoDB/S3 backfill, 배포, push — 실행 안 함.
+
+### Decisions / handoff
+- 기존 이름 기반 코호트 계약을 읽기 전용으로 사용하며 불변 `cohortId` 추가는 Phase 4로 분리한다.
+- 저장 키는 관리자에게만 표시하고, 집계 응답에서는 비밀번호 hash·salt와 DynamoDB 키를 제외한다.
+- 다음 Phase 4는 dry-run과 unresolved 0 확인을 먼저 만들며 운영 레코드 수정은 별도 실행 단계로 둔다.
+- Phase 3을 `feat: 관리자 코호트 운영 현황 추가` 독립 커밋으로 기록했다. push·배포는 실행하지 않았다.
