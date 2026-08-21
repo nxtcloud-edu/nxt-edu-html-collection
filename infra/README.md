@@ -1,15 +1,16 @@
 # Terraform 인프라
 
-`html-delivery` 실배포용 S3 정적 웹사이트와 Lambda Function URL 업로드 앱을 Terraform으로 관리합니다.
+`html-delivery` 실배포용 S3, Lambda, CloudFront, Route 53 구성을 Terraform으로 관리합니다.
 
 ## 구성
 
-- S3 단일 버킷: 웹사이트 호스팅, 퍼블릭 `s3:GetObject`, 업로드 객체 저장
-- Lambda Node.js 20: 256MB, 15초 timeout, `lambda.handler`
-- Lambda Function URL: 인증 없는 공개 HTTPS 업로드 창구
-- IAM: CloudWatch Logs 기본 실행 정책과 해당 버킷 `games/*` 대상 `s3:PutObject` 최소 권한
+- S3 단일 버킷: 학생 콘텐츠 `games/*`는 공개 조회, 관리자 ZIP `exports/*`는 비공개 저장 후 1일 뒤 삭제
+- Lambda Node.js 20: 512MB, 60초 timeout, `lambda.handler`
+- Lambda Function URL: CloudFront의 동적 origin
+- CloudFront와 Route 53: 앱·학생 콘텐츠를 `showcase.nxtcloud.kr` 단일 도메인으로 제공
+- IAM: CloudWatch Logs 기본 실행 정책, `games/*` 관리 권한, `exports/*` ZIP 생성·서명 다운로드 권한
 - 배포 ZIP: `html-delivery/`의 운영 코드와 `node_modules` 포함; 테스트·로컬 환경·로그·스크립트 제외
-- 비용 절약: EC2, VPC 네트워크 리소스, SSM, WAF, CloudFront, Route 53, 커스텀 도메인, 원격 Terraform backend는 만들지 않습니다.
+- 비용 절약: EC2, VPC 네트워크 리소스, SSM, WAF, 원격 Terraform backend는 만들지 않습니다.
 
 ## 로컬 검증
 
@@ -37,8 +38,8 @@ terraform -chdir=infra apply
 terraform -chdir=infra output
 ```
 
-적용 후 output의 `upload_app_url`은 공개 HTTPS Function URL이고, `s3_website_endpoint`는 학생 게임 URL의 기반입니다. 코드나 의존성이 바뀌면 `source_code_hash`가 변경되어 다음 apply에서 Lambda 코드가 갱신됩니다.
+적용 후 output의 `service_url`이 앱과 학생 콘텐츠의 공개 URL입니다. 코드나 의존성이 바뀌면 `source_code_hash`가 변경되어 다음 apply에서 Lambda 코드가 갱신됩니다.
 
-Function URL은 `authorization_type = "NONE"`이므로 인터넷에서 접근할 수 있습니다. 현재 수업용 공개 업로드 창구라는 제품 결정에 따른 설정이며, 별도의 API Gateway·인증·도메인은 범위에 포함하지 않습니다.
+Function URL은 `authorization_type = "NONE"`이지만 공개 진입점은 CloudFront 커스텀 도메인입니다. 관리자 API는 앱의 관리자 세션 인증을 요구하고, 관리자 ZIP은 공개 버킷 정책에서 제외된 `exports/*`에 저장한 뒤 15분짜리 S3 서명 URL로 제공합니다.
 
 이 작업의 코더는 `terraform plan`, `terraform apply`, `aws` CLI를 실행하지 않습니다. AWS 자격 파일도 읽지 않습니다.

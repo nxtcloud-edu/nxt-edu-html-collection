@@ -4,12 +4,16 @@
 # html-delivery local runtime data
 html-delivery/.env
 html-delivery/.local-deploy/
+html-delivery/.local-exports/
 html-delivery/uploads.log.jsonl
 html-delivery/.local-feedback.jsonl
 html-delivery/.local-registry.json
 html-delivery/.local-admin-credential.json
 html-delivery/.local-admin-accounts.json
 html-delivery/.local-cohorts.json
+
+# editor-local settings
+.zed/
 html-delivery/node_modules/
 
 # Terraform local state and plans

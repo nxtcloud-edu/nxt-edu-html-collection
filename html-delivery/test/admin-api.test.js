@@ -3,8 +3,10 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const AdmZip = require('adm-zip');
 const { cohortOptions, createApp } = require('../server');
-const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, hashPassword, updateAdminAccountPassword, verifyPassword } = require('../registry');
+const { LOCAL_EXPORT_DIR } = require('../cohort-export');
+const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, hashPassword, renameCustomCohort, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -18,6 +20,7 @@ async function cleanLocalState() {
   await fs.rm(LOCAL_COHORTS, { force: true });
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
+  await fs.rm(LOCAL_EXPORT_DIR, { recursive: true, force: true });
 }
 
 function withAdminEnv() {
@@ -83,7 +86,7 @@ async function uploadContent(baseUrl, { affiliation = '2026-고대세종-ai', ca
   form.set('password', secret);
   form.set('file', htmlBlob(), 'content.html');
   const response = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: form });
-  return { response, body: await response.json(), identity: { affiliation, category, name } };
+  return { response, body: await response.json(), identity: { affiliation, category, name, title } };
 }
 
 test('관리자 env가 없으면 admin API가 503을 반환한다', async () => {
@@ -429,6 +432,22 @@ test('커스텀 코호트는 전용 로컬 파일에만 저장한다', async () 
   }
 });
 
+test('renameCustomCohort는 이름만 바꾸고 일자·생성시각은 유지하며 없는 이름은 false를 반환한다', async () => {
+  await cleanLocalState();
+  try {
+    assert.equal(await renameCustomCohort('2026-없음', '2026-새 이름'), false);
+    await addCustomCohort({ name: '2026-테스트 코호트', date: '8.1' });
+    const [before] = await getCustomCohorts();
+    assert.equal(await renameCustomCohort('2026-테스트 코호트', '2026-바뀐 코호트'), true);
+    const [after] = await getCustomCohorts();
+    assert.equal(after.name, '2026-바뀐 코호트');
+    assert.equal(after.date, before.date);
+    assert.equal(after.createdAt, before.createdAt);
+  } finally {
+    await cleanLocalState();
+  }
+});
+
 test('관리자 코호트 추가 API는 인증·입력·중복을 검증하고 업로드에 반영한다', async () => {
   await cleanLocalState();
   const admin = withAdminEnv();
@@ -466,6 +485,146 @@ test('관리자 코호트 추가 API는 인증·입력·중복을 검증하고 �
     const uploaded = await uploadContent(baseUrl, { affiliation: '2026-새 코호트', secret: runtimeSecret() });
     assert.equal(uploaded.response.status, 201);
     assert.equal(logs.some((line) => JSON.parse(line).admin_action === 'add-cohort'), true);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+test('관리자 코호트 이름 변경 API는 인증·기본 코호트 보호·중복을 검증하고 기존 콘텐츠 소속을 갱신한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (line) => logs.push(String(line));
+  try {
+    const request = (body, cookie) => fetch(`${baseUrl}/api/admin/cohorts`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    assert.equal((await request({ oldName: '2026-고대세종-ai', name: '2026-바뀐 이름' })).status, 401);
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const cookie = authenticated.cookie;
+
+    await addCustomCohort({ name: '경희대캠타_ai스파크부트캠프_1차', date: null });
+    const uploaded = await uploadContent(baseUrl, { affiliation: '경희대캠타_ai스파크부트캠프_1차', secret: runtimeSecret() });
+    assert.equal(uploaded.response.status, 201);
+
+    const empty = await request({ oldName: '경희대캠타_ai스파크부트캠프_1차', name: ' ' }, cookie);
+    assert.equal(empty.status, 400);
+    assert.equal((await empty.json()).error, '코호트 이름은 1~60자로 입력하세요.');
+    assert.equal((await request({ oldName: '경희대캠타_ai스파크부트캠프_1차', name: '가'.repeat(61) }, cookie)).status, 400);
+
+    const missing = await request({ oldName: '2026-없는 코호트', name: '2026-새 이름' }, cookie);
+    assert.equal(missing.status, 404);
+
+    const baseCohort = await request({ oldName: '2026-고대세종-ai', name: '2026-바뀐 이름' }, cookie);
+    assert.equal(baseCohort.status, 400);
+    assert.equal((await baseCohort.json()).error, '기본 코호트는 이름을 변경할 수 없습니다.');
+
+    await addCustomCohort({ name: '2026-다른 코호트', date: null });
+    const duplicate = await request({ oldName: '경희대캠타_ai스파크부트캠프_1차', name: '2026-다른 코호트' }, cookie);
+    assert.equal(duplicate.status, 409);
+    assert.equal((await duplicate.json()).error, '이미 있는 코호트예요.');
+
+    const renamed = await request({ oldName: '경희대캠타_ai스파크부트캠프_1차', name: '2026-경희대캠타_ai스파크부트캠프_1차' }, cookie);
+    assert.equal(renamed.status, 200);
+    assert.deepEqual(await renamed.json(), { ok: true });
+
+    const cohorts = await (await fetch(`${baseUrl}/api/cohorts`)).json();
+    assert.equal(cohorts.cohorts.some((cohort) => cohort.name === '경희대캠타_ai스파크부트캠프_1차'), false);
+    assert.equal(cohorts.cohorts.some((cohort) => cohort.name === '2026-경희대캠타_ai스파크부트캠프_1차'), true);
+
+    const games = await (await fetch(`${baseUrl}/api/games`)).json();
+    const content = games.games.find((game) => game.contentId === uploaded.body.contentId);
+    assert.equal(content.affiliation, '2026-경희대캠타_ai스파크부트캠프_1차');
+    assert.equal(logs.some((line) => JSON.parse(line).admin_action === 'rename-cohort'), true);
+
+    const noop = await request({ oldName: '2026-경희대캠타_ai스파크부트캠프_1차', name: '2026-경희대캠타_ai스파크부트캠프_1차' }, cookie);
+    assert.equal(noop.status, 200);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+test('관리자 코호트 export는 최신 HTML을 읽기 쉬운 파일명과 manifest로 ZIP 다운로드한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    const cohort = '2026-고대세종-ai';
+    const ownerSecret = runtimeSecret();
+    const first = await uploadContent(baseUrl, { affiliation: cohort, name: '홍길동/1팀', title: 'AI: 여행 "도우미"', secret: ownerSecret });
+    assert.equal(first.response.status, 201);
+    const updated = await uploadContent(baseUrl, { ...first.identity, secret: ownerSecret });
+    assert.equal(updated.response.status, 201);
+    assert.equal(updated.body.version, 2);
+    const second = await uploadContent(baseUrl, { affiliation: cohort, name: '2팀', title: '웹페이지', secret: runtimeSecret() });
+    assert.equal(second.response.status, 201);
+    await uploadContent(baseUrl, { affiliation: '2026-한이음-ai-중급', name: '제외', title: '다른 코호트', secret: runtimeSecret() });
+
+    const unauthenticated = await fetch(`${baseUrl}/api/admin/exports`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cohort }),
+    });
+    assert.equal(unauthenticated.status, 401);
+
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const missing = await fetch(`${baseUrl}/api/admin/exports`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: authenticated.cookie },
+      body: JSON.stringify({ cohort: '2026-없는-코호트' }),
+    });
+    assert.equal(missing.status, 404);
+    const empty = await fetch(`${baseUrl}/api/admin/exports`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: authenticated.cookie },
+      body: JSON.stringify({ cohort: '2026-국민대-ai워크플로우' }),
+    });
+    assert.equal(empty.status, 409);
+    assert.equal((await empty.json()).error, '다운로드할 콘텐츠가 없습니다.');
+
+    const response = await fetch(`${baseUrl}/api/admin/exports`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: authenticated.cookie },
+      body: JSON.stringify({ cohort }),
+    });
+    assert.equal(response.status, 201);
+    const exported = await response.json();
+    assert.equal(exported.count, 2);
+    assert.equal(exported.cohort, cohort);
+    assert.match(exported.fileName, /^2026-고대세종-ai_콘텐츠_\d{4}-\d{2}-\d{2}\.zip$/);
+    assert.match(exported.downloadUrl, /^\/api\/admin\/exports\/[0-9a-f]{32}\/download\?/);
+
+    const blockedDownload = await fetch(`${baseUrl}${exported.downloadUrl}`);
+    assert.equal(blockedDownload.status, 401);
+
+    const download = await fetch(`${baseUrl}${exported.downloadUrl}`, { headers: { cookie: authenticated.cookie } });
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get('content-type'), /application\/zip/);
+    const zip = new AdmZip(Buffer.from(await download.arrayBuffer()));
+    const entryNames = zip.getEntries().map((entry) => entry.entryName);
+    const htmlEntries = entryNames.filter((name) => name.endsWith('.html'));
+    assert.equal(htmlEntries.length, 2);
+    assert.equal(htmlEntries.some((name) => name.includes('_v2.html')), true);
+    assert.equal(htmlEntries.every((name) => !name.includes('/') && !name.includes(':') && !name.includes('"')), true);
+    assert.deepEqual(entryNames.slice(-2), ['manifest.csv', 'manifest.json']);
+
+    const manifest = JSON.parse(zip.readAsText('manifest.json'));
+    assert.equal(manifest.cohort, cohort);
+    assert.equal(manifest.count, 2);
+    assert.equal(manifest.contents.some((item) => item.contentId === first.body.contentId && item.version === 2 && item.s3Key.endsWith('-v2.html')), true);
+    assert.equal(manifest.contents.every((item) => item.viewerUrl.startsWith(`${baseUrl}/view.html?id=`)), true);
   } finally {
     console.log = originalLog;
     await close(server);

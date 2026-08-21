@@ -90,9 +90,26 @@ resource "aws_s3_bucket_policy" "games" {
       Effect    = "Allow"
       Principal = "*"
       Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.games.arn}/*"
+      Resource  = "${aws_s3_bucket.games.arn}/games/*"
     }]
   })
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "exports" {
+  bucket = aws_s3_bucket.games.id
+
+  rule {
+    id     = "expire-admin-exports"
+    status = "Enabled"
+
+    filter {
+      prefix = "exports/"
+    }
+
+    expiration {
+      days = 1
+    }
+  }
 }
 
 data "archive_file" "lambda" {
@@ -104,6 +121,7 @@ data "archive_file" "lambda" {
     ".env",
     ".env.example",
     ".local-deploy",
+    ".local-exports",
     ".local-feedback.jsonl",
     ".local-registry.json",
     "scripts",
@@ -155,6 +173,12 @@ resource "aws_iam_role_policy" "s3_upload" {
             "s3:prefix" = ["games/*"]
           }
         }
+      },
+      {
+        Sid      = "WriteReadExports"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.games.arn}/exports/*"
       }
     ]
   })
@@ -179,8 +203,8 @@ resource "aws_lambda_function" "uploader" {
   role          = aws_iam_role.uploader.arn
   runtime       = "nodejs20.x"
   handler       = "lambda.handler"
-  memory_size   = 256
-  timeout       = 15
+  memory_size   = 512
+  timeout       = 60
 
   filename         = data.archive_file.lambda.output_path
   source_code_hash = data.archive_file.lambda.output_base64sha256
@@ -236,6 +260,7 @@ resource "aws_cloudfront_distribution" "showcase" {
       https_port             = 443
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
+      origin_read_timeout    = 60
     }
   }
 

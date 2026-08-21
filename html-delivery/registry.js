@@ -123,6 +123,19 @@ async function addCustomCohort({ name, date }) {
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...CUSTOM_COHORT_KEY, cohorts } }));
 }
 
+async function renameCustomCohort(oldName, newName) {
+  const cohorts = await getCustomCohorts();
+  const index = cohorts.findIndex((cohort) => cohort.name === oldName);
+  if (index === -1) return false;
+  cohorts[index] = { ...cohorts[index], name: newName };
+  if (!TABLE_NAME) {
+    await fs.writeFile(LOCAL_COHORTS, JSON.stringify(cohorts), { encoding: 'utf8', mode: 0o600 });
+    return true;
+  }
+  await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: { ...CUSTOM_COHORT_KEY, cohorts } }));
+  return true;
+}
+
 async function listRegistryItems() {
   if (!TABLE_NAME) return Object.values(await readLocalRegistry());
   const response = await documentClient().send(new ScanCommand({
@@ -300,4 +313,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

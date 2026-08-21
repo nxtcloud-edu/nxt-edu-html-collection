@@ -5,8 +5,9 @@ const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
+const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
+const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
@@ -298,6 +299,50 @@ function createApp() {
       auditAdminAction('add-cohort', null);
       return res.json({ ok: true });
     } catch (error) { return next(error); }
+  });
+  app.patch('/api/admin/cohorts', adminAuth.requireAdmin, async (req, res, next) => {
+    const oldName = typeof req.body?.oldName === 'string' ? req.body.oldName.trim() : '';
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    if (!name || name.length > 60) return res.status(400).json({ error: '코호트 이름은 1~60자로 입력하세요.' });
+    try {
+      const cohorts = await cohortOptions();
+      if (!cohorts.some((cohort) => cohort.name === oldName)) return res.sendStatus(404);
+      if (COHORTS.includes(oldName)) return res.status(400).json({ error: '기본 코호트는 이름을 변경할 수 없습니다.' });
+      if (name !== oldName && cohorts.some((cohort) => cohort.name === name)) return res.status(409).json({ error: '이미 있는 코호트예요.' });
+      const renamed = await renameCustomCohort(oldName, name);
+      if (!renamed) return res.sendStatus(404);
+      const matches = (await listContents()).filter((content) => content.affiliation === oldName);
+      await Promise.all(matches.map((content) => updateContentFields(content.contentId, { affiliation: name })));
+      auditAdminAction('rename-cohort', null);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  });
+  app.post('/api/admin/exports', adminAuth.requireAdmin, async (req, res, next) => {
+    const cohort = typeof req.body?.cohort === 'string' ? req.body.cohort.trim() : '';
+    try {
+      if (!(await cohortOptions()).some((item) => item.name === cohort)) return res.sendStatus(404);
+      const contents = (await listContents()).filter((content) => content.affiliation === cohort);
+      if (!contents.length) return res.status(409).json({ error: '다운로드할 콘텐츠가 없습니다.' });
+      const result = await createCohortExport({ cohort, contents, appBaseUrl: requestBaseUrl(req) });
+      auditAdminAction('export-cohort', null);
+      return res.status(201).json(result);
+    } catch (error) { return next(error); }
+  });
+  app.get('/api/admin/exports/:exportId/download', adminAuth.requireAdmin, async (req, res, next) => {
+    if (process.env.S3_BUCKET) return res.sendStatus(404);
+    const filePath = localExportPath(req.params.exportId);
+    if (!filePath) return res.sendStatus(404);
+    const requestedName = typeof req.query.filename === 'string' && req.query.filename.endsWith('.zip')
+      ? `${safeFilenamePart(req.query.filename.slice(0, -4), 'cohort-contents', 140)}.zip`
+      : exportFileName('cohort');
+    try {
+      await fs.access(filePath);
+      res.set('Content-Disposition', contentDisposition(requestedName));
+      return res.sendFile(filePath, { dotfiles: 'allow' });
+    } catch (error) {
+      if (error.code === 'ENOENT') return res.sendStatus(404);
+      return next(error);
+    }
   });
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
   app.get('/api/games', async (req, res, next) => {
