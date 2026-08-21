@@ -2312,3 +2312,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 다음 Phase 2는 순수 normalizer/repository 계약과 테스트만 추가하며 운영 데이터와 S3를 변경하지 않는다.
 - 커밋 전 첫 `git diff --check`는 문서 머리말 Markdown 강제 줄바꿈 공백 2건으로 실패했다. 일반 문단으로 수정 후 재검사 통과.
 - Phase 1을 `docs: 콘텐츠 플랫폼 v2 계약 확정` 단일 커밋으로 기록. 사용자 지시에 따라 이후에도 Phase별 검증 후 독립 커밋한다.
+
+## 2026-08-21 12:50 KST — Codex — 개편 Phase 2 domain/repository 경계 도입
+
+### Intent
+- 운영 동작과 데이터를 바꾸지 않고 콘텐츠 v2 변환 계약과 저장소 경계를 코드로 도입한다.
+
+### Files changed
+- `html-delivery/domain/content.js` — `game | webpage` 정규화, 레거시 category mapping, 저장 레코드→v2 Content, v2→레거시 DTO adapter.
+- `html-delivery/repositories/content-repository.js` — 콘텐츠 저장 구현이 만족해야 하는 고정 메서드 계약.
+- `html-delivery/server.js` — composition 지점에서 기존 registry 구현을 repository로 묶고 모든 콘텐츠 저장 호출을 경계로 치환.
+- `test/content-domain.test.js`, `test/content-repository.test.js` — 변환·오류·위임 계약 7개.
+- v2 계약 문서와 로드맵 — Gate A/Phase 2 완료 상태 반영.
+
+### Commands / verification
+- 신규 테스트 첫 실행 — 2개 파일 모두 MODULE_NOT_FOUND로 예상 실패(red).
+- 모듈 구현 후 신규 테스트 — 7/7 pass.
+- 관련 도메인·repository·validation·admin API 테스트 — 39/39 pass.
+- `npm test` — 62/62 pass.
+- `git diff --check` — pass. `createVersionKey`와 `CONTENT_KEY_PATTERN`이 계속 `games/*`를 사용하고 Terraform diff가 없음을 확인.
+- Terraform, AWS, 배포 — 실행 안 함. 운영 데이터와 S3 변경 없음.
+
+### Decisions / handoff
+- repository는 현재 registry 구현을 감싸는 composition 경계이며 저장 방식은 바꾸지 않는다.
+- 지원하지 않는 콘텐츠 분류는 임의 기본값으로 바꾸지 않고 명시적으로 오류 처리한다.
+- 다음 Phase 3은 관리자 운영 가시성이며 코호트 backfill은 Phase 4까지 금지한다.
+- Phase 2를 `refactor: 콘텐츠 도메인 저장소 경계 도입` 독립 커밋으로 기록했다.

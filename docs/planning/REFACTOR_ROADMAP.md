@@ -27,5 +27,6 @@
 ## 현재 위치
 
 - Phase 0 완료.
-- Phase 1 문서 확정 단계.
-- 다음 코드 변경은 Phase 2이며 운영 데이터와 S3를 건드리지 않는다.
+- Phase 1 완료: 데이터 모델·API·마이그레이션 계약 확정.
+- Phase 2 완료: domain normalizer, legacy adapter, content repository 경계와 단위 테스트 도입. 기존 API·S3 키·운영 데이터 불변.
+- 다음 작업은 Phase 3 관리자 코호트 상세·운영 가시성이다.

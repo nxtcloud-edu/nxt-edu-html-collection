@@ -8,7 +8,9 @@ const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/cl
 const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
+const { normalizeLegacyCategory } = require('./domain/content');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
+const { createContentRepository } = require('./repositories/content-repository');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
@@ -40,9 +42,21 @@ const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
 const CONTENT_ID_PATTERN = /^[0-9a-f]{8}$/;
 const CONTENT_KEY_PATTERN = /^games\/[0-9a-f]{8}-v[1-9][0-9]*\.html$/;
+const contentRepository = createContentRepository({
+  list: listContents,
+  getPrivate: getRegistryItem,
+  getPublic: getRegisteredContent,
+  findByIdentity,
+  create: saveRegistryItem,
+  updateVersion: updateRegistryVersion,
+  updateFields: updateContentFields,
+  updatePassword: updateContentPassword,
+  delete: deleteRegistryItem,
+  incrementLikes: incrementLike,
+});
 
 function normalizeCategory(category) {
-  return category === '랜딩페이지' ? '웹페이지' : category;
+  return normalizeLegacyCategory(category);
 }
 
 function normalizeContent(content) {
@@ -241,7 +255,7 @@ function createApp() {
     if (!validateNewPassword(req.body?.newPassword)) return res.status(400).json({ error: '비밀번호는 4~30자로 입력하세요.' });
     const credentials = { ...hashPassword(req.body.newPassword), updatedAt: new Date().toISOString() };
     try {
-      const ok = await updateContentPassword(req.body.contentId, credentials);
+      const ok = await contentRepository.updatePassword(req.body.contentId, credentials);
       if (!ok) return res.sendStatus(404);
       auditAdminAction('reset-password', req.body.contentId);
       return res.json({ ok: true });
@@ -250,15 +264,15 @@ function createApp() {
   app.patch('/api/admin/content/:contentId', adminAuth.requireAdmin, async (req, res, next) => {
     if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
     try {
-      const existing = await getRegistryItem(req.params.contentId);
+      const existing = await contentRepository.getPrivate(req.params.contentId);
       if (!existing) return res.sendStatus(404);
       const cohortNames = (await cohortOptions()).map((cohort) => cohort.name);
       const result = validateAdminContentPatch(existing, req.body || {}, cohortNames);
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
       const fields = { ...result.fields, updatedAt: new Date().toISOString() };
-      const ok = await updateContentFields(req.params.contentId, fields);
+      const ok = await contentRepository.updateFields(req.params.contentId, fields);
       if (!ok) return res.sendStatus(404);
-      const content = await getRegisteredContent(req.params.contentId);
+      const content = await contentRepository.getPublic(req.params.contentId);
       auditAdminAction('update-content', req.params.contentId);
       return res.json({ content: { ...normalizeContent(content), contentUrl: publicUrl(content.latestKey) } });
     } catch (error) { return next(error); }
@@ -266,11 +280,11 @@ function createApp() {
   app.delete('/api/admin/content/:contentId', adminAuth.requireAdmin, async (req, res, next) => {
     if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
     try {
-      const existing = await getRegistryItem(req.params.contentId);
+      const existing = await contentRepository.getPrivate(req.params.contentId);
       if (!existing) return res.sendStatus(404);
       await Promise.all(Array.from({ length: existing.latestVersion }, (_, index) => deleteStoredObject(createVersionKey(req.params.contentId, index + 1))));
       await deleteFeedbackForContent(req.params.contentId);
-      await deleteRegistryItem(req.params.contentId);
+      await contentRepository.delete(req.params.contentId);
       auditAdminAction('delete-content', req.params.contentId);
       return res.json({ ok: true });
     } catch (error) { return next(error); }
@@ -311,8 +325,8 @@ function createApp() {
       if (name !== oldName && cohorts.some((cohort) => cohort.name === name)) return res.status(409).json({ error: '이미 있는 코호트예요.' });
       const renamed = await renameCustomCohort(oldName, name);
       if (!renamed) return res.sendStatus(404);
-      const matches = (await listContents()).filter((content) => content.affiliation === oldName);
-      await Promise.all(matches.map((content) => updateContentFields(content.contentId, { affiliation: name })));
+      const matches = (await contentRepository.list()).filter((content) => content.affiliation === oldName);
+      await Promise.all(matches.map((content) => contentRepository.updateFields(content.contentId, { affiliation: name })));
       auditAdminAction('rename-cohort', null);
       return res.json({ ok: true });
     } catch (error) { return next(error); }
@@ -321,7 +335,7 @@ function createApp() {
     const cohort = typeof req.body?.cohort === 'string' ? req.body.cohort.trim() : '';
     try {
       if (!(await cohortOptions()).some((item) => item.name === cohort)) return res.sendStatus(404);
-      const contents = (await listContents()).filter((content) => content.affiliation === cohort);
+      const contents = (await contentRepository.list()).filter((content) => content.affiliation === cohort);
       if (!contents.length) return res.status(409).json({ error: '다운로드할 콘텐츠가 없습니다.' });
       const result = await createCohortExport({ cohort, contents, appBaseUrl: requestBaseUrl(req) });
       auditAdminAction('export-cohort', null);
@@ -348,14 +362,14 @@ function createApp() {
   app.get('/api/games', async (req, res, next) => {
     try {
       const sort = req.query.sort === 'likes' ? 'likes' : 'latest';
-      const games = filterGames((await listContents()).map(normalizeContent), { cohort: req.query.cohort, category: req.query.category });
+      const games = filterGames((await contentRepository.list()).map(normalizeContent), { cohort: req.query.cohort, category: req.query.category });
       return res.json({ games: sortGames(games, sort).map((game) => ({ ...game, contentUrl: publicUrl(game.latestKey) })) });
     } catch (error) { return next(error); }
   });
   app.get('/api/content', async (req, res, next) => {
     if (!isValidContentId(req.query.id)) return res.sendStatus(404);
     try {
-      const registered = await getRegisteredContent(req.query.id);
+      const registered = await contentRepository.getPublic(req.query.id);
       const content = registered ? normalizeContent(registered) : null;
       return content ? res.json({ content: { ...content, contentUrl: publicUrl(content.latestKey) } }) : res.sendStatus(404);
     }
@@ -387,7 +401,7 @@ function createApp() {
       const cohortNames = (await cohortOptions()).map((cohort) => cohort.name);
       const result = validateUploadInput({ ...req.body, file: req.file }, cohortNames);
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
-      const existing = await findByIdentity(result, normalizeCategory);
+      const existing = await contentRepository.findByIdentity(result, normalizeCategory);
       if (existing && !verifyPassword(req.body.password, existing.passwordHash, existing.salt)) {
         return res.status(403).json({ error: '이미 등록된 이름입니다. 비밀번호가 맞지 않아요.' });
       }
@@ -403,8 +417,8 @@ function createApp() {
         createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
       };
       await storeObject(key, req.file.buffer, { contentid: contentId, title: encodeURIComponent(result.title), version: String(version) });
-      if (existing) await updateRegistryVersion(contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
-      else await saveRegistryItem(item);
+      if (existing) await contentRepository.updateVersion(contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
+      else await contentRepository.create(item);
       return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, title: result.title, version, uploadedAt });
     } catch (error) { return next(error); }
   });
@@ -415,7 +429,7 @@ function createApp() {
       return res.status(429).json({ error: '잠시 후 다시 시도해 주세요.' });
     }
     try {
-      const likes = await incrementLike(req.body.contentId);
+      const likes = await contentRepository.incrementLikes(req.body.contentId);
       return likes === null ? res.sendStatus(404) : res.json({ likes });
     } catch (error) { return next(error); }
   });
