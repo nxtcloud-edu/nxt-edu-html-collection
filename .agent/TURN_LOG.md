@@ -2492,3 +2492,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Phase 5의 구현·배포·운영 E2E 게이트를 모두 통과했다.
 - 테스트 콘텐츠만 삭제했으며 기존 283개 콘텐츠와 레거시 S3 객체는 변경하지 않았다.
 - 다음 단계는 Phase 6 v2 API와 학생·갤러리 UX 전환이다.
+
+## 2026-08-21 15:06 KST — Codex — Phase 6 v2 API·학생 UX 전환
+
+### Intent
+- identity 자동 병합을 제거한 v2 생성·버전 API를 만들고 학생 업로드와 갤러리 화면을 v2 조회 계약으로 전환한다.
+
+### Files changed
+- `server.js` — v2 코호트·콘텐츠·버전 공개 조회, 항상 신규 생성, contentId 기반 버전 추가 API.
+- `public/index.html`, `cohort.html`, `view.html`, `upload.html` — v2 DTO 렌더링과 새 콘텐츠·새 버전 UX 분리.
+- `test/v2-api.test.js`, `test/admin-ui.test.js` — v2 공개 필드·필터·명시적 생성/버전·UI 계약과 레거시 호환 회귀.
+- README·v2 계약·개편 로드맵과 협업 상태 문서.
+
+### Commands / verification
+- 구현 전 `node --test test/v2-api.test.js` — v2 경로 404로 0/2 예상 실패(red).
+- 구현 후 v2 API 테스트 — 2/2 pass.
+- v2 API·UI 집중 테스트 — 10/10 pass.
+- 전체 `npm test` — 75/75 pass.
+- 로컬 서버와 인앱 브라우저 — 새 콘텐츠·기존 콘텐츠 새 버전 탭, 필수 필드, v2 갤러리 로딩·0건 상태 확인. 서버·임시 탭 정리 완료.
+- `terraform validate` — pass.
+- 저장 plan `/tmp/nxt-edu-phase6.tfplan` — Lambda 코드 1건 in-place, 0 add·1 change·0 destroy.
+- 운영 배포·운영 데이터 쓰기, 기존 S3 객체 변경 — 실행 안 함.
+
+### Decisions / handoff
+- v2 공개 DTO는 소유권 비밀과 내부 저장 키를 제외하고 cohort 요약·owner·contentType·viewer/content URL만 제공한다.
+- 새 콘텐츠는 같은 메타데이터가 있어도 새 ID를 만들고, 새 버전은 contentId와 비밀번호를 명시한다.
+- 레거시 API와 `/view.html?id=` 공유 URL은 호환 기간 동안 유지한다.

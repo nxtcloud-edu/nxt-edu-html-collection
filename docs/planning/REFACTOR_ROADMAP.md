@@ -32,4 +32,5 @@
 - Phase 3 완료: 인증된 관리자 코호트 현황 API와 UI에서 콘텐츠 유형·누적 버전·최신 저장 키·레거시/신규 저장 방식·ZIP 준비 상태를 읽기 전용으로 확인한다.
 - Phase 4 완료: Lambda 배포와 조건부 additive backfill 후 코호트 15개·콘텐츠 283개가 모두 `cohortId`를 가진다. 재 dry-run은 갱신 대상·unresolved·conflict 모두 0이며 기존 `games/*` 키는 유지됐다.
 - Phase 5 완료: 신규 `contents/*` 쓰기, 레거시 prefix 고정, 이중 키 조회·ZIP·삭제, S3/IAM 정책을 배포했다. 운영 테스트 콘텐츠의 v1·v2 생성, 최신 포인터, 관리자 목록, ZIP 포함, 삭제를 검증했고 기존 콘텐츠 283개로 원복했다.
-- 다음 작업은 Phase 6 v2 API와 학생·갤러리 UX 전환이다. 기존 API와 공유 URL은 호환 adapter로 유지한다.
+- Phase 6 구현 완료: v2 코호트·콘텐츠 조회, 항상 신규 생성, contentId 기반 명시적 버전 추가 API를 도입하고 갤러리·코호트·상세·업로드 화면을 전환했다. 기존 API와 공유 URL은 호환 경로로 유지한다. 운영 배포 전이다.
+- 다음 안전 작업은 Lambda 1건 in-place plan을 배포하고 v2 공개 조회와 두 업로드 탭을 운영에서 확인하는 것이다.

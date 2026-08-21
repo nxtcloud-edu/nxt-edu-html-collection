@@ -30,6 +30,9 @@
   [hidden] { display: none; }
   .error { border-color: var(--pink) !important; color: #ff9aae; }
   .hint { margin: var(--sp-2) 0 0; color: #747c99; font-size: 12px; }
+  .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin: var(--sp-6) 0; }
+  .mode-switch button { margin: 0; border: 1px solid var(--line); background: #0e101d; color: var(--muted); }
+  .mode-switch button[aria-selected="true"] { border-color: var(--cyan); color: var(--text); background: #122535; }
 </style>
 <link rel="stylesheet" href="/assets/theme.css">
 </head>
@@ -41,51 +44,68 @@
     <h1 id="upload-title">내 콘텐츠 업로드</h1>
     <p class="intro">수업과 이름 또는 팀을 확인하고, AI와 함께 만든 HTML 콘텐츠를 세상에 공개해 보세요.</p>
     <a class="back" href="/">← 갤러리로 돌아가기</a>
-    <form id="uploadForm">
-      <label for="affiliation">소속(수업)</label>
-      <select id="affiliation" name="affiliation" required disabled>
+    <div class="mode-switch" role="tablist" aria-label="업로드 방식"><button id="createModeButton" type="button" role="tab" aria-selected="true">새 콘텐츠 만들기</button><button id="versionModeButton" type="button" role="tab" aria-selected="false">기존 콘텐츠 새 버전</button></div>
+    <form id="createForm">
+      <label for="cohortId">소속(수업)</label>
+      <select id="cohortId" name="cohortId" required disabled>
         <option value="">수업 목록을 불러오는 중...</option>
       </select>
-      <label for="category">분류</label>
-      <select id="category" name="category" required disabled>
-        <option value="">분류 목록을 불러오는 중...</option>
+      <label for="contentType">분류</label>
+      <select id="contentType" name="contentType" required>
+        <option value="">분류를 선택하세요</option>
+        <option value="webpage">웹페이지</option>
+        <option value="game">미니게임</option>
       </select>
-      <label id="nameLabel" for="name">이름</label>
-      <input id="name" name="name" maxlength="40" autocomplete="name" required>
-      <select id="team" name="name" hidden disabled>
+      <label id="nameLabel" for="ownerName">이름</label>
+      <input id="ownerName" name="ownerName" maxlength="40" autocomplete="name" required>
+      <select id="team" name="ownerName" hidden disabled>
         <option value="">팀을 선택하세요</option>
       </select>
       <label for="title">콘텐츠 제목</label>
       <input id="title" name="title" maxlength="60" placeholder="예: 박스 피하기 리믹스" required>
       <label for="password">소유 비밀번호</label>
       <input id="password" name="password" type="password" minlength="4" maxlength="30" autocomplete="new-password" required>
-      <p class="hint">같은 수업·이름(또는 팀)·분류·제목으로 다시 올리면 이 비밀번호를 확인하고 새 버전으로 업데이트됩니다.</p>
+      <p class="hint">이 제출은 항상 새 콘텐츠를 만듭니다. 이후 업데이트는 콘텐츠 페이지의 “파일 업데이트”를 사용하세요.</p>
       <label for="file">HTML 파일</label>
       <input id="file" name="file" type="file" accept=".html,text/html" required>
       <p class="hint">HTML 파일 1개 · 최대 1MB</p>
-      <button id="submitButton" type="submit" disabled>업로드하고 URL 받기</button>
+      <button id="createSubmitButton" type="submit" disabled>새 콘텐츠 만들기</button>
+    </form>
+    <form id="versionForm" hidden>
+      <label for="versionContentId">콘텐츠 ID</label>
+      <input id="versionContentId" name="contentId" pattern="[0-9a-f]{8}" maxlength="8" placeholder="예: a1b2c3d4" required>
+      <p class="hint">콘텐츠 페이지 주소의 <code>?id=</code> 뒤 8자리 값입니다.</p>
+      <label for="versionPassword">소유 비밀번호</label>
+      <input id="versionPassword" name="password" type="password" minlength="4" maxlength="30" autocomplete="current-password" required>
+      <label for="versionFile">새 HTML 파일</label>
+      <input id="versionFile" name="file" type="file" accept=".html,text/html" required>
+      <p class="hint">기존 콘텐츠 정보는 유지하고 HTML만 새 버전으로 추가합니다.</p>
+      <button id="versionSubmitButton" type="submit">새 버전 추가하기</button>
     </form>
     <div id="result" hidden aria-live="polite"></div>
   </section>
 </main>
 <script>
-const form = document.getElementById('uploadForm');
-const affiliation = document.getElementById('affiliation');
-const category = document.getElementById('category');
+const createForm = document.getElementById('createForm');
+const versionForm = document.getElementById('versionForm');
+const createModeButton = document.getElementById('createModeButton');
+const versionModeButton = document.getElementById('versionModeButton');
+const cohortId = document.getElementById('cohortId');
 const nameLabel = document.getElementById('nameLabel');
-const nameInput = document.getElementById('name');
+const nameInput = document.getElementById('ownerName');
 const teamSelect = document.getElementById('team');
-const submitButton = document.getElementById('submitButton');
+const createSubmitButton = document.getElementById('createSubmitButton');
+const versionSubmitButton = document.getElementById('versionSubmitButton');
 const result = document.getElementById('result');
 let cohortOptions = [];
 
 function updateNameField() {
-  const teams = cohortOptions.find((cohort) => cohort.name === affiliation.value)?.teams;
+  const teams = cohortOptions.find((cohort) => cohort.cohortId === cohortId.value)?.teamOptions;
   nameInput.value = '';
   teamSelect.value = '';
-  const usesTeams = Array.isArray(teams);
+  const usesTeams = Array.isArray(teams) && teams.length > 0;
   nameLabel.textContent = usesTeams ? '팀' : '이름';
-  nameLabel.htmlFor = usesTeams ? 'team' : 'name';
+  nameLabel.htmlFor = usesTeams ? 'team' : 'ownerName';
   nameInput.hidden = usesTeams;
   nameInput.disabled = usesTeams;
   nameInput.required = !usesTeams;
@@ -98,51 +118,85 @@ function updateNameField() {
 
 async function loadOptions() {
   try {
-    const responses = await Promise.all([fetch('/api/cohorts'), fetch('/api/categories')]);
-    if (responses.some((response) => !response.ok)) throw new Error('선택 목록 요청 실패');
-    const [cohortData, categoryData] = await Promise.all(responses.map((response) => response.json()));
+    const response = await fetch('/api/v2/cohorts');
+    if (!response.ok) throw new Error('선택 목록 요청 실패');
+    const cohortData = await response.json();
     cohortOptions = cohortData.cohorts;
-    affiliation.replaceChildren(new Option('소속(수업)을 선택하세요', ''));
-    cohortOptions.forEach((cohort) => affiliation.add(new Option(cohort.name, cohort.name)));
-    category.replaceChildren(new Option('분류를 선택하세요', ''));
-    categoryData.categories.forEach((value) => category.add(new Option(value, value)));
-    affiliation.disabled = false;
-    category.disabled = false;
-    submitButton.disabled = false;
-    const requestedCohort = new URLSearchParams(location.search).get('c');
-    if (requestedCohort && cohortOptions.some((cohort) => cohort.name === requestedCohort)) {
-      affiliation.value = requestedCohort;
+    cohortId.replaceChildren(new Option('소속(수업)을 선택하세요', ''));
+    cohortOptions.forEach((cohort) => cohortId.add(new Option(cohort.name, cohort.cohortId)));
+    cohortId.disabled = false;
+    createSubmitButton.disabled = false;
+    const params = new URLSearchParams(location.search);
+    const requestedCohortId = params.get('cohortId');
+    const requestedCohortName = params.get('c');
+    const requested = cohortOptions.find((cohort) => cohort.cohortId === requestedCohortId || cohort.name === requestedCohortName);
+    if (requested) {
+      cohortId.value = requested.cohortId;
       updateNameField();
     }
   } catch {
-    affiliation.options[0].textContent = '선택 목록을 불러오지 못했습니다';
-    category.options[0].textContent = '선택 목록을 불러오지 못했습니다';
+    cohortId.options[0].textContent = '선택 목록을 불러오지 못했습니다';
     result.hidden = false;
     result.className = 'error';
     result.textContent = '페이지를 새로고침해 다시 시도해 주세요.';
   }
 }
 
-affiliation.addEventListener('change', updateNameField);
+cohortId.addEventListener('change', updateNameField);
 
-form.addEventListener('submit', async (event) => {
+function setMode(mode) {
+  const creating = mode === 'create';
+  createForm.hidden = !creating;
+  versionForm.hidden = creating;
+  createModeButton.setAttribute('aria-selected', String(creating));
+  versionModeButton.setAttribute('aria-selected', String(!creating));
+  result.hidden = true;
+}
+createModeButton.addEventListener('click', () => setMode('create'));
+versionModeButton.addEventListener('click', () => setMode('version'));
+
+createForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   result.hidden = false;
   result.className = '';
   result.textContent = '업로드 중...';
-  submitButton.disabled = true;
+  createSubmitButton.disabled = true;
   try {
-    const response = await fetch('/api/upload', { method: 'POST', body: new FormData(form) });
+    const response = await fetch('/api/v2/contents', { method: 'POST', body: new FormData(createForm) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || '업로드에 실패했습니다.');
-    if (!data.url) throw new Error('콘텐츠 페이지 주소를 받지 못했습니다.');
+    if (!data.content?.viewerUrl) throw new Error('콘텐츠 페이지 주소를 받지 못했습니다.');
     result.textContent = '배포 완료 — 콘텐츠 페이지로 이동합니다…';
-    window.location.assign(data.url);
+    window.location.assign(data.content.viewerUrl);
   } catch (error) {
     result.className = 'error';
     result.textContent = error.message;
   } finally {
-    submitButton.disabled = false;
+    createSubmitButton.disabled = false;
+  }
+});
+
+versionForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  result.hidden = false;
+  result.className = '';
+  result.textContent = '새 버전을 추가하는 중...';
+  versionSubmitButton.disabled = true;
+  try {
+    const contentId = versionForm.contentId.value.trim();
+    const formData = new FormData();
+    formData.set('password', versionForm.password.value);
+    formData.set('file', versionForm.file.files[0]);
+    const response = await fetch(`/api/v2/contents/${contentId}/versions`, { method: 'POST', body: formData });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '새 버전을 추가하지 못했습니다.');
+    result.textContent = '업데이트 완료 — 콘텐츠 페이지로 이동합니다…';
+    window.location.assign(data.content.viewerUrl);
+  } catch (error) {
+    result.className = 'error';
+    result.textContent = error.message;
+  } finally {
+    versionSubmitButton.disabled = false;
   }
 });
 

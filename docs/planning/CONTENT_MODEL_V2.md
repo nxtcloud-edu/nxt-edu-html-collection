@@ -258,3 +258,11 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - 배포 후 health 200, 공개 API 콘텐츠 283개·`cohortId` 누락 0·기존 `games/*` 키 283개를 확인했다. 기존 S3 객체는 복사·이동·삭제하지 않았다.
 - 인앱 브라우저에서 갤러리의 283개 콘텐츠, 웹페이지·미니게임 필터, 29페이지 페이징과 로그인된 관리자 현황·저장 키를 확인했다.
 - 운영 테스트 콘텐츠 `0ba6f272`를 `contents/*` v1·v2로 생성해 최신 포인터와 관리자 신규 저장 키, 12개 코호트 ZIP 포함을 확인한 뒤 삭제했다. AWS HeadObject는 두 버전 모두 404이고 공개 목록은 기존 283개로 원복됐다.
+
+## 12. Phase 6 구현 결과
+
+- `/api/v2/cohorts`, `/api/v2/contents`, 콘텐츠 상세와 공개 버전 목록을 구현했다. 공개 DTO는 `cohortId`, `owner`, `contentType`, viewer/content URL을 제공하고 비밀번호 해시·salt·DynamoDB 키·S3 객체 키를 제외한다.
+- `POST /api/v2/contents`는 identity 자동 병합 없이 항상 새 콘텐츠를 만들고, `POST /api/v2/contents/:contentId/versions`는 contentId와 소유 비밀번호를 명시해야 한다.
+- 갤러리·코호트·상세 보기 화면은 v2 조회를 사용한다. 업로드 화면은 새 콘텐츠와 새 버전 흐름을 별도 탭으로 제공한다.
+- 기존 `/api/games`, `/api/content`, `/api/upload`, 공유 뷰어 URL은 호환 경로로 유지한다.
+- 전체 테스트 75/75, 로컬 브라우저에서 두 업로드 탭과 v2 갤러리 로딩을 확인했다. Terraform validate 통과, 배포 plan은 Lambda 1건 in-place로 0 add·1 change·0 destroy다.

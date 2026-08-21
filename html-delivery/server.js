@@ -9,7 +9,7 @@ const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, ge
 const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
 const { COHORT_ID_PATTERN, deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
-const { normalizeLegacyCategory } = require('./domain/content');
+const { categoryFromContentType, contentTypeFromCategory, normalizeLegacyCategory, toDomainContent } = require('./domain/content');
 const { CONTENT_KEY_PATTERN, createVersionKey, isValidContentKey, storageSchemeForKey, versionKeysForContent } = require('./domain/content-storage');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 const { createContentRepository } = require('./repositories/content-repository');
@@ -106,7 +106,7 @@ function contentTitle(content) {
 async function cohortOptions() {
   const base = COHORTS.map((name) => ({ cohortId: deriveLegacyCohortId(name), name, teams: TEAM_COHORTS[name] || null, date: COHORT_DATES[name] || null }));
   const names = new Set(COHORTS);
-  const custom = (await getCustomCohorts()).filter((cohort) => cohort?.name && !names.has(cohort.name)).map((cohort) => ({ cohortId: COHORT_ID_PATTERN.test(cohort.cohortId || '') ? cohort.cohortId : deriveLegacyCohortId(cohort.name), name: cohort.name, teams: null, date: cohort.date || null }));
+  const custom = (await getCustomCohorts()).filter((cohort) => cohort?.name && !names.has(cohort.name)).map((cohort) => ({ cohortId: COHORT_ID_PATTERN.test(cohort.cohortId || '') ? cohort.cohortId : deriveLegacyCohortId(cohort.name), name: cohort.name, teams: null, date: cohort.date || null, createdAt: cohort.createdAt || null, updatedAt: cohort.updatedAt || null }));
   return [...base, ...custom];
 }
 
@@ -153,6 +153,55 @@ function sortGames(games, sort = 'latest') {
   return [...games].sort((a, b) => sort === 'likes'
     ? (b.likes - a.likes) || b.updatedAt.localeCompare(a.updatedAt)
     : b.updatedAt.localeCompare(a.updatedAt));
+}
+function toV2Cohort(cohort) {
+  const teamOptions = Array.isArray(cohort.teams) ? cohort.teams : [];
+  return {
+    cohortId: cohort.cohortId,
+    name: cohort.name,
+    dateLabel: cohort.date || null,
+    submissionMode: teamOptions.length ? 'team' : 'individual',
+    teamOptions,
+    status: 'active',
+    createdAt: cohort.createdAt || null,
+    updatedAt: cohort.updatedAt || null,
+  };
+}
+function toPublicV2Content(record, cohort, req) {
+  const domain = toDomainContent(record, { ownerKind: Array.isArray(cohort?.teams) ? 'team' : 'individual' });
+  return {
+    contentId: domain.contentId,
+    cohort: cohort ? { cohortId: cohort.cohortId, name: cohort.name, dateLabel: cohort.date || null } : null,
+    owner: domain.owner,
+    title: domain.title,
+    contentType: domain.contentType,
+    latestVersion: domain.latestVersion,
+    likes: domain.likes,
+    createdAt: domain.createdAt,
+    updatedAt: domain.updatedAt,
+    contentUrl: publicUrl(domain.latestObjectKey),
+    viewerUrl: viewerUrl(req, domain.contentId),
+  };
+}
+function sortV2Contents(contents, sort = 'latest') {
+  return [...contents].sort((a, b) => sort === 'likes'
+    ? (b.likes - a.likes) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+    : String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+}
+function validateV2CreateInput(body, file, cohorts) {
+  const selectedCohort = cohorts.find((cohort) => cohort.cohortId === body?.cohortId);
+  const category = categoryFromContentType(body?.contentType);
+  const result = validateUploadInput({
+    affiliation: selectedCohort?.name,
+    category,
+    name: body?.ownerName,
+    title: body?.title,
+    password: body?.password,
+    file,
+  }, cohorts.map((cohort) => cohort.name));
+  if (!selectedCohort) result.errors.unshift('등록된 수업(코호트)을 선택하세요.');
+  if (!category) result.errors.unshift('콘텐츠 유형을 선택하세요.');
+  return { ...result, selectedCohort, contentType: body?.contentType };
 }
 function validateFeedbackInput({ nickname, message }) {
   const trimmedNickname = typeof nickname === 'string' ? nickname.trim() : '';
@@ -403,6 +452,98 @@ function createApp() {
     }
   });
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
+  app.get('/api/v2/cohorts', async (_req, res, next) => {
+    try { return res.json({ cohorts: (await cohortOptions()).map(toV2Cohort) }); }
+    catch (error) { return next(error); }
+  });
+  app.get('/api/v2/contents', async (req, res, next) => {
+    const requestedType = typeof req.query.type === 'string' ? req.query.type : '';
+    const requestedCohortId = typeof req.query.cohortId === 'string' ? req.query.cohortId : '';
+    const sort = typeof req.query.sort === 'string' ? req.query.sort : 'latest';
+    if (requestedType && !categoryFromContentType(requestedType)) return res.status(400).json({ error: '지원하지 않는 콘텐츠 유형입니다.' });
+    if (!['latest', 'likes'].includes(sort)) return res.status(400).json({ error: '지원하지 않는 정렬 방식입니다.' });
+    try {
+      const cohorts = await cohortOptions();
+      const cohortById = new Map(cohorts.map((cohort) => [cohort.cohortId, cohort]));
+      if (requestedCohortId && !cohortById.has(requestedCohortId)) return res.status(400).json({ error: '등록된 코호트를 찾을 수 없습니다.' });
+      const contents = (await contentRepository.list())
+        .filter((content) => !requestedCohortId || content.cohortId === requestedCohortId)
+        .filter((content) => !requestedType || contentTypeFromCategory(content.category) === requestedType)
+        .map((content) => toPublicV2Content(content, cohortById.get(content.cohortId), req));
+      return res.json({ contents: sortV2Contents(contents, sort) });
+    } catch (error) { return next(error); }
+  });
+  app.get('/api/v2/contents/:contentId', async (req, res, next) => {
+    if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
+    try {
+      const [content, cohorts] = await Promise.all([contentRepository.getPublic(req.params.contentId), cohortOptions()]);
+      if (!content) return res.sendStatus(404);
+      const cohort = cohorts.find((item) => item.cohortId === content.cohortId);
+      return res.json({ content: toPublicV2Content(content, cohort, req) });
+    } catch (error) { return next(error); }
+  });
+  app.get('/api/v2/contents/:contentId/versions', async (req, res, next) => {
+    if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
+    try {
+      const content = await contentRepository.getPublic(req.params.contentId);
+      if (!content) return res.sendStatus(404);
+      const versions = Array.from({ length: content.latestVersion }, (_, index) => {
+        const version = index + 1;
+        return {
+          version,
+          isLatest: version === content.latestVersion,
+          uploadedAt: version === content.latestVersion ? content.updatedAt : (version === 1 ? content.createdAt2 : null),
+        };
+      });
+      return res.json({ versions });
+    } catch (error) { return next(error); }
+  });
+  app.post('/api/v2/contents', upload.single('file'), async (req, res, next) => {
+    try {
+      const cohorts = await cohortOptions();
+      const result = validateV2CreateInput(req.body, req.file, cohorts);
+      if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: [...new Set(result.errors)] });
+      const contentId = newContentId();
+      const version = 1;
+      const key = createVersionKey(contentId, version);
+      const uploadedAt = new Date().toISOString();
+      const item = {
+        contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
+        cohortId: result.selectedCohort.cohortId, name: result.name, title: result.title,
+        affiliation: result.affiliation, category: result.category,
+        ...hashPassword(req.body.password), latestVersion: version, latestKey: key, likes: 0,
+        createdAt2: uploadedAt, updatedAt: uploadedAt,
+      };
+      await storeObject(key, req.file.buffer, { contentid: contentId, title: encodeURIComponent(result.title), version: String(version) });
+      await contentRepository.create(item);
+      return res.status(201).json({ content: toPublicV2Content(item, result.selectedCohort, req) });
+    } catch (error) { return next(error); }
+  });
+  app.post('/api/v2/contents/:contentId/versions', upload.single('file'), async (req, res, next) => {
+    if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
+    try {
+      const [existing, cohorts] = await Promise.all([contentRepository.getPrivate(req.params.contentId), cohortOptions()]);
+      if (!existing) return res.sendStatus(404);
+      const result = validateUploadInput({
+        affiliation: existing.affiliation,
+        category: normalizeCategory(existing.category),
+        name: existing.name,
+        title: contentTitle(existing),
+        password: req.body.password,
+        file: req.file,
+      }, cohorts.map((cohort) => cohort.name));
+      if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
+      if (!verifyPassword(req.body.password, existing.passwordHash, existing.salt)) return res.status(403).json({ error: '소유 비밀번호가 맞지 않아요.' });
+      const version = existing.latestVersion + 1;
+      const key = createVersionKey(existing.contentId, version, { existingKey: existing.latestKey });
+      const uploadedAt = new Date().toISOString();
+      await storeObject(key, req.file.buffer, { contentid: existing.contentId, title: encodeURIComponent(result.title), version: String(version) });
+      await contentRepository.updateVersion(existing.contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
+      const updated = { ...existing, title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt };
+      const cohort = cohorts.find((item) => item.cohortId === existing.cohortId);
+      return res.status(201).json({ content: toPublicV2Content(updated, cohort, req) });
+    } catch (error) { return next(error); }
+  });
   app.get('/api/games', async (req, res, next) => {
     try {
       const sort = req.query.sort === 'likes' ? 'likes' : 'latest';

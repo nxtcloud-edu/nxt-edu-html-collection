@@ -86,7 +86,7 @@ test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버
   assert.match(admin, /\.edit-form \.admin-button\.primary\{justify-self:end;width:auto\}/);
 });
 
-test('콘텐츠 보기 페이지는 비밀번호 확인 후 새 파일을 /api/upload로 업데이트하는 모달을 제공한다', async () => {
+test('콘텐츠 보기 페이지는 비밀번호 확인 후 명시적 v2 버전 API를 호출한다', async () => {
   const view = await readFile(path.join(__dirname, '../public/view.html'), 'utf8');
   assert.equal(view.includes('innerHTML'), false);
   assert.match(view, /<button id="updateButton" type="button" hidden>파일 업데이트<\/button>/);
@@ -98,22 +98,36 @@ test('콘텐츠 보기 페이지는 비밀번호 확인 후 새 파일을 /api/u
   assert.match(view, /currentGame=game;updateButton\.hidden=false/);
   assert.match(view, /updateButton\.addEventListener\('click',\(\)=>\{updateForm\.reset\(\);updateStatus\.textContent='';updateModal\.showModal\(\)\}\)/);
   assert.match(view, /updateCancel\.addEventListener\('click',\(\)=>updateModal\.close\(\)\)/);
-  assert.match(view, /formData\.set\('affiliation',currentGame\.affiliation\)/);
   assert.match(view, /formData\.set\('password',updateForm\.password\.value\)/);
-  assert.match(view, /fetch\('\/api\/upload',\{method:'POST',body:formData\}\)/);
+  assert.match(view, /fetch\(`\/api\/v2\/contents\/\$\{contentId\}\/versions`,\{method:'POST',body:formData\}\)/);
+  assert.match(view, /fetch\(`\/api\/v2\/contents\/\$\{contentId\}`\)/);
+  assert.equal(view.includes("formData.set('affiliation'"), false);
   assert.match(view, /updateModal\.close\(\);window\.location\.reload\(\)/);
 });
 
-test('업로드 페이지와 코호트 페이지는 코호트 전달 및 성공 이동 계약을 유지한다', async () => {
-  const [upload, cohort] = await Promise.all(['upload.html', 'cohort.html'].map((file) => readFile(path.join(__dirname, '../public', file), 'utf8')));
-  assert.match(upload, /new URLSearchParams\(location\.search\)\.get\('c'\)/);
-  assert.match(upload, /affiliation\.value = requestedCohort/);
+test('업로드·갤러리·코호트 페이지는 v2 조회와 명시적 생성·버전 흐름을 사용한다', async () => {
+  const [upload, cohort, index] = await Promise.all(['upload.html', 'cohort.html', 'index.html'].map((file) => readFile(path.join(__dirname, '../public', file), 'utf8')));
+  assert.match(upload, /id="createModeButton"[^>]*>새 콘텐츠 만들기<\/button>/);
+  assert.match(upload, /id="versionModeButton"[^>]*>기존 콘텐츠 새 버전<\/button>/);
+  assert.match(upload, /id="createForm"/);
+  assert.match(upload, /id="versionForm" hidden/);
+  assert.match(upload, /fetch\('\/api\/v2\/cohorts'\)/);
+  assert.match(upload, /fetch\('\/api\/v2\/contents', \{ method: 'POST'/);
+  assert.match(upload, /fetch\(`\/api\/v2\/contents\/\$\{contentId\}\/versions`/);
+  assert.match(upload, /const requestedCohortId = params\.get\('cohortId'\)/);
+  assert.match(upload, /const requestedCohortName = params\.get\('c'\)/);
+  assert.match(upload, /cohortId\.value = requested\.cohortId/);
   assert.match(upload, /updateNameField\(\)/);
-  assert.match(upload, /if \(!data\.url\) throw new Error/);
-  assert.match(upload, /window\.location\.assign\(data\.url\)/);
+  assert.match(upload, /if \(!data\.content\?\.viewerUrl\) throw new Error/);
+  assert.match(upload, /window\.location\.assign\(data\.content\.viewerUrl\)/);
   assert.equal(upload.includes('URL 복사'), false);
   assert.match(cohort, /<a class="upload-link" id="uploadLink" href="upload\.html">내 콘텐츠 업로드<\/a>/);
-  assert.match(cohort, /uploadLink\.href='upload\.html\?c='\+encodeURIComponent\(cohort\)/);
+  assert.match(cohort, /fetch\('\/api\/v2\/cohorts'\)/);
+  assert.match(cohort, /fetch\(`\/api\/v2\/contents\?\$\{query\}`\)/);
+  assert.match(cohort, /uploadLink\.href='upload\.html\?cohortId='/);
+  assert.match(index, /fetch\('\/api\/v2\/cohorts'\)/);
+  assert.match(index, /fetch\('\/api\/v2\/contents'\)/);
+  assert.equal(index.includes("fetch('/api/games')"), false);
 });
 
 test('콘텐츠 보기 페이지의 추천 버튼과 갤러리 링크는 브라우저 기본 스타일이 아니라 앱 테마 스타일을 갖는다', async () => {

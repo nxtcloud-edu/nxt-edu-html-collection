@@ -28,11 +28,19 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 ## API
 
 - `GET /api/health` → `{ "ok": true }`
+- `GET /api/v2/cohorts` → 불변 `cohortId`, 제출 방식과 팀 선택지를 포함한 코호트 목록
+- `GET /api/v2/contents` → `cohortId`, `type`, `sort` 필터를 지원하는 정규화 콘텐츠 목록
+- `GET /api/v2/contents/:contentId` → 비공개 저장 필드를 제외한 콘텐츠 상세
+- `GET /api/v2/contents/:contentId/versions` → 객체 키·해시를 제외한 공개 버전 번호 목록
+- `POST /api/v2/contents` → 항상 새 콘텐츠 생성
+- `POST /api/v2/contents/:contentId/versions` → 소유 비밀번호 확인 후 지정 콘텐츠에 새 버전 추가
 - `POST /api/upload` multipart 필드 `affiliation`, `category`, `name`, `title`, `password`, `file` → `201 { url, directUrl, contentId, title, version, uploadedAt }`
 - `GET /api/admin/cohort-overview?cohort={코호트명}` → 콘텐츠 수·유형·누적 버전·저장 키 방식·ZIP 준비 상태 (관리자 인증 필요, `cohort` 생략 시 전체)
 - `POST /api/admin/exports` JSON 필드 `cohort` → 해당 코호트 최신 HTML의 ZIP 생성 결과 (관리자 인증 필요)
 - `GET /api/admin/exports/:exportId/download` → 로컬 모드에서 생성한 ZIP 다운로드 (관리자 인증 필요)
 - 파일은 `.html`만 허용하며 최대 1MB, 소속·이름은 trim 후 각각 1~40자입니다.
+
+학생 업로드 화면은 “새 콘텐츠 만들기”와 “기존 콘텐츠 새 버전”을 분리합니다. 새 콘텐츠는 같은 이름·제목이 있어도 새 ID로 생성하며, 버전 추가는 콘텐츠 ID와 소유 비밀번호를 명시해야 합니다. 기존 `/api/games`, `/api/content`, `/api/upload`는 호환 경로로 유지합니다.
 
 ## 테스트
 

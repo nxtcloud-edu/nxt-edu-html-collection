@@ -13,6 +13,7 @@
 - 개편 Phase 5에서 신규 `contents/*` 쓰기와 레거시 `games/*` prefix 고정, 이중 키 조회·ZIP·삭제, S3/IAM 권한을 구현·배포했다. 전체 테스트 73/73, Terraform apply 0 add·3 change·0 destroy, 최종 plan no changes다.
 - 배포 후 health 200, 공개 API 콘텐츠 283개·cohortId 누락 0·기존 `games/*` 키 283개를 확인했다. 인앱 브라우저에서 갤러리 283개와 관리자 로그인 화면을 확인했다.
 - Phase 5 운영 E2E에서 테스트 콘텐츠 `0ba6f272`를 `contents/*` v1·v2로 생성하고 최신 포인터·관리자 목록·12개 ZIP 포함을 확인한 뒤 삭제했다. S3 두 객체 404와 기존 283개 원복을 확인했다.
+- Phase 6에서 v2 코호트·콘텐츠 조회, 항상 신규 생성, contentId 기반 버전 추가 API를 구현하고 공개 화면을 전환했다. 전체 테스트 75/75, Terraform plan 0 add·1 change·0 destroy이며 미배포다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -21,6 +22,6 @@
 - 브라우저 자동 검증에서는 로그아웃 상태였지만, 이후 사용자가 운영 환경에서 실제 ZIP 다운로드를 직접 검증했다고 확인했다.
 
 ## Next safe action
-1. Phase 5 구현·배포·운영 E2E가 완료됐다.
-2. 다음 단계는 Phase 6 v2 공개 조회·신규 생성·명시적 버전 추가 API와 학생·갤러리 UX 전환이다.
-3. 기존 S3 객체 복사·삭제는 Phase 7 이후이며 Phase 5에서도 수행하지 않았다.
+1. Phase 6 구현은 완료됐으며 Lambda 코드 1건 in-place 배포와 운영 읽기·UI 확인이 남았다.
+2. 운영에서 신규 콘텐츠를 실제 생성하는 쓰기 검증은 별도 테스트 데이터와 삭제 확인 절차로 분리한다.
+3. 기존 S3 객체 복사·삭제는 Phase 7 이후이며 Phase 6에는 포함하지 않는다.
