@@ -2288,3 +2288,27 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - `6267c94 docs: 코호트 운영 기능 배포 상태 기록` 커밋.
 - `git push origin main` — `eb98a32..6267c94`, 기존 로컬 20커밋과 이번 2커밋을 origin/main에 push 완료.
 - 최종 상태 기록 커밋·push 후 clean/sync를 확인하고 전체 계획 재검토로 전환한다.
+
+## 2026-08-21 12:42 KST — Codex — 개편 Phase 1 데이터·API 계약 확정
+
+### Intent
+- 전체 개편을 순차 진행하라는 사용자 지시에 따라 운영 데이터를 건드리지 않는 1단계 데이터 모델·API 계약부터 확정한다.
+
+### Files changed
+- `docs/planning/CONTENT_MODEL_V2.md` — 현재 부채, Cohort·Content·ContentVersion 목표 모델, v2 API, 레거시 adapter, S3·DynamoDB 마이그레이션 불변조건과 Gate A~G.
+- `docs/planning/REFACTOR_ROADMAP.md` — Phase 0~11 순서, 데이터 영향과 완료 기준.
+- `docs/planning/DECISIONS.md` — 불변 cohortId, ID 중심 S3 키, 생성/버전 API 분리, 복사·해시 검증·fallback 결정.
+- `CURRENT_STATE.md`, `HANDOFF.md`, 본 TURN_LOG — Phase 1 상태 기록.
+
+### Commands / verification
+- `git status`, CURRENT_STATE/HANDOFF, `DECISIONS.md`, registry/server/public/test의 현재 필드·API·키 계약을 조사.
+- `git diff --check` — pass.
+- 문서 heading·API·스토리지 키·삭제/fallback·Gate 항목 구조 검색 — 모두 존재 확인.
+- 앱 테스트, Terraform, AWS, 배포 — 실행 안 함. 문서 전용 단계이며 런타임 파일을 변경하지 않음.
+
+### Decisions / handoff
+- S3 키에는 변경 가능한 코호트명·제출자명·제목을 넣지 않고 `contents/{contentId}/v{version}.html`을 목표로 한다.
+- 사람용 파일명은 관리자 UI·ZIP·manifest에서 제공한다.
+- 다음 Phase 2는 순수 normalizer/repository 계약과 테스트만 추가하며 운영 데이터와 S3를 변경하지 않는다.
+- 커밋 전 첫 `git diff --check`는 문서 머리말 Markdown 강제 줄바꿈 공백 2건으로 실패했다. 일반 문단으로 수정 후 재검사 통과.
+- Phase 1을 `docs: 콘텐츠 플랫폼 v2 계약 확정` 단일 커밋으로 기록. 사용자 지시에 따라 이후에도 Phase별 검증 후 독립 커밋한다.
