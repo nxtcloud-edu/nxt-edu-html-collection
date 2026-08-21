@@ -2540,3 +2540,30 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - Phase 6 구현·배포·운영 읽기/UI 게이트를 통과했다.
 - 다음 Phase 7은 기존 객체를 건드리지 않는 inventory·검증 도구부터 시작한다.
+
+## 2026-08-21 16:15 KST — Codex — Phase 7 기존 S3 객체 복사 마이그레이션
+
+### Intent
+- 레지스트리에 등록된 기존 콘텐츠의 전 버전을 새 `contents/{contentId}/vN.html` 키로 무삭제 복사하고 size·SHA-256으로 전수 검증한다.
+
+### Files changed
+- `migrations/content-object-copy.js` — 기대 버전 대조, source/destination fingerprint, 콘텐츠 단위 차단·충돌·재실행 계획과 적용 로직.
+- `scripts/copy-legacy-content-objects.js`, `package.json` — 기본 dry-run, 명시적 apply 확인, 조건부 S3 생성, 보고서 출력 CLI.
+- `test/content-object-copy.test.js` — 정상 복사·재실행·누락·추가·충돌·orphan·CLI 게이트 테스트.
+- README·v2 계약·로드맵과 협업 상태 문서 — Phase 7 운영 결과와 Phase 8 경계 최신화.
+
+### Commands / verification
+- 집중 `node --test test/content-object-copy.test.js` — 4/4 pass.
+- 전체 `npm test` — 79/79 pass.
+- 운영 dry-run — 콘텐츠 283개, 기대·pending 버전 396개, 51,552,665 bytes, blocked·conflict 0, 무버전 orphan 2개 식별.
+- orphan 2개 `head-object` — 과거 HTML 무버전 키임을 확인. 레지스트리 연결 근거가 없어 복사·삭제하지 않음.
+- 운영 apply — 콘텐츠 283/283 성공, 객체 396개 복사, 실패 0. 목적지는 `If-None-Match: *` 조건부 생성.
+- apply 직후 및 독립 재 dry-run — verified 283개 콘텐츠·396개 버전, pending·blocked·conflict 0, size·SHA-256 전수 일치.
+- S3 prefix inventory — 원본 `games/*` 398개·51,558,328 bytes 유지, 목적지 `contents/*` 396개·51,552,665 bytes.
+- 레지스트리 포인터 변경, 원본 이동·덮어쓰기·삭제, Terraform 배포, 브라우저 검증 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에서 스크립트를 찾지 못해 실행 안 함.
+
+### Decisions / handoff
+- 등록 레코드와 기대 버전 계약이 일치하는 396개만 복사했다. 무버전 orphan 2개는 추정 매핑하지 않고 원본에 보존한다.
+- Phase 7은 복사본 준비까지만 완료했다. 서비스 읽기와 레지스트리 포인터는 계속 `games/*`를 사용하므로 사용자 동작은 바뀌지 않는다.
+- 다음 Phase 8에서 검증 완료 콘텐츠만 새 키 우선·레거시 fallback으로 전환한다. 삭제는 Phase 11 별도 승인 사항이다.

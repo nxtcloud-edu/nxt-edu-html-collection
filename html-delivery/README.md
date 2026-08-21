@@ -68,4 +68,20 @@ Phase 5 신규 저장 경로는 2026-08-21 운영에 배포했습니다. 기존 
 
 Phase 6 v2 API와 학생·갤러리 화면도 2026-08-21 운영에 배포했습니다. 운영 v2 목록 283개와 레거시 목록 283개가 일치하며, 새 업로드 화면은 자동 identity 병합 없이 생성과 버전 추가를 분리합니다.
 
+## 레거시 콘텐츠 객체 복사
+
+기본 실행은 S3를 변경하지 않는 dry-run입니다. 레지스트리의 기대 버전 수와 `games/*` 원본을 대조하고, 각 원본과 기존 `contents/*` 목적지의 size·SHA-256을 계산합니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run migrate:content-objects -- --summary-only
+```
+
+`blocked: 0`, `conflicts: 0`을 확인한 뒤에만 복사합니다. apply는 확인 문자열이 필요하고, 목적지는 조건부 생성해 기존 객체를 덮어쓰지 않습니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run migrate:content-objects -- --apply --confirm=COPY_LEGACY_CONTENTS --summary-only
+```
+
+2026-08-21 운영에서 등록 콘텐츠 283개의 396개 버전을 복사했고 재 dry-run 결과 `verifiedCopies: 396`, `pendingCopies: 0`, `blocked: 0`, `conflicts: 0`입니다. 레지스트리에 연결되지 않은 과거 무버전 객체 2개는 복사하지 않았고 원본 `games/*` 전체는 삭제·변경하지 않았습니다. 최신 포인터 전환은 Phase 8의 별도 작업입니다.
+
 `npm test`는 실 S3 호출, Lambda 배포, 버킷 생성이나 AWS CLI 실행을 수행하지 않습니다.
