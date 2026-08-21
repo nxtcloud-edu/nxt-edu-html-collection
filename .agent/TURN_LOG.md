@@ -2210,3 +2210,75 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ## 2026-07-17 01:05 KST — Claude (Verifier) — WO-032 배포 완료
 - `terraform plan` 0/1/0 → 사용자 명시 승인 후 `apply`(Lambda 갱신). 프로덕션 정적 실측: cohort.html upload-link·`upload.html?c=`, upload.html `location.assign`·`URLSearchParams` 존재, 홈/코호트/업로드 200. WO-032 완료·라이브.
+
+## 2026-08-21 11:54 KST — Codex — 관리자 코호트 ZIP 다운로드 직접 구현
+
+### Intent
+- 사용자 요청에 따라 별도 Hermes 세션·워크오더 없이 현재 워크트리에서 관리자 코호트별 파일 다운로드 기능을 직접 구현한다.
+- 기존 S3 객체명은 바꾸지 않고, 다운로드 ZIP 안에서만 코호트·이름/팀명·제목·버전을 식별 가능하게 만든다.
+
+### Files changed
+- `html-delivery/cohort-export.js`(신규), `server.js`, `public/admin.html`, `package.json`, `package-lock.json`, `.gitignore` — ZIP 스트리밍 생성, 관리자 API·UI, 로컬/운영 다운로드 경로와 의존성.
+- `html-delivery/test/cohort-export.test.js`(신규), `test/admin-api.test.js`, `test/admin-ui.test.js` — 파일명·manifest·인증·빈 코호트·최신 버전·UI 계약 검증.
+- `infra/main.tf` — `games/*`만 공개, 비공개 `exports/*` 권한·1일 만료, Lambda 512MB/60초, CloudFront origin timeout 60초.
+- `html-delivery/README.md`, `infra/README.md` — 관리자 export 및 현재 인프라 계약 문서화.
+- `CURRENT_STATE.md`, `HANDOFF.md`, 본 TURN_LOG — 현재 직접 작업 상태 기록.
+- 작업 시작 전부터 수정되어 있던 `registry.js`, `admin.html`, `server.js`, 관리자 테스트의 코호트 이름 변경 작업과 비추적 `.zed/`는 보존했다.
+
+### Commands / verification
+- 관련 앱·Terraform·관리자 코드, 기존 테스트, 상태 저널과 git diff를 조사했다.
+- `npm install` — ZIP/AWS upload·presigner와 테스트 ZIP reader 설치, 취약점 0개.
+- 관련 테스트 중 `archiver` v8 생성자 사용 오류와 로컬 dot-directory 다운로드 오류를 발견해 수정했다.
+- `node --test test/cohort-export.test.js test/admin-api.test.js test/admin-ui.test.js` — 24/24 pass.
+- `npm test` — 55/55 pass.
+- 마지막 오류 정리 보강 후 `node --test test/cohort-export.test.js test/admin-api.test.js` — 16/16 pass.
+- `terraform fmt -check main.tf` — pass. 전체 `terraform -chdir=infra fmt -check`는 기존 `terraform.tfvars` 포맷 때문에 실패했으며 해당 파일은 수정하지 않았다.
+- `terraform -chdir=infra validate` — pass.
+- `git diff --check` — pass.
+- 커밋, push, Terraform plan/apply, AWS 변경, 프로덕션 배포·실측 — 실행 안 함.
+
+### Decisions / assumptions
+- 코호트당 콘텐츠 하나의 최신 버전만 ZIP에 포함한다.
+- 파일명은 `순번_이름(또는 팀명)_제목_v버전.html`, 원본 키·ID·뷰어 URL은 CSV/JSON manifest에 보존한다.
+- 운영 export는 기존 단일 버킷의 비공개 `exports/`를 사용하고 15분 서명 URL로 다운로드시키며 1일 뒤 만료한다.
+- 기존 `games/<id>-vN.html` 객체와 레지스트리 데이터는 변경하지 않는다.
+
+### Handoff
+- 로컬 구현·정적 검증 완료, 커밋·배포 전 상태다. 운영 반영은 사용자 명시 승인 후 plan 검토부터 진행한다.
+
+## 2026-08-21 12:22 KST — Codex — 코호트 ZIP 기능 배포 및 Node 20 장애 복구
+
+### Intent
+- 사용자 명시 요청에 따라 검증된 코호트 ZIP 기능을 AWS 운영 환경에 배포하고 프로덕션을 실측한다.
+
+### Commands / verification
+- `terraform plan -out=/tmp/nxt-edu-cohort-export.tfplan` — 1 add, 4 change, 0 destroy. exports 수명주기 생성, S3 정책·IAM·Lambda·CloudFront 인플레이스 변경만 확인.
+- 저장 plan `terraform apply` — 1 added, 4 changed, 0 destroyed.
+- 첫 프로덕션 실측에서 health/admin/export/games 전부 502 발견. 서울 리전 CloudWatch 로그에서 Lambda Node 20의 `require()` → ESM `archiver` 로딩 실패 확인.
+- `cohort-export.js`를 ZIP 생성 시 동적 `import('archiver')`하도록 수정.
+- `npm test` — 55/55 pass. Lambda 모듈 로드 + ESM import 구조 확인 pass.
+- 수정 plan — Lambda 코드 1 change only, 0 destroy. apply — 1 changed.
+- 재배포 실측: CloudFront health 200 `{"ok":true}`, Lambda Function URL health 200, `/api/games` 200·283개, `/api/admin/exports` 미인증 401.
+- `/admin.html` 200, `openExportButton`·`/api/admin/exports`·기존 코호트 이름 변경 버튼 포함 확인. 인앱 브라우저에서 관리자 로그인 화면 정상 렌더링 확인.
+- 최종 `terraform plan -detailed-exitcode` — no changes.
+- 브라우저 세션이 로그아웃 상태여서 관리자 자격정보 입력 및 실제 운영 ZIP 생성은 실행 안 함.
+- 커밋·push — 실행 안 함.
+
+### Decisions / handoff
+- 장애는 배포 직후 발견해 같은 턴에 복구했으며 현재 공개 서비스는 정상이다.
+- 실제 S3 ZIP 생성·presigned 다운로드는 운영자 로그인 상태에서 1회 실측이 남아 있다.
+
+## 2026-08-21 12:31 KST — Codex — 변경 정리 및 push 준비
+
+### Intent
+- 사용자 요청에 따라 배포된 변경을 커밋·push하고 작업 트리를 깨끗한 상태로 만든다.
+
+### Commands / verification
+- 변경 범위와 `.zed/debug.json`을 확인. 빈 편집기 로컬 설정은 `.zed/` ignore로 처리.
+- 코호트 이름 변경과 ZIP 다운로드가 동일 파일·hunk에서 결합돼 독립 중간 상태가 되지 않으므로 하나의 관리자 코호트 운영 기능으로 정리.
+- 커밋 전 `npm test` — 55/55 pass, `terraform -chdir=infra validate` — pass, `git diff --check` — pass.
+- 제품·인프라·테스트·README를 `724bc70 feat: 관리자 코호트 운영 기능 확장`으로 커밋.
+- 사용자가 프로덕션 실제 ZIP 다운로드를 직접 검증했다고 확인.
+
+### Handoff
+- 협업 저널을 별도 docs 커밋한 뒤 main push와 clean 상태 확인 예정.

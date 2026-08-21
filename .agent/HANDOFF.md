@@ -1,30 +1,18 @@
 # Handoff
 
 ## Current handoff summary
-WO-030·WO-031 완료·배포. WO-032(업로드 흐름 개선)은 검증(npm test 46/46 + Chrome 실측 + curl API)·main ff 머지 완료 — **프로덕션 배포만 사용자 명시 승인 대기**. 진행 중 WO 없음, 코더 워크트리 `hermes/idle` 파킹.
+- 사용자 지시로 Hermes/워크오더 없이 Codex가 현재 main 워크트리에서 직접 구현했다.
+- 관리자 화면에 코호트 ZIP 다운로드를 추가했다. 선택 코호트의 각 콘텐츠 최신 HTML과 CSV/JSON manifest를 포함한다.
+- 로컬 모드는 인증된 앱 다운로드 경로, 운영은 비공개 S3 `exports/` + 15분 presigned URL을 사용한다. 기존 `games/` 객체는 변경하지 않는다.
+- 배포 직후 Lambda Node 20에서 `archiver` CommonJS require가 실패해 전 경로 502가 발생했다. 동적 `import()`로 수정하고 즉시 재배포해 복구했다.
+- 수정 후 `npm test` 55/55. 프로덕션 health 200, games 283개, admin.html ZIP UI 반영, 미인증 export 401, 최종 Terraform plan no changes. 커밋·push는 실행하지 않았다.
 
-## WO-032 구현 결과 (Coder = Hermes, 검증 대기)
-1. `upload.html`: 업로드 성공(`data.url`) 시 `window.location.assign(data.url)`로 뷰어 즉시 이동(링크/복사 성공 UI 제거). `?c=` 코호트 미리 선택(loadOptions 후 URLSearchParams). 오류 경로 그대로.
-2. `cohort.html`: nav `.site-tools`에 `<a class="upload-link" id="uploadLink" href="upload.html">내 콘텐츠 업로드</a>`, 스크립트에서 `uploadLink.href='upload.html?c='+encodeURIComponent(cohort)`. `.upload-link`는 theme.css 공유.
-3. `registry.js`: `findByIdentity`에 `&& item.title === title` 추가(destructure title). → 같은 이름+다른 제목=새 콘텐츠, 같은 제목=버전업(비번). **server.js 불변**(result에 title 이미 포함).
-4. `admin-api.test.js`에 같은 name+다른 title=새 contentId(v1) / 같은 name+같은 title+맞는 비번=v2 / 틀린 비번=403 회귀를 추가했고, `admin-ui.test.js`에 URL 이동·코호트 전달 구조 단언을 추가. `npm test` 46/46 통과.
-- 범위: registry.js + upload.html + cohort.html + 테스트. innerHTML·외부 라이브러리 금지.
+## Collision risks / boundaries
+- 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
+- `.zed/`는 기존 비추적 파일이며 수정하지 않았다.
+- 버킷 공개 정책은 `games/*`로 좁혀졌고 `exports/*`는 비공개다.
+- 브라우저 자동 검증에서는 로그아웃 상태였지만, 이후 사용자가 운영 환경에서 실제 ZIP 다운로드를 직접 검증했다고 확인했다.
 
-## Verification 계획 (Verifier = Claude)
-1. diff 범위(위 파일만), server.js 불변 확인.
-2. `cd html-delivery && npm test` 전체 그린.
-3. Chrome DRY_RUN: 코호트 페이지 업로드 버튼→upload.html 코호트 선택됨 / 업로드 성공→뷰어 이동 / 같은 이름 다른 제목 업로드→새 콘텐츠 생성.
-4. 통과 시 머지 → 사용자 명시 승인 후 배포(프로덕션 배포는 매번 승인 필요).
-
-## Collision risks / 금지 (상시)
-- push·main 머지·terraform·aws·배포는 Coder 금지(검증자 전담). **프로덕션 배포는 사용자 명시 승인 필요**(auto-mode 게이트).
-- 계정 생성·비밀번호 입력은 Claude 직접 불가.
-- 브라우저 검증 과잉 루프 금지(WO-023): 코더는 npm test 그린 + 구조 단언까지. 시각 확인은 검증자.
-
-## 사용자 대기 액션 (WO-031 후속)
-- karin.kim/ella.kim은 admin.html → env admin 로그인 → `관리자 추가`로 직접 추가(초기 비번 설정).
-
-## 운영 메모 (세션 함정)
-- Hermes: 세션 중 파일 갱신 시 구모듈 캐시 초기화 실패 → `/quit` 후 `hermes` 재기동. 사용량 한도(429)면 모델/플랜 조치.
-- 완료 감지: TURN_LOG 커밋 + 세션 `Ctrl+C cancel` 소멸 + 워킹트리 지문 무변화로 판정(편집 중 오탐 방지).
-- tmux `grep "❯"` 멀티바이트 실패 — 직접 입력 후 캡처. Chrome은 좌표 스케일 불일치 → ref 기반 form_input/click.
+## Next safe action
+1. 제품 커밋 `724bc70`과 후속 저널 커밋을 origin/main에 push하고 clean 상태를 확인한다.
+2. 깨끗한 기준점에서 전체 앱 분석·개편 계획을 다시 검토한다.
