@@ -2442,3 +2442,30 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 키의 contentId·latestVersion이 레코드와 다르면 삭제나 버전 추가를 중단해 잘못된 객체 조작을 막는다.
 - Phase 5 배포 전에는 Phase 6 학생·갤러리 v2 API 전환을 시작하지 않는다.
 - Phase 5 구현을 `feat: 신규 콘텐츠 저장 경로 전환` 독립 커밋으로 기록했다. push·배포·운영 업로드는 실행하지 않았다.
+
+## 2026-08-21 14:04 KST — Codex — Phase 5 push·배포·브라우저 검증
+
+### Intent
+- Phase 5 구현 커밋을 push하고 검토된 Terraform 변경을 운영에 배포한 뒤 API와 인앱 브라우저 우측 패널에서 회귀를 확인한다.
+
+### Files changed
+- README·v2 계약·개편 로드맵 — Phase 5 운영 반영과 검증 경계 기록.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 배포 상태와 다음 안전 작업 갱신.
+
+### Commands / verification
+- `git push origin main` — `6481716..d01ed3c`, Phase 5 구현 커밋 push 완료.
+- `terraform -chdir=infra validate` — pass.
+- 저장 plan 검토 — S3 공개 정책·Lambda IAM·Lambda 코드 3개 in-place, 0 add·3 change·0 destroy.
+- `terraform -chdir=infra apply /tmp/nxt-edu-phase5.tfplan` — 0 add·3 change·0 destroy, 오류 없음.
+- 배포 후 `GET /api/health` — `{"ok":true}`.
+- 공개 `/api/games` — 콘텐츠 283개, cohortId 누락 0, 기존 `games/*` 키 283개, `contents/*` 키 0개.
+- 인앱 브라우저 우측 패널 — 갤러리 283개, 웹페이지·미니게임 필터, 29페이지 페이징 렌더링 확인. 관리자 화면은 로그인 전 상태까지 확인.
+- 최종 `terraform plan -detailed-exitcode` — no changes.
+- 운영 신규 콘텐츠 생성·버전 추가·ZIP·삭제, 기존 S3 객체 복사·이동·삭제 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에서 스크립트를 찾지 못해 실행 안 함.
+
+### Decisions / handoff
+- Phase 5 인프라와 코드 배포는 완료했다. 기존 283개 레코드와 S3 키는 변경하지 않았다.
+- 신규 `contents/*` 실제 쓰기 E2E는 별도 테스트 데이터를 생성·삭제하는 운영 변이이므로 이번 읽기 중심 브라우저 검증에는 포함하지 않았다.
+- Phase 6 시작 전 테스트 콘텐츠 1건의 생성·버전 추가·ZIP·삭제 E2E를 완료한다.
+- Phase 5 배포 상태를 `docs: Phase 5 운영 배포 상태 기록` 문서 전용 커밋으로 기록하고 origin/main에 push한다.

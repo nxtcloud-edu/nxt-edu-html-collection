@@ -254,4 +254,6 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - `latestKey`의 contentId·버전이 레코드와 다르거나 지원하지 않는 키면 쓰기·삭제를 중단한다.
 - 뷰어, 관리자 현황, ZIP manifest와 삭제는 `games/*`와 `contents/*`를 모두 처리한다.
 - 버킷 공개 읽기와 Lambda 관리 권한에 `contents/*`를 추가하고 `exports/*`는 계속 비공개로 유지한다.
-- 전체 테스트 73/73, Terraform validate 통과. 배포 plan은 0 add·3 change·0 destroy이며 운영 apply는 실행하지 않았다.
+- 전체 테스트 73/73, Terraform validate 통과. 2026-08-21 배포는 S3 공개 정책·Lambda IAM·Lambda 코드 3개를 in-place 변경했고 최종 plan은 no changes다.
+- 배포 후 health 200, 공개 API 콘텐츠 283개·`cohortId` 누락 0·기존 `games/*` 키 283개를 확인했다. 기존 S3 객체는 복사·이동·삭제하지 않았다.
+- 인앱 브라우저에서 갤러리의 283개 콘텐츠, 웹페이지·미니게임 필터, 29페이지 페이징과 관리자 로그인 화면을 확인했다. 운영 신규 콘텐츠 생성·버전 추가·ZIP·삭제 E2E는 별도 테스트 데이터로 수행한다.
