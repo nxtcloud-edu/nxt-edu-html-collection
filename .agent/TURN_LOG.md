@@ -2612,3 +2612,15 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 레지스트리 `latestKey`는 rollback 가능한 fallback으로 유지하고 `latestObjectKey`만 additive 추가한다.
 - 포인터 적용 전 런타임을 먼저 배포해 전환 순간의 API·export·후속 버전 쓰기 호환을 보장했다.
 - 다음 Phase 9은 비동기 export·모니터링이며 Phase 11 삭제는 별도 승인 사항이다.
+
+## 2026-08-21 16:36 KST — Codex — Phase 8 커밋·배포 최종 정리
+
+### Commands / verification
+- `git commit` — `e08999e docs: Phase 8 운영 전환 결과 기록`; origin/main push 완료.
+- Lambda archive에서 `README.md`, `migrations/` 제외 후 저장 plan 0 add·1 in-place·0 destroy, apply 성공.
+- 최종 `terraform plan -detailed-exitcode` — exit 0, no changes.
+- 최종 health — `{"ok":true}`. v2 콘텐츠 283개 모두 `contents/*` URL 유지.
+
+### Decisions / handoff
+- Phase 8 구현·운영 포인터 전환·문서·push·배포가 모두 완료됐다.
+- 다음 단계는 Phase 9이며 시작하지 않았다.

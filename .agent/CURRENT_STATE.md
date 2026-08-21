@@ -7,10 +7,10 @@ Updated: 2026-08-21 16:33 KST
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 8 구현 커밋 `224dc90`을 origin/main에 push 완료. 운영 기록 커밋 전.
-- Worktree: Phase 8 문서·배포 번들 제외 목록·협업 저널 수정 중.
+- Branch: `main`, Phase 8 구현·운영 기록을 origin/main에 push 완료.
+- Worktree: Phase 8 최종 상태 기록 후 clean.
 - Tests: Phase 8 전체 `npm test` 직렬 실행 85/85.
-- Terraform: Phase 8 Lambda 코드 1건 in-place apply, 0 add·1 change·0 destroy. 문서 반영 후 최종 plan 예정.
+- Terraform: Phase 8 Lambda 코드와 정리된 번들을 in-place apply. 최종 plan no changes.
 - Prod: 283개 모두 `contents/*` 우선 포인터와 `games/*` fallback을 함께 보유. v2·레거시 API는 새 URL 283개를 반환하고 실제 iframe 렌더링 확인.
 - User verification: 사용자가 운영 환경에서 실제 코호트 ZIP 다운로드를 직접 검증했다고 확인.
 
