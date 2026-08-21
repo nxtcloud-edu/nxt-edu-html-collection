@@ -2518,3 +2518,25 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - v2 공개 DTO는 소유권 비밀과 내부 저장 키를 제외하고 cohort 요약·owner·contentType·viewer/content URL만 제공한다.
 - 새 콘텐츠는 같은 메타데이터가 있어도 새 ID를 만들고, 새 버전은 contentId와 비밀번호를 명시한다.
 - 레거시 API와 `/view.html?id=` 공유 URL은 호환 기간 동안 유지한다.
+
+## 2026-08-21 15:10 KST — Codex — Phase 6 push·배포·운영 확인
+
+### Intent
+- Phase 6 독립 커밋을 push하고 Lambda 1건짜리 plan을 배포한 뒤 v2·레거시 운영 계약과 공개 화면을 확인한다.
+
+### Commands / verification
+- `git commit` — `1bf5364 feat: v2 콘텐츠 API와 업로드 흐름 전환`.
+- `git push origin main` — `dfc9431..1bf5364`.
+- 저장 plan `/tmp/nxt-edu-phase6.tfplan` apply — Lambda 1 changed, 0 add·0 destroy.
+- 운영 health — `{"ok":true}`.
+- `/api/v2/cohorts` — 15개, 잘못된 cohortId 0, 팀 코호트 4개.
+- `/api/v2/contents` — 283개, 게임 182·웹 101, 코호트 누락 0, 공개 DTO 민감 필드 노출 0.
+- 레거시 `/api/games` — 283개, 기존 `games/*` 키 283개.
+- 운영 인앱 브라우저 — 갤러리 283개와 새 콘텐츠·기존 콘텐츠 새 버전 탭 렌더링 확인.
+- 저장 plan 이후 README 변경으로 Lambda archive hash 1건 재발견. 최신 source plan `/tmp/nxt-edu-phase6-final.tfplan` 0 add·1 change·0 destroy를 재적용.
+- 최종 `terraform plan -detailed-exitcode` — no changes. 최종 health와 v2 283개 재확인.
+- 운영 신규 콘텐츠 쓰기, 기존 S3 객체 복사·이동·삭제 — 실행 안 함.
+
+### Decisions / handoff
+- Phase 6 구현·배포·운영 읽기/UI 게이트를 통과했다.
+- 다음 Phase 7은 기존 객체를 건드리지 않는 inventory·검증 도구부터 시작한다.

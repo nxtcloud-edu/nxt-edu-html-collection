@@ -265,4 +265,6 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - `POST /api/v2/contents`는 identity 자동 병합 없이 항상 새 콘텐츠를 만들고, `POST /api/v2/contents/:contentId/versions`는 contentId와 소유 비밀번호를 명시해야 한다.
 - 갤러리·코호트·상세 보기 화면은 v2 조회를 사용한다. 업로드 화면은 새 콘텐츠와 새 버전 흐름을 별도 탭으로 제공한다.
 - 기존 `/api/games`, `/api/content`, `/api/upload`, 공유 뷰어 URL은 호환 경로로 유지한다.
-- 전체 테스트 75/75, 로컬 브라우저에서 두 업로드 탭과 v2 갤러리 로딩을 확인했다. Terraform validate 통과, 배포 plan은 Lambda 1건 in-place로 0 add·1 change·0 destroy다.
+- 전체 테스트 75/75, 로컬 브라우저에서 두 업로드 탭과 v2 갤러리 로딩을 확인했다. Terraform validate 통과, Lambda 1건을 in-place 배포했고 최종 plan은 no changes다.
+- 운영 v2 API는 코호트 15개, 콘텐츠 283개(게임 182·웹 101), 코호트 누락·민감 필드 노출 0이다. 레거시 API 283개와 기존 `games/*` 키도 유지된다.
+- 운영 인앱 브라우저에서 갤러리 283개와 “새 콘텐츠 만들기 / 기존 콘텐츠 새 버전” 화면을 확인했다. 운영 쓰기 데이터는 추가하지 않았다.
