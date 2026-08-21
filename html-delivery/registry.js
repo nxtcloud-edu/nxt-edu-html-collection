@@ -233,8 +233,15 @@ async function saveRegistryItem(item) {
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 }
 
-function mergeVersionFields(item, { title, latestVersion, latestKey, updatedAt }) {
-  return { ...item, title, latestVersion, latestKey, updatedAt };
+function mergeVersionFields(item, { title, latestVersion, latestKey, latestObjectKey, updatedAt }) {
+  return {
+    ...item,
+    title,
+    latestVersion,
+    ...(latestKey ? { latestKey } : {}),
+    ...(latestObjectKey ? { latestObjectKey } : {}),
+    updatedAt,
+  };
 }
 
 function mergeAdminContentFields(item, fields) {
@@ -249,19 +256,55 @@ async function updateRegistryVersion(contentId, fields) {
     await writeLocalRegistry(registry);
     return true;
   }
+  const assignments = ['title = :title', 'latestVersion = :version', 'updatedAt = :updatedAt'];
+  const values = {
+    ':title': fields.title,
+    ':version': fields.latestVersion,
+    ':updatedAt': fields.updatedAt,
+  };
+  if (fields.latestKey) {
+    assignments.push('latestKey = :key');
+    values[':key'] = fields.latestKey;
+  }
+  if (fields.latestObjectKey) {
+    assignments.push('latestObjectKey = :objectKey');
+    values[':objectKey'] = fields.latestObjectKey;
+  }
   await documentClient().send(new UpdateCommand({
     TableName: TABLE_NAME,
     Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
-    UpdateExpression: 'SET title = :title, latestVersion = :version, latestKey = :key, updatedAt = :updatedAt',
-    ExpressionAttributeValues: {
-      ':title': fields.title,
-      ':version': fields.latestVersion,
-      ':key': fields.latestKey,
-      ':updatedAt': fields.updatedAt,
-    },
+    UpdateExpression: `SET ${assignments.join(', ')}`,
+    ExpressionAttributeValues: values,
     ConditionExpression: 'attribute_exists(contentKey)',
   }));
   return true;
+}
+
+async function setContentLatestObjectKey({ contentId, expectedLatestKey, latestObjectKey }) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    const item = registry[contentId];
+    if (!item || item.latestKey !== expectedLatestKey || (item.latestObjectKey && item.latestObjectKey !== latestObjectKey)) return false;
+    registry[contentId] = { ...item, latestObjectKey };
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  try {
+    await documentClient().send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      UpdateExpression: 'SET latestObjectKey = :latestObjectKey',
+      ExpressionAttributeValues: {
+        ':expectedLatestKey': expectedLatestKey,
+        ':latestObjectKey': latestObjectKey,
+      },
+      ConditionExpression: 'attribute_exists(contentKey) AND latestKey = :expectedLatestKey AND (attribute_not_exists(latestObjectKey) OR latestObjectKey = :expectedLatestKey OR latestObjectKey = :latestObjectKey)',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
 }
 
 async function updateContentPassword(contentId, credentials) {
@@ -366,4 +409,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, setContentLatestObjectKey, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

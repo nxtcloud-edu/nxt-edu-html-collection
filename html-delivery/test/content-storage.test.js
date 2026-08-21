@@ -2,10 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  allVersionKeysForContent,
+  contentReadKeys,
   createLegacyVersionKey,
   createV2VersionKey,
   createVersionKey,
   isValidContentKey,
+  preferredContentKey,
   storageSchemeForKey,
   versionKeysForContent,
 } = require('../domain/content-storage');
@@ -35,5 +38,29 @@ test('두 저장 키 계약을 검증하고 관리자 삭제 대상은 같은 pr
   assert.deepEqual(versionKeysForContent({ contentId, latestVersion: 2, latestKey: `contents/${contentId}/v2.html` }), [
     `contents/${contentId}/v1.html`,
     `contents/${contentId}/v2.html`,
+  ]);
+});
+
+test('새 포인터를 우선하고 레거시 fallback과 양쪽 삭제 대상을 보존한다', () => {
+  const contentId = '1234abcd';
+  const switched = {
+    contentId,
+    latestVersion: 3,
+    latestObjectKey: `contents/${contentId}/v3.html`,
+    latestKey: `games/${contentId}-v2.html`,
+  };
+  assert.deepEqual(contentReadKeys(switched), [switched.latestObjectKey, switched.latestKey]);
+  assert.equal(preferredContentKey(switched), switched.latestObjectKey);
+  assert.deepEqual(versionKeysForContent(switched), [
+    `contents/${contentId}/v1.html`,
+    `contents/${contentId}/v2.html`,
+    `contents/${contentId}/v3.html`,
+  ]);
+  assert.deepEqual(allVersionKeysForContent(switched), [
+    `contents/${contentId}/v1.html`,
+    `contents/${contentId}/v2.html`,
+    `contents/${contentId}/v3.html`,
+    `games/${contentId}-v1.html`,
+    `games/${contentId}-v2.html`,
   ]);
 });

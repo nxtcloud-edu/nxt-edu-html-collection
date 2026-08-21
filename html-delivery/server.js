@@ -10,7 +10,7 @@ const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
 const { COHORT_ID_PATTERN, deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
 const { categoryFromContentType, contentTypeFromCategory, normalizeLegacyCategory, toDomainContent } = require('./domain/content');
-const { CONTENT_KEY_PATTERN, createVersionKey, isValidContentKey, storageSchemeForKey, versionKeysForContent } = require('./domain/content-storage');
+const { CONTENT_KEY_PATTERN, allVersionKeysForContent, createVersionKey, isValidContentKey, preferredContentKey, storageSchemeForKey } = require('./domain/content-storage');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 const { createContentRepository } = require('./repositories/content-repository');
 
@@ -64,11 +64,25 @@ function normalizeContent(content) {
   return { ...content, category: normalizeCategory(content.category) };
 }
 
+function publicLegacyContent(content) {
+  const key = preferredContentKey(content);
+  const { latestObjectKey: _latestObjectKey, ...legacy } = content;
+  return { ...legacy, latestKey: key, contentUrl: publicUrl(key) };
+}
+
+function versionStorageFields(existing, key) {
+  const hasLegacyFallback = Boolean(existing.latestObjectKey
+    && existing.latestObjectKey !== existing.latestKey
+    && storageSchemeForKey(existing.latestKey) === 'legacy-games');
+  return hasLegacyFallback ? { latestObjectKey: key } : { latestKey: key, latestObjectKey: key };
+}
+
 function buildCohortOverview({ cohort = null, contents, appBaseUrl }) {
   const normalized = contents.map(normalizeContent).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
   const storage = { legacyGames: 0, v2Contents: 0, unknown: 0 };
   const overviewContents = normalized.map((content) => {
-    const storageScheme = storageSchemeForKey(content.latestKey);
+    const latestKey = preferredContentKey(content);
+    const storageScheme = storageSchemeForKey(latestKey);
     if (storageScheme === 'legacy-games') storage.legacyGames += 1;
     else if (storageScheme === 'v2-contents') storage.v2Contents += 1;
     else storage.unknown += 1;
@@ -78,7 +92,8 @@ function buildCohortOverview({ cohort = null, contents, appBaseUrl }) {
       name: content.name,
       category: content.category,
       latestVersion: content.latestVersion,
-      latestKey: content.latestKey,
+      latestKey,
+      fallbackKey: content.latestKey !== latestKey ? content.latestKey : null,
       storageScheme,
       updatedAt: content.updatedAt,
       viewerUrl: `${appBaseUrl.replace(/\/$/, '')}/view.html?id=${content.contentId}`,
@@ -357,7 +372,7 @@ function createApp() {
       if (!ok) return res.sendStatus(404);
       const content = await contentRepository.getPublic(req.params.contentId);
       auditAdminAction('update-content', req.params.contentId);
-      return res.json({ content: { ...normalizeContent(content), contentUrl: publicUrl(content.latestKey) } });
+      return res.json({ content: publicLegacyContent(normalizeContent(content)) });
     } catch (error) { return next(error); }
   });
   app.delete('/api/admin/content/:contentId', adminAuth.requireAdmin, async (req, res, next) => {
@@ -365,7 +380,7 @@ function createApp() {
     try {
       const existing = await contentRepository.getPrivate(req.params.contentId);
       if (!existing) return res.sendStatus(404);
-      await Promise.all(versionKeysForContent(existing).map(deleteStoredObject));
+      await Promise.all(allVersionKeysForContent(existing).map(deleteStoredObject));
       await deleteFeedbackForContent(req.params.contentId);
       await contentRepository.delete(req.params.contentId);
       auditAdminAction('delete-content', req.params.contentId);
@@ -511,7 +526,7 @@ function createApp() {
         contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
         cohortId: result.selectedCohort.cohortId, name: result.name, title: result.title,
         affiliation: result.affiliation, category: result.category,
-        ...hashPassword(req.body.password), latestVersion: version, latestKey: key, likes: 0,
+        ...hashPassword(req.body.password), latestVersion: version, latestKey: key, latestObjectKey: key, likes: 0,
         createdAt2: uploadedAt, updatedAt: uploadedAt,
       };
       await storeObject(key, req.file.buffer, { contentid: contentId, title: encodeURIComponent(result.title), version: String(version) });
@@ -535,11 +550,12 @@ function createApp() {
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
       if (!verifyPassword(req.body.password, existing.passwordHash, existing.salt)) return res.status(403).json({ error: '소유 비밀번호가 맞지 않아요.' });
       const version = existing.latestVersion + 1;
-      const key = createVersionKey(existing.contentId, version, { existingKey: existing.latestKey });
+      const key = createVersionKey(existing.contentId, version, { existingKey: preferredContentKey(existing) });
       const uploadedAt = new Date().toISOString();
+      const storageFields = versionStorageFields(existing, key);
       await storeObject(key, req.file.buffer, { contentid: existing.contentId, title: encodeURIComponent(result.title), version: String(version) });
-      await contentRepository.updateVersion(existing.contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
-      const updated = { ...existing, title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt };
+      await contentRepository.updateVersion(existing.contentId, { title: result.title, latestVersion: version, ...storageFields, updatedAt: uploadedAt });
+      const updated = { ...existing, title: result.title, latestVersion: version, ...storageFields, updatedAt: uploadedAt };
       const cohort = cohorts.find((item) => item.cohortId === existing.cohortId);
       return res.status(201).json({ content: toPublicV2Content(updated, cohort, req) });
     } catch (error) { return next(error); }
@@ -548,7 +564,7 @@ function createApp() {
     try {
       const sort = req.query.sort === 'likes' ? 'likes' : 'latest';
       const games = filterGames((await contentRepository.list()).map(normalizeContent), { cohort: req.query.cohort, category: req.query.category });
-      return res.json({ games: sortGames(games, sort).map((game) => ({ ...game, contentUrl: publicUrl(game.latestKey) })) });
+      return res.json({ games: sortGames(games, sort).map(publicLegacyContent) });
     } catch (error) { return next(error); }
   });
   app.get('/api/content', async (req, res, next) => {
@@ -556,7 +572,7 @@ function createApp() {
     try {
       const registered = await contentRepository.getPublic(req.query.id);
       const content = registered ? normalizeContent(registered) : null;
-      return content ? res.json({ content: { ...content, contentUrl: publicUrl(content.latestKey) } }) : res.sendStatus(404);
+      return content ? res.json({ content: publicLegacyContent(content) }) : res.sendStatus(404);
     }
     catch (error) { return next(error); }
   });
@@ -594,17 +610,18 @@ function createApp() {
       }
       const contentId = existing?.contentId || newContentId();
       const version = existing ? existing.latestVersion + 1 : 1;
-      const key = createVersionKey(contentId, version, { existingKey: existing?.latestKey });
+      const key = createVersionKey(contentId, version, { existingKey: existing ? preferredContentKey(existing) : undefined });
       const uploadedAt = new Date().toISOString();
+      const storageFields = existing ? versionStorageFields(existing, key) : { latestKey: key, latestObjectKey: key };
       const credentials = existing ? { passwordHash: existing.passwordHash, salt: existing.salt } : hashPassword(req.body.password);
       const item = {
         contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
         cohortId: selectedCohort.cohortId, name: result.name, title: result.title, affiliation: result.affiliation, category: result.category,
-        ...credentials, latestVersion: version, latestKey: key, likes: existing?.likes || 0,
+        ...credentials, latestVersion: version, ...storageFields, likes: existing?.likes || 0,
         createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
       };
       await storeObject(key, req.file.buffer, { contentid: contentId, title: encodeURIComponent(result.title), version: String(version) });
-      if (existing) await contentRepository.updateVersion(contentId, { title: result.title, latestVersion: version, latestKey: key, updatedAt: uploadedAt });
+      if (existing) await contentRepository.updateVersion(contentId, { title: result.title, latestVersion: version, ...storageFields, updatedAt: uploadedAt });
       else await contentRepository.create(item);
       return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, title: result.title, version, uploadedAt });
     } catch (error) { return next(error); }
@@ -629,4 +646,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildCohortOverview, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, storageSchemeForKey, validateAdminContentPatch, validateFeedbackInput, validateNewPassword, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildCohortOverview, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicLegacyContent, publicUrl, requestBaseUrl, sortGames, storageSchemeForKey, validateAdminContentPatch, validateFeedbackInput, validateNewPassword, validateUploadInput, versionStorageFields, viewerUrl };

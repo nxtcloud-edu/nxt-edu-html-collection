@@ -45,23 +45,46 @@ function createVersionKey(contentId, version, { existingKey } = {}) {
     : createV2VersionKey(contentId, version);
 }
 
-function versionKeysForContent({ contentId, latestVersion, latestKey }) {
-  const parts = contentKeyParts(latestKey);
-  if (!parts) throw new Error(`unsupported content key: ${latestKey}`);
-  if (parts.contentId !== contentId || parts.version !== latestVersion) throw new Error(`content key mismatch: ${contentId}`);
+function contentReadKeys({ latestObjectKey, latestKey }) {
+  return [...new Set([latestObjectKey, latestKey].filter(Boolean))];
+}
+
+function preferredContentKey(content) {
+  return contentReadKeys(content)[0] || null;
+}
+
+function versionKeysThroughKey(contentId, key) {
+  const parts = contentKeyParts(key);
+  if (!parts) throw new Error(`unsupported content key: ${key}`);
+  if (parts.contentId !== contentId) throw new Error(`content key mismatch: ${contentId}`);
   const createKey = parts.storageScheme === 'legacy-games' ? createLegacyVersionKey : createV2VersionKey;
-  return Array.from({ length: latestVersion }, (_, index) => createKey(contentId, index + 1));
+  return Array.from({ length: parts.version }, (_, index) => createKey(contentId, index + 1));
+}
+
+function versionKeysForContent({ contentId, latestVersion, latestObjectKey, latestKey }) {
+  const preferredKey = preferredContentKey({ latestObjectKey, latestKey });
+  const parts = contentKeyParts(preferredKey);
+  if (!parts) throw new Error(`unsupported content key: ${preferredKey}`);
+  if (parts.contentId !== contentId || parts.version !== latestVersion) throw new Error(`content key mismatch: ${contentId}`);
+  return versionKeysThroughKey(contentId, preferredKey);
+}
+
+function allVersionKeysForContent(content) {
+  return [...new Set(contentReadKeys(content).flatMap((key) => versionKeysThroughKey(content.contentId, key)))];
 }
 
 module.exports = {
   CONTENT_KEY_PATTERN,
   LEGACY_CONTENT_KEY_PATTERN,
   V2_CONTENT_KEY_PATTERN,
+  allVersionKeysForContent,
   contentKeyParts,
+  contentReadKeys,
   createLegacyVersionKey,
   createV2VersionKey,
   createVersionKey,
   isValidContentKey,
+  preferredContentKey,
   storageSchemeForKey,
   versionKeysForContent,
 };

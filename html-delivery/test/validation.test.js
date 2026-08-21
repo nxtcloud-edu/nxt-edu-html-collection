@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { deriveLegacyCohortId } = require('../domain/cohort');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
-const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
+const { CATEGORIES, COHORTS, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicLegacyContent, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, versionStorageFields } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
 function runtimeSecret() { return crypto.randomBytes(12).toString('base64url'); }
@@ -124,6 +124,19 @@ test('S3 콘텐츠 URL은 별도 HTTPS REST 오리진을 사용한다', () => {
   const key = 'games/12345678-v2.html';
   assert.equal(buildPublicUrl(key, { bucket: 'gallery', region: 'ap-northeast-2' }), 'https://gallery.s3.ap-northeast-2.amazonaws.com/games/12345678-v2.html');
   assert.equal(buildPublicUrl(key, { port: 3210 }), 'http://localhost:3210/deployed/games/12345678-v2.html');
+});
+
+test('전환 콘텐츠는 새 포인터를 공개하고 다음 버전에서도 레거시 fallback을 보존한다', () => {
+  const content = {
+    contentId: '12345678',
+    latestVersion: 2,
+    latestKey: 'games/12345678-v2.html',
+    latestObjectKey: 'contents/12345678/v2.html',
+  };
+  const publicRecord = publicLegacyContent(content);
+  assert.equal(publicRecord.latestKey, content.latestObjectKey);
+  assert.equal(Object.hasOwn(publicRecord, 'latestObjectKey'), false);
+  assert.deepEqual(versionStorageFields(content, 'contents/12345678/v3.html'), { latestObjectKey: 'contents/12345678/v3.html' });
 });
 
 test('발급 URL은 APP_BASE_URL을 요청 헤더보다 우선한다', () => {

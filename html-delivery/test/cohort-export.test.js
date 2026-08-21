@@ -28,10 +28,10 @@ test('ZIP 파일명 구성은 경로·제어문자를 제거하고 한글을 보
   assert.match(contentDisposition('한글 콘텐츠.zip'), /^attachment; filename="cohort-contents\.zip"; filename\*=UTF-8''/);
 });
 
-test('ZIP 엔트리는 이름·제목·최신 버전을 표시하고 manifest가 원본 키를 보존한다', () => {
+test('ZIP 엔트리는 이름·제목·최신 버전을 표시하고 manifest가 우선 포인터를 기록한다', () => {
   const entries = buildExportEntries([
     content({ contentId: 'bbbbbbbb', name: '2팀', title: '두 번째', latestVersion: 1, latestKey: 'games/bbbbbbbb-v1.html' }),
-    content(),
+    content({ latestObjectKey: 'contents/1234abcd/v2.html' }),
   ]);
   assert.deepEqual(entries.map((entry) => entry.fileName), [
     '001_1팀_AI 웹페이지_v2.html',
@@ -45,6 +45,6 @@ test('ZIP 엔트리는 이름·제목·최신 버전을 표시하고 manifest가
   assert.equal(manifest.csv.startsWith('\uFEFFfileName,contentId'), true);
   const parsed = JSON.parse(manifest.json);
   assert.equal(parsed.count, 2);
-  assert.equal(parsed.contents[0].s3Key, 'games/1234abcd-v2.html');
+  assert.equal(parsed.contents[0].s3Key, 'contents/1234abcd/v2.html');
   assert.equal(parsed.contents[0].viewerUrl, 'http://localhost:3210/view.html?id=1234abcd');
 });

@@ -6,6 +6,7 @@ const { PassThrough } = require('node:stream');
 const { GetObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { Upload } = require('@aws-sdk/lib-storage');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { contentReadKeys, preferredContentKey } = require('./domain/content-storage');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const LOCAL_EXPORT_DIR = path.join(__dirname, '.local-exports');
@@ -52,7 +53,7 @@ function csvCell(value) {
 }
 
 function buildManifest(entries, { cohort, createdAt, appBaseUrl = 'https://showcase.nxtcloud.kr' }) {
-  const rows = entries.map(({ content, fileName }) => ({
+  const rows = entries.map(({ content, fileName, resolvedKey }) => ({
     fileName,
     contentId: content.contentId,
     cohort,
@@ -61,7 +62,7 @@ function buildManifest(entries, { cohort, createdAt, appBaseUrl = 'https://showc
     category: content.category,
     version: content.latestVersion,
     updatedAt: content.updatedAt,
-    s3Key: content.latestKey,
+    s3Key: resolvedKey || preferredContentKey(content),
     viewerUrl: `${appBaseUrl.replace(/\/$/, '')}/view.html?id=${content.contentId}`,
   }));
   const headers = ['fileName', 'contentId', 'cohort', 'name', 'title', 'category', 'version', 'updatedAt', 's3Key', 'viewerUrl'];
@@ -101,18 +102,43 @@ function appendStream(archive, stream, name) {
 }
 
 async function appendContentFiles(archive, entries, { bucket, region, s3Client }) {
-  for (const { content, fileName } of entries) {
+  for (const entry of entries) {
+    const { content, fileName } = entry;
+    const keys = contentReadKeys(content);
     if (!bucket) {
-      await appendStream(archive, fs.createReadStream(path.join(LOCAL_DEPLOY_DIR, content.latestKey)), fileName);
+      let found = false;
+      for (const key of keys) {
+        try {
+          await fsp.access(path.join(LOCAL_DEPLOY_DIR, key));
+          await appendStream(archive, fs.createReadStream(path.join(LOCAL_DEPLOY_DIR, key)), fileName);
+          entry.resolvedKey = key;
+          found = true;
+          break;
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+      }
+      if (!found) throw new Error(`콘텐츠 객체를 찾을 수 없습니다: ${content.contentId}`);
       continue;
     }
-    const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: content.latestKey }));
-    if (!response.Body) throw new Error(`S3 객체 본문이 없습니다: ${content.latestKey}`);
-    await appendStream(archive, response.Body, fileName);
+    let found = false;
+    for (const key of keys) {
+      try {
+        const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+        if (!response.Body) throw new Error(`S3 객체 본문이 없습니다: ${key}`);
+        await appendStream(archive, response.Body, fileName);
+        entry.resolvedKey = key;
+        found = true;
+        break;
+      } catch (error) {
+        if (error.name !== 'NoSuchKey' && error.$metadata?.httpStatusCode !== 404) throw error;
+      }
+    }
+    if (!found) throw new Error(`콘텐츠 객체를 찾을 수 없습니다: ${content.contentId}`);
   }
 }
 
-async function createLocalArchive({ exportId, fileName, entries, manifest, cohort }) {
+async function createLocalArchive({ exportId, fileName, entries, manifestOptions, cohort }) {
   await fsp.mkdir(LOCAL_EXPORT_DIR, { recursive: true });
   const destination = path.join(LOCAL_EXPORT_DIR, `${exportId}.zip`);
   const output = fs.createWriteStream(destination, { mode: 0o600 });
@@ -125,6 +151,7 @@ async function createLocalArchive({ exportId, fileName, entries, manifest, cohor
   archive.pipe(output);
   try {
     await appendContentFiles(archive, entries, {});
+    const manifest = buildManifest(entries, manifestOptions);
     archive.append(manifest.csv, { name: 'manifest.csv' });
     archive.append(manifest.json, { name: 'manifest.json' });
     await archive.finalize();
@@ -145,7 +172,7 @@ async function createLocalArchive({ exportId, fileName, entries, manifest, cohor
   };
 }
 
-async function createS3Archive({ exportId, fileName, entries, manifest, cohort, bucket, region }) {
+async function createS3Archive({ exportId, fileName, entries, manifestOptions, cohort, bucket, region }) {
   const s3Client = new S3Client({ region });
   const key = `exports/${exportId}.zip`;
   const body = new PassThrough();
@@ -166,6 +193,7 @@ async function createS3Archive({ exportId, fileName, entries, manifest, cohort, 
   archive.pipe(body);
   try {
     await appendContentFiles(archive, entries, { bucket, region, s3Client });
+    const manifest = buildManifest(entries, manifestOptions);
     archive.append(manifest.csv, { name: 'manifest.csv' });
     archive.append(manifest.json, { name: 'manifest.json' });
     await archive.finalize();
@@ -185,9 +213,9 @@ async function createCohortExport({ cohort, contents, appBaseUrl, bucket = proce
   const entries = buildExportEntries(contents);
   const createdAt = now.toISOString();
   const fileName = exportFileName(cohort, now);
-  const manifest = buildManifest(entries, { cohort, createdAt, appBaseUrl });
-  if (!bucket) return createLocalArchive({ exportId, fileName, entries, manifest, cohort });
-  return createS3Archive({ exportId, fileName, entries, manifest, cohort, bucket, region });
+  const manifestOptions = { cohort, createdAt, appBaseUrl };
+  if (!bucket) return createLocalArchive({ exportId, fileName, entries, manifestOptions, cohort });
+  return createS3Archive({ exportId, fileName, entries, manifestOptions, cohort, bucket, region });
 }
 
 function localExportPath(exportId) {
