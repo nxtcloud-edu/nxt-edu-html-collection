@@ -112,8 +112,10 @@ test('표시 제목은 title을 우선하고 레거시 콘텐츠는 name으로 f
 test('contentId와 버전 key 계약을 지킨다', () => {
   const id = newContentId();
   assert.equal(isValidContentId(id), true);
-  assert.equal(createVersionKey(id, 1), `games/${id}-v1.html`);
+  assert.equal(createVersionKey(id, 1), `contents/${id}/v1.html`);
+  assert.equal(createVersionKey(id, 2, { existingKey: `games/${id}-v1.html` }), `games/${id}-v2.html`);
   assert.equal(isValidContentKey(`games/${id}-v12.html`), true);
+  assert.equal(isValidContentKey(`contents/${id}/v12.html`), true);
   assert.equal(isValidContentKey(`games/${id}.html`), false);
   assert.equal(isValidContentKey('games/20260712000000-abcd.html'), false);
 });

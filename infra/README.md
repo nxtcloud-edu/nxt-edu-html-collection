@@ -4,11 +4,11 @@
 
 ## 구성
 
-- S3 단일 버킷: 학생 콘텐츠 `games/*`는 공개 조회, 관리자 ZIP `exports/*`는 비공개 저장 후 1일 뒤 삭제
+- S3 단일 버킷: 레거시 학생 콘텐츠 `games/*`와 신규 콘텐츠 `contents/*`는 공개 조회, 관리자 ZIP `exports/*`는 비공개 저장 후 1일 뒤 삭제
 - Lambda Node.js 20: 512MB, 60초 timeout, `lambda.handler`
 - Lambda Function URL: CloudFront의 동적 origin
 - CloudFront와 Route 53: 앱·학생 콘텐츠를 `showcase.nxtcloud.kr` 단일 도메인으로 제공
-- IAM: CloudWatch Logs 기본 실행 정책, `games/*` 관리 권한, `exports/*` ZIP 생성·서명 다운로드 권한
+- IAM: CloudWatch Logs 기본 실행 정책, `games/*`·`contents/*` 관리 권한, `exports/*` ZIP 생성·서명 다운로드 권한
 - 배포 ZIP: `html-delivery/`의 운영 코드와 `node_modules` 포함; 테스트·로컬 환경·로그·스크립트 제외
 - 비용 절약: EC2, VPC 네트워크 리소스, SSM, WAF, 원격 Terraform backend는 만들지 않습니다.
 

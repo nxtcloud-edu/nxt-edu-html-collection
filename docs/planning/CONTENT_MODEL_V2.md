@@ -246,3 +246,12 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - 2026-08-21 Lambda 배포 후 운영 apply 완료: 커스텀 코호트 9개와 콘텐츠 283개에 `cohortId`를 추가했다.
 - 재 dry-run은 `cohortsToUpdate: 0`, `contentsToUpdate: 0`, `unchanged: 283`, unresolved/conflict 0이다.
 - 공개 API 283개 콘텐츠의 `cohortId` 존재와 기존 `games/*` 키 283개 보존을 확인했다. S3 객체는 변경하지 않았다.
+
+## 11. Gate C 구현 결과
+
+- 신규 콘텐츠의 첫 버전은 `contents/{contentId}/v1.html`에 저장한다.
+- 기존 콘텐츠는 현재 `latestKey`의 저장 방식을 전환 상태로 사용해 이후 버전도 같은 prefix에 저장한다.
+- `latestKey`의 contentId·버전이 레코드와 다르거나 지원하지 않는 키면 쓰기·삭제를 중단한다.
+- 뷰어, 관리자 현황, ZIP manifest와 삭제는 `games/*`와 `contents/*`를 모두 처리한다.
+- 버킷 공개 읽기와 Lambda 관리 권한에 `contents/*`를 추가하고 `exports/*`는 계속 비공개로 유지한다.
+- 전체 테스트 73/73, Terraform validate 통과. 배포 plan은 0 add·3 change·0 destroy이며 운영 apply는 실행하지 않았다.

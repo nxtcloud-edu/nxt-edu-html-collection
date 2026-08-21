@@ -10,6 +10,7 @@ const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
 const { COHORT_ID_PATTERN, deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
 const { normalizeLegacyCategory } = require('./domain/content');
+const { CONTENT_KEY_PATTERN, createVersionKey, isValidContentKey, storageSchemeForKey, versionKeysForContent } = require('./domain/content-storage');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 const { createContentRepository } = require('./repositories/content-repository');
 
@@ -42,7 +43,6 @@ const CATEGORIES = ['미니게임', '웹페이지'];
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
 const CONTENT_ID_PATTERN = /^[0-9a-f]{8}$/;
-const CONTENT_KEY_PATTERN = /^games\/[0-9a-f]{8}-v[1-9][0-9]*\.html$/;
 const contentRepository = createContentRepository({
   list: listContents,
   getPrivate: getRegistryItem,
@@ -62,13 +62,6 @@ function normalizeCategory(category) {
 
 function normalizeContent(content) {
   return { ...content, category: normalizeCategory(content.category) };
-}
-
-function storageSchemeForKey(key) {
-  if (typeof key !== 'string') return 'unknown';
-  if (key.startsWith('games/')) return 'legacy-games';
-  if (key.startsWith('contents/')) return 'v2-contents';
-  return 'unknown';
 }
 
 function buildCohortOverview({ cohort = null, contents, appBaseUrl }) {
@@ -140,8 +133,6 @@ function validateUploadInput({ affiliation, category, name, title, password, fil
 }
 
 function isValidContentId(value) { return typeof value === 'string' && CONTENT_ID_PATTERN.test(value); }
-function isValidContentKey(value) { return typeof value === 'string' && CONTENT_KEY_PATTERN.test(value); }
-function createVersionKey(contentId, version) { return `games/${contentId}-v${version}.html`; }
 function buildPublicUrl(key, { bucket, region = 'ap-northeast-2', baseUrl, port = PORT } = {}) {
   if (!bucket) return `http://localhost:${port}/deployed/${key}`;
   const base = (baseUrl || `https://${bucket}.s3.${region}.amazonaws.com`).replace(/\/$/, '');
@@ -325,7 +316,7 @@ function createApp() {
     try {
       const existing = await contentRepository.getPrivate(req.params.contentId);
       if (!existing) return res.sendStatus(404);
-      await Promise.all(Array.from({ length: existing.latestVersion }, (_, index) => deleteStoredObject(createVersionKey(req.params.contentId, index + 1))));
+      await Promise.all(versionKeysForContent(existing).map(deleteStoredObject));
       await deleteFeedbackForContent(req.params.contentId);
       await contentRepository.delete(req.params.contentId);
       auditAdminAction('delete-content', req.params.contentId);
@@ -462,7 +453,7 @@ function createApp() {
       }
       const contentId = existing?.contentId || newContentId();
       const version = existing ? existing.latestVersion + 1 : 1;
-      const key = createVersionKey(contentId, version);
+      const key = createVersionKey(contentId, version, { existingKey: existing?.latestKey });
       const uploadedAt = new Date().toISOString();
       const credentials = existing ? { passwordHash: existing.passwordHash, salt: existing.salt } : hashPassword(req.body.password);
       const item = {

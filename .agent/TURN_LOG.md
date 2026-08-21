@@ -2415,3 +2415,30 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Phase 4 운영 게이트를 통과했다. 기존 affiliation·공유 URL·S3 키는 유지됐다.
 - 다음 단계는 Phase 5 신규 쓰기 전환이며 레거시 객체 마이그레이션과 삭제는 포함하지 않는다.
 - 운영 상태를 `docs: Phase 4 운영 반영 상태 기록` 문서 전용 커밋으로 정리하고 origin/main에 push했다.
+
+## 2026-08-21 13:56 KST — Codex — 개편 Phase 5 신규 contents 쓰기
+
+### Intent
+- 신규 콘텐츠만 `contents/*`로 저장하고 기존 콘텐츠의 버전 prefix는 고정하면서 조회·ZIP·삭제와 AWS 권한을 두 키 체계에 맞춘다.
+
+### Files changed
+- `domain/content-storage.js` — 두 키 파싱·검증·생성, prefix 고정, 삭제 버전 키 계약.
+- `server.js` — 신규/기존 키 선택과 두 prefix 삭제·로컬 조회 지원.
+- `infra/main.tf`, `infra/README.md` — `contents/*` 공개 읽기와 Lambda 관리 권한 추가, `exports/*` 비공개 유지.
+- 업로드·레거시 버전·조회·현황·ZIP·삭제·정책 테스트와 제품 문서.
+
+### Commands / verification
+- 구현 전 집중 테스트 — content-storage 모듈 부재, contents 정책 누락, 신규 기본 키 불일치로 예상 실패(red).
+- 키·정책·validation 테스트 — 21/21 pass.
+- 업로드·레거시 버전·현황·ZIP·삭제 통합 테스트 — 테스트 본문 기대값 수정 후 5/5 pass.
+- 첫 전체 `npm test` — 71/73. 임의 포트 서버에서 기본 포트 directUrl을 fetch한 비결정적 테스트 2건 실패.
+- 네트워크 fetch를 실제 파일 존재 검증으로 교체 후 전체 `npm test` — 73/73 pass.
+- 첫 `terraform fmt -check` — 변경 `main.tf`와 기존 로컬 `terraform.tfvars` 형식 차이 보고. tfvars는 수정하지 않고 main.tf만 formatter 적용.
+- `terraform validate` — pass. `terraform plan` — S3 정책·Lambda IAM·Lambda 코드 3개 in-place, 0 add·3 change·0 destroy.
+- Terraform apply, 운영 업로드, S3 기존 객체 복사·이동·삭제, push — 실행 안 함.
+
+### Decisions / handoff
+- 별도 전환 플래그 대신 검증된 `latestKey`를 저장 방식의 기준으로 사용한다.
+- 키의 contentId·latestVersion이 레코드와 다르면 삭제나 버전 추가를 중단해 잘못된 객체 조작을 막는다.
+- Phase 5 배포 전에는 Phase 6 학생·갤러리 v2 API 전환을 시작하지 않는다.
+- Phase 5 구현을 `feat: 신규 콘텐츠 저장 경로 전환` 독립 커밋으로 기록했다. push·배포·운영 업로드는 실행하지 않았다.

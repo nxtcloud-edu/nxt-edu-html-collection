@@ -90,7 +90,10 @@ resource "aws_s3_bucket_policy" "games" {
       Effect    = "Allow"
       Principal = "*"
       Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.games.arn}/games/*"
+      Resource = [
+        "${aws_s3_bucket.games.arn}/games/*",
+        "${aws_s3_bucket.games.arn}/contents/*"
+      ]
     }]
   })
 }
@@ -158,10 +161,13 @@ resource "aws_iam_role_policy" "s3_upload" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "WriteAndReadGames"
-        Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
-        Resource = "${aws_s3_bucket.games.arn}/games/*"
+        Sid    = "WriteAndReadContents"
+        Effect = "Allow"
+        Action = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = [
+          "${aws_s3_bucket.games.arn}/games/*",
+          "${aws_s3_bucket.games.arn}/contents/*"
+        ]
       },
       {
         Sid      = "ListGames"
@@ -170,7 +176,7 @@ resource "aws_iam_role_policy" "s3_upload" {
         Resource = aws_s3_bucket.games.arn
         Condition = {
           StringLike = {
-            "s3:prefix" = ["games/*"]
+            "s3:prefix" = ["games/*", "contents/*"]
           }
         }
       },

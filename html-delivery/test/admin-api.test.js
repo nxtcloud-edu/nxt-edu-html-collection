@@ -4,10 +4,10 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const AdmZip = require('adm-zip');
-const { COHORT_ID_PATTERN } = require('../domain/cohort');
+const { COHORT_ID_PATTERN, deriveLegacyCohortId } = require('../domain/cohort');
 const { cohortOptions, createApp } = require('../server');
 const { LOCAL_EXPORT_DIR } = require('../cohort-export');
-const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, getRegistryItem, hashPassword, renameCustomCohort, updateAdminAccountPassword, verifyPassword } = require('../registry');
+const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, getRegistryItem, hashPassword, renameCustomCohort, saveRegistryItem, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -234,6 +234,8 @@ test('업로드 identity는 제목별로 새 콘텐츠를 만들고 같은 제�
     const first = await uploadContent(baseUrl, { name, title: firstTitle, secret: firstSecret });
     assert.equal(first.response.status, 201);
     assert.equal(first.body.version, 1);
+    assert.match(first.body.directUrl, new RegExp(`/contents/${first.body.contentId}/v1\\.html$`));
+    await fs.access(path.join(LOCAL_DEPLOY_DIR, `contents/${first.body.contentId}/v1.html`));
 
     const differentTitle = await uploadContent(baseUrl, { ...first.identity, title: secondTitle, secret: secondSecret });
     assert.equal(differentTitle.response.status, 201);
@@ -244,11 +246,64 @@ test('업로드 identity는 제목별로 새 콘텐츠를 만들고 같은 제�
     assert.equal(versioned.response.status, 201);
     assert.equal(versioned.body.contentId, first.body.contentId);
     assert.equal(versioned.body.version, 2);
+    assert.match(versioned.body.directUrl, new RegExp(`/contents/${first.body.contentId}/v2\\.html$`));
 
     const wrongPassword = await uploadContent(baseUrl, { ...first.identity, title: firstTitle, secret: runtimeSecret() });
     assert.equal(wrongPassword.response.status, 403);
   } finally {
     await close(server);
+    await cleanLocalState();
+  }
+});
+
+test('레거시 콘텐츠 버전 추가는 games prefix를 유지한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    const contentId = 'abcdef12';
+    const affiliation = '2026-고대세종-ai';
+    const name = '레거시 소유자';
+    const title = '레거시 콘텐츠';
+    const secret = runtimeSecret();
+    await saveRegistryItem({
+      contentKey: `content#${contentId}`,
+      createdAt: 'meta',
+      contentId,
+      cohortId: deriveLegacyCohortId(affiliation),
+      affiliation,
+      name,
+      title,
+      category: '미니게임',
+      ...hashPassword(secret),
+      latestVersion: 1,
+      latestKey: `games/${contentId}-v1.html`,
+      likes: 0,
+      createdAt2: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const destination = path.join(LOCAL_DEPLOY_DIR, `games/${contentId}-v1.html`);
+    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await fs.writeFile(destination, '<html>legacy</html>');
+
+    const updated = await uploadContent(baseUrl, { affiliation, name, title, category: '미니게임', secret });
+    assert.equal(updated.response.status, 201);
+    assert.equal(updated.body.version, 2);
+    assert.match(updated.body.directUrl, new RegExp(`/games/${contentId}-v2\\.html$`));
+    assert.equal((await getRegistryItem(contentId)).latestKey, `games/${contentId}-v2.html`);
+    assert.match(await fs.readFile(path.join(LOCAL_DEPLOY_DIR, `games/${contentId}-v2.html`), 'utf8'), /^<!doctype html><title>.+<\/title>$/);
+
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const deleted = await fetch(`${baseUrl}/api/admin/content/${contentId}`, { method: 'DELETE', headers: { cookie: authenticated.cookie } });
+    assert.equal(deleted.status, 200);
+    await assert.rejects(fs.stat(path.join(LOCAL_DEPLOY_DIR, `games/${contentId}-v1.html`)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(LOCAL_DEPLOY_DIR, `games/${contentId}-v2.html`)), { code: 'ENOENT' });
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
     await cleanLocalState();
   }
 });
@@ -591,10 +646,10 @@ test('관리자 코호트 현황 API는 유형·버전·저장 방식과 export 
       latestUpdatedAt: webpage.body.uploadedAt,
       exportReady: true,
     });
-    assert.deepEqual(overview.storage, { legacyGames: 2, v2Contents: 0, unknown: 0 });
+    assert.deepEqual(overview.storage, { legacyGames: 0, v2Contents: 2, unknown: 0 });
     assert.equal(overview.contents.length, 2);
-    assert.equal(overview.contents.every((content) => content.storageScheme === 'legacy-games'), true);
-    assert.equal(overview.contents.every((content) => content.latestKey.startsWith('games/')), true);
+    assert.equal(overview.contents.every((content) => content.storageScheme === 'v2-contents'), true);
+    assert.equal(overview.contents.every((content) => content.latestKey.startsWith('contents/')), true);
     assert.equal(overview.contents.every((content) => content.viewerUrl.startsWith(`${baseUrl}/view.html?id=`)), true);
     assert.equal(JSON.stringify(overview).includes('passwordHash'), false);
     assert.equal(JSON.stringify(overview).includes('salt'), false);
@@ -681,7 +736,7 @@ test('관리자 코호트 export는 최신 HTML을 읽기 쉬운 파일명과 ma
     const manifest = JSON.parse(zip.readAsText('manifest.json'));
     assert.equal(manifest.cohort, cohort);
     assert.equal(manifest.count, 2);
-    assert.equal(manifest.contents.some((item) => item.contentId === first.body.contentId && item.version === 2 && item.s3Key.endsWith('-v2.html')), true);
+    assert.equal(manifest.contents.some((item) => item.contentId === first.body.contentId && item.version === 2 && item.s3Key === `contents/${first.body.contentId}/v2.html`), true);
     assert.equal(manifest.contents.every((item) => item.viewerUrl.startsWith(`${baseUrl}/view.html?id=`)), true);
   } finally {
     console.log = originalLog;
@@ -701,6 +756,8 @@ test('관리 콘텐츠 삭제는 로컬 배포 파일, 갤러리, 피드백을 �
     const ownerSecret = runtimeSecret();
     const created = await uploadContent(baseUrl, { secret: ownerSecret });
     assert.equal(created.response.status, 201);
+    const updated = await uploadContent(baseUrl, { ...created.identity, secret: ownerSecret });
+    assert.equal(updated.body.version, 2);
     await fetch(`${baseUrl}/api/feedback`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -712,7 +769,8 @@ test('관리 콘텐츠 삭제는 로컬 배포 파일, 갤러리, 피드백을 �
       headers: { cookie: authenticated.cookie },
     });
     assert.equal(deleted.status, 200);
-    await assert.rejects(fs.stat(path.join(LOCAL_DEPLOY_DIR, `games/${created.body.contentId}-v1.html`)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(LOCAL_DEPLOY_DIR, `contents/${created.body.contentId}/v1.html`)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(LOCAL_DEPLOY_DIR, `contents/${created.body.contentId}/v2.html`)), { code: 'ENOENT' });
 
     const gallery = await fetch(`${baseUrl}/api/games`);
     assert.equal((await gallery.json()).games.some((game) => game.contentId === created.body.contentId), false);
