@@ -3,19 +3,31 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-test('OAC 전환 게이트는 공개 읽기를 임시 유지하면서 CloudFront와 Lambda 권한을 분리한다', async () => {
+test('S3 콘텐츠는 CloudFront OAC만 읽고 exports는 계속 공개하지 않는다', async () => {
   const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
   const publicPolicy = terraform.match(/resource "aws_s3_bucket_policy" "games"[\s\S]*?\n}\n/)?.[0] || '';
   const lambdaPolicy = terraform.match(/resource "aws_iam_role_policy" "s3_upload"[\s\S]*?\n}\n/)?.[0] || '';
   assert.match(publicPolicy, /\/games\/\*/);
   assert.match(publicPolicy, /\/contents\/\*/);
   assert.doesNotMatch(publicPolicy, /\/exports\/\*/);
+  assert.doesNotMatch(publicPolicy, /PublicReadGetObject/);
+  assert.doesNotMatch(publicPolicy, /Principal\s*= "\*"/);
   assert.match(publicPolicy, /AllowCloudFrontReadContent/);
   assert.match(publicPolicy, /cloudfront\.amazonaws\.com/);
   assert.match(publicPolicy, /AWS:SourceArn/);
   assert.match(lambdaPolicy, /\/games\/\*/);
   assert.match(lambdaPolicy, /\/contents\/\*/);
   assert.match(lambdaPolicy, /\/exports\/\*/);
+});
+
+test('S3 Public Access Block은 네 가지 공개 경로를 모두 차단한다', async () => {
+  const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
+  const accessBlock = terraform.match(/resource "aws_s3_bucket_public_access_block" "games"[\s\S]*?\n}\n/)?.[0] || '';
+  assert.match(accessBlock, /block_public_acls\s*= true/);
+  assert.match(accessBlock, /ignore_public_acls\s*= true/);
+  assert.match(accessBlock, /block_public_policy\s*= true/);
+  assert.match(accessBlock, /restrict_public_buckets\s*= true/);
+  assert.match(accessBlock, /depends_on = \[aws_s3_bucket_policy\.games\]/);
 });
 
 test('CloudFront는 contents와 games를 OAC S3 origin으로 전달한다', async () => {

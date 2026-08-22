@@ -77,48 +77,36 @@ resource "aws_acm_certificate_validation" "showcase" {
 resource "aws_s3_bucket_public_access_block" "games" {
   bucket = aws_s3_bucket.games.id
 
-  block_public_acls       = false
-  ignore_public_acls      = false
-  block_public_policy     = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+
+  depends_on = [aws_s3_bucket_policy.games]
 }
 
 resource "aws_s3_bucket_policy" "games" {
   bucket = aws_s3_bucket.games.id
 
-  depends_on = [aws_s3_bucket_public_access_block.games]
-
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource = [
-          "${aws_s3_bucket.games.arn}/games/*",
-          "${aws_s3_bucket.games.arn}/contents/*"
-        ]
-      },
-      {
-        Sid    = "AllowCloudFrontReadContent"
-        Effect = "Allow"
-        Principal = {
-          Service = "cloudfront.amazonaws.com"
-        }
-        Action = "s3:GetObject"
-        Resource = [
-          "${aws_s3_bucket.games.arn}/games/*",
-          "${aws_s3_bucket.games.arn}/contents/*"
-        ]
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.showcase.arn
-          }
+    Statement = [{
+      Sid    = "AllowCloudFrontReadContent"
+      Effect = "Allow"
+      Principal = {
+        Service = "cloudfront.amazonaws.com"
+      }
+      Action = "s3:GetObject"
+      Resource = [
+        "${aws_s3_bucket.games.arn}/games/*",
+        "${aws_s3_bucket.games.arn}/contents/*"
+      ]
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.showcase.arn
         }
       }
-    ]
+    }]
   })
 }
 
