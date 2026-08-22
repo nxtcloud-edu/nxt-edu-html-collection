@@ -1,15 +1,15 @@
 # Current State
 
-Updated: 2026-08-22 23:13 KST
+Updated: 2026-08-22 23:29 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 13 백엔드 경계 분리 커밋 `1d22a4c` 배포·push 완료.
-- Worktree: Phase 13 협업 저널 최종 갱신 중.
-- Tests: 전체 `npm test` 직렬 실행 108/108, Playwright 데스크톱·모바일 E2E 12/12.
+- Branch: `main`, Phase 14 최종 커밋 `a4f0de2` 배포·push 완료.
+- Worktree: Phase 14 협업 저널 최종 갱신 중.
+- Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 108/108, Playwright 데스크톱·모바일 E2E 14/14.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
 - Log delivery: 관찰 시작 후 CloudFront gzip 로그 2개가 전용 S3 버킷에 도착했고 기존 파서가 14개 요청 레코드를 처리했다. 현재 레거시 요청 0건은 부분 표본이므로 은퇴 근거로 사용하지 않음.
@@ -35,9 +35,12 @@ Updated: 2026-08-22 23:13 KST
 - Phase 13 완료: `server.js`를 composition root로 축소하고 public/admin routes, content/cohort services, content/feedback repositories, object-storage adapter를 분리. 외부 API·URL·S3/DynamoDB 계약 불변.
 - Phase 13 배포 완료: Lambda 코드 1건 in-place, 0 add·0 destroy. 최종 Terraform plan no changes.
 - Phase 13 운영 검증: health·코호트·콘텐츠·전용 콘텐츠 200, 코호트 15개, 콘텐츠 283개·게임 182·웹 101·버전 396. 로그인 관리자 화면의 283개 행과 ZIP 버튼 노출 확인.
+- Phase 14 완료: React·TypeScript·Vite 앱 셸을 `/app/`에 독립 배포하고 NXT Cloud 디자인 토큰과 공통 Button·Surface·StatusBadge·MetricCard·AppShell을 도입. 기존 5개 화면 URL은 전환하지 않음.
+- Phase 14 운영 검증: `/app/`·현재/직전 해시 JS·CSS·health 200, 지표 283·15·396, 가로 오버플로 0. 브라우저 시각 검토 후 한글 줄바꿈과 캐시된 이전 index의 해시 자산 호환을 보완.
+- Phase 14 Terraform 최종 plan no changes. S3·DynamoDB 콘텐츠와 포인터 변경 없음.
 
 ## Next safe action
-1. Phase 14에서 React·TypeScript·Vite 프런트엔드 기반과 NXT Cloud 디자인 토큰·공통 컴포넌트를 추가한다.
-2. 기존 공개 URL과 정적 페이지는 유지한 채 독립적으로 빌드·검증 가능한 shell부터 도입한다.
+1. Phase 15에서 Cohort·ContentVersion·AuditLog의 저장·조회 계약과 ID 기반 v2 관리자 API를 additive하게 완성한다.
+2. 기존 관리자 API와 화면을 유지하고 신규 API의 pagination·필터·감사 로그를 먼저 테스트한다.
 3. Phase 11 관찰은 병행하되 2026-08-30 22:13 KST 전에는 fallback apply를 실행하지 않는다.
 4. 기존 `games/*` 삭제는 포인터 은퇴 후에도 별도 승인 전까지 수행하지 않는다.

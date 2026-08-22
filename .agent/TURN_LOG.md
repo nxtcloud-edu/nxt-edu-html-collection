@@ -2827,3 +2827,35 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - `server.js`는 조립과 공통 HTTP 경계만 소유하고, 업무 규칙은 service, 지속성은 repository/adapter가 소유한다.
 - 기존 API 응답·학생 viewer URL·`contents/{id}/vN.html`·비동기 ZIP·전용 content origin 계약을 유지한다.
 - 다음 Phase 14는 기존 화면을 즉시 교체하지 않고 React·TypeScript·Vite와 디자인 시스템 기반을 독립 빌드 경로로 도입한다.
+
+## 2026-08-22 23:29 KST — Codex — Phase 14 React·TypeScript 프런트엔드 기반
+
+### Intent
+- 기존 운영 화면과 URL을 교체하지 않고 React·TypeScript·Vite 빌드, NXT Cloud 디자인 토큰과 공통 컴포넌트를 독립 `/app/` 경로에 구축·배포한다.
+
+### Files changed
+- `html-delivery/frontend/*` — Vite·TypeScript 설정, 앱 셸, 전환 지도, Button·Surface·StatusBadge·MetricCard·AppShell, 토큰·반응형 스타일과 Vitest.
+- `html-delivery/public/app/*` — 재현 가능한 운영 빌드와 현재·직전 해시 자산.
+- `html-delivery/test/e2e/app-shell.spec.js` — 기존 URL, 390px 가로 오버플로, axe critical 접근성 계약.
+- `package.json`, lockfile, `infra/main.tf` — 웹 명령·개발 의존성, Lambda ZIP의 frontend 소스 제외.
+- `FRONTEND_ARCHITECTURE.md`, `DECISIONS.md`, `README.md` — 구조·전환·배포 캐시 계약.
+
+### Commands / verification
+- `npm install --save-dev` — React·Vite·TypeScript·Vitest·Testing Library 설치, 취약점 0. 관리자 계정 secret은 파일·로그에 기록하지 않음.
+- 첫 Vitest는 `describe` 전역 누락과 테스트 간 DOM cleanup 누락을 발견해 명시적 import·afterEach cleanup으로 수정. 최종 `npm run typecheck:web`, Vitest 2/2, production build 성공.
+- 첫 전체 서버 테스트는 sandbox `listen EPERM`으로 HTTP 15개가 실행되지 않아 승인된 외부 실행으로 재시도. 최종 108/108 통과.
+- 앱 셸 첫 E2E는 중복 링크 이름 strict locator 두 건을 발견해 exact locator로 수정. 최종 전체 데스크톱·모바일 14/14, 앱 셸 집중 2/2 통과.
+- 앱 셸 — WCAG 2 A/AA critical 위반 0, 데스크톱·390px 모바일 가로 오버플로 0.
+- Terraform fmt·validate, `git diff --check` 통과. `frontend/` 소스는 Lambda ZIP 제외, `public/app/`만 포함.
+- 최초·시각 수정·캐시 호환 배포는 각각 저장 plan 기준 0 add·Lambda 1 in-place·0 destroy. 최종 Terraform detailed exit 0, no changes.
+- 운영 HTTP — `/app/`, health, 현재·직전 해시 JS·CSS 모두 200. 코호트 15개, 콘텐츠 283개·게임 182·웹 101·버전 396 유지.
+- 인앱 브라우저 — `/app/` 제목·지표 283/15/396·5개 전환 경로·업로드/관리자 링크·가로 오버플로 0 확인. 시각 검토로 한글 제목 음절 분리를 수정.
+- 브라우저가 캐시한 이전 index에서 과거 해시 자산 제거로 빈 화면이 되는 상태를 발견하고 직전 CSS·JS를 복구. 일반 `/app/` 캐시 경로와 최신 query 경로 모두 렌더링 확인.
+- 커밋 `661c6d6`, `117c0aa`, `58e74a1`, `a4f0de2` origin/main push 완료.
+- S3·DynamoDB 콘텐츠 쓰기/삭제, fallback 포인터 변경·은퇴, ZIP 생성·다운로드 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 화면별 전환 전까지 `/app/`은 기반·전환 지도이고 기존 `/`, `/cohort.html`, `/upload.html`, `/view.html`, `/admin.html`이 운영 경로다.
+- 해시 자산은 캐시·롤백 호환을 위해 빌드 시 자동 삭제하지 않는다. 정리는 사용량 확인 후 별도 phase로 수행한다.
+- 다음 Phase 15는 기존 API를 유지하면서 Cohort·ContentVersion·AuditLog와 ID 기반 v2 관리자 API를 additive하게 완성한다.
