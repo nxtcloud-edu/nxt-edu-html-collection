@@ -5,6 +5,7 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './styles/gallery.css';
 import './styles/workflow.css';
+import './styles/admin.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

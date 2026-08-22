@@ -8,11 +8,13 @@
 
 ## 프런트엔드 구조
 
-`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 16~17에서 `/`, `/cohort.html`, `/upload.html`, `/view.html`을 React로 전환했으며 `/admin.html`은 Phase 18 전까지 기존 화면을 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
+`frontend/`는 React·TypeScript·Vite 기반 UI 소스입니다. Phase 16~18에서 `/`, `/cohort.html`, `/upload.html`, `/view.html`, `/admin.html`을 React로 전환했습니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 기존 정적 HTML은 단계별 롤백 자산으로 보존합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
 
 Phase 16 운영 배포는 2026-08-23 완료했습니다. 첫 목록 요청은 10개와 cursor만 반환하고, 코호트 집계는 콘텐츠 283개·게임 182개·웹페이지 101개·운영 코호트 15개입니다. 파라미터 없는 v2 전체 목록과 기존 정적 HTML은 호환·롤백 경계로 보존합니다.
 
 Phase 17도 2026-08-23 운영 배포했습니다. 업로드는 신규 생성과 contentId 기반 버전 추가를 분리하고, 보기 화면은 기존 `/view.html?id=...`와 별도 학생 HTML origin, 추천·피드백·파일 업데이트 계약을 유지합니다. 배포 검증에서는 운영 콘텐츠·버전·추천·피드백 쓰기를 실행하지 않았습니다.
+
+Phase 18 관리자 화면은 대시보드·콘텐츠·코호트·내보내기·감사/시스템으로 구성합니다. 콘텐츠 상세에서 버전·피드백을 함께 검토하고, 삭제는 contentId 재입력, 비밀번호·ZIP·코호트·계정 변경은 각각 명시적 버튼을 요구합니다. 관리자 E2E fixture에는 운영 자격정보를 사용하지 않습니다.
 
 ```bash
 npm run typecheck:web

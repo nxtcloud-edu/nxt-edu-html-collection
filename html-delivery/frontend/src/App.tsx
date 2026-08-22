@@ -6,6 +6,7 @@ import { ContentCard } from './components/ContentCard';
 import { StatusBadge } from './components/StatusBadge';
 import { UploadPage } from './pages/UploadPage';
 import { ViewPage } from './pages/ViewPage';
+import { AdminPage } from './pages/AdminPage';
 import type { Cohort, ContentPage, ContentType, SortMode } from './types';
 
 const PAGE_SIZE = 10;
@@ -120,6 +121,7 @@ function GalleryPage() {
 }
 
 export function App() {
+  if (window.location.pathname === '/admin.html') return <AdminPage />;
   if (window.location.pathname === '/upload.html') return <UploadPage />;
   if (window.location.pathname === '/view.html') return <ViewPage />;
   return <GalleryPage />;

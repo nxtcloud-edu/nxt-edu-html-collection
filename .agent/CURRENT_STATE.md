@@ -1,6 +1,6 @@
 # Current State
 
-Updated: 2026-08-23 00:20 KST
+Updated: 2026-08-23 00:34 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
@@ -8,8 +8,8 @@ Updated: 2026-08-23 00:20 KST
 
 ## Last verified repo state
 - Branch: `main`, Phase 17 기능 `6d18d9d` 배포·push 완료.
-- Worktree: Phase 17 협업 저널 최종 갱신 중.
-- Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 118/118, Playwright 데스크톱·모바일 E2E 14/14.
+- Worktree: Phase 18 관리자 React 전환 구현·로컬 검증 완료, 커밋·배포 전.
+- Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 118/118, Playwright 데스크톱·모바일 E2E 14/14. 관리자 critical 접근성 위반 0·가로 오버플로 0.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
 - Log delivery: 관찰 시작 후 CloudFront gzip 로그 2개가 전용 S3 버킷에 도착했고 기존 파서가 14개 요청 레코드를 처리했다. 현재 레거시 요청 0건은 부분 표본이므로 은퇴 근거로 사용하지 않음.
@@ -45,9 +45,10 @@ Updated: 2026-08-23 00:20 KST
 - Phase 16 운영 검증: 콘텐츠 283·게임 182·웹 101·코호트 15, 첫 페이지 10개·다음 페이지 11번 시작, 고대세종 AI 코호트 3개, 데스크톱 가로 오버플로 0. 최종 Terraform no changes.
 - Phase 17 완료: `/upload.html`·`/view.html` React 전환. 생성/버전 추가 분리, teamOptions, 파일 검증, 격리 iframe, 추천·피드백·업데이트 dialog와 재시도 가능한 오류 상태 제공.
 - Phase 17 운영 검증: 고대세종 코호트 사전 선택·두 업로드 탭, `0e040222` v5·전용 origin iframe 실제 렌더링·피드백·업데이트 dialog·가로 오버플로 0. 운영 쓰기 없음, 최종 Terraform no changes.
+- Phase 18 구현·로컬 검증 완료: `/admin.html` React 전환, 대시보드·콘텐츠/버전/피드백·코호트·비동기 export·감사/시스템 화면과 명시적 작업 확인 UI 추가. 운영 배포·읽기 전용 검증은 아직 남음.
 
 ## Next safe action
-1. Phase 18에서 `/admin.html`을 React 관리자 대시보드·코호트·콘텐츠·export·피드백·감사/시스템 화면으로 전환한다.
-2. 관리자 변경 작업은 명시적 확인 UI와 기존 권한·감사 계약을 유지하고 운영 검증은 읽기 전용으로 수행한다.
+1. Phase 18 기능을 커밋·push하고 Terraform plan/apply로 배포한다.
+2. 기존 로그인 세션으로 관리자 대시보드·콘텐츠 상세·코호트·export·감사 화면을 읽기 전용 검증한다.
 3. Phase 11 관찰은 병행하되 2026-08-30 22:13 KST 전에는 fallback apply를 실행하지 않는다.
 4. 기존 `games/*` 삭제는 포인터 은퇴 후에도 별도 승인 전까지 수행하지 않는다.

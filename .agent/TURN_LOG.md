@@ -2944,3 +2944,30 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 브라우저·서버 양쪽에서 HTML/1MB 경계를 검증하고 오류 시 입력·현재 화면을 유지해 재시도한다.
 - Phase 18은 React 관리자 전환이며 기존 인증·권한·감사와 명시적 확인 계약을 유지한다.
+
+## 2026-08-23 00:34 KST — Codex — Phase 18 관리자 재디자인 구현
+
+### Intent
+- 기존 인증·권한·감사·비동기 ZIP 계약을 유지하면서 관리자 업무를 대시보드·콘텐츠·코호트·내보내기·감사/시스템으로 재구성한다.
+
+### Files changed
+- `frontend/src/pages/AdminPage.tsx`, `admin-api.ts`, `styles/admin.css` — 로그인 경계, 운영 KPI, 관리자 목록/상세, 버전·피드백, 코호트, export, 감사·계정 화면.
+- `App.tsx`, `main.tsx`, `server.js`, `public/app/*` — `/admin.html` React 전환, 관리자 noindex 응답, 빌드 자산.
+- 관리자 fixture·E2E·v2 route 회귀와 프런트 구조·README·로드맵·제품 결정 문서 최신화.
+
+### Commands / verification
+- `npm install` — 개발 의존성 복원, 취약점 0.
+- `npm run typecheck:web` — 통과.
+- `npm run test:web` — Vitest 2/2 통과.
+- `npm run build:web` — production build 통과.
+- `npm test` — 첫 변경 전 118/118 통과. noindex 회귀 추가 후 sandbox 실행은 `listen EPERM`으로 실패했고, 승인된 로컬 포트 권한 재실행에서 최종 118/118 통과.
+- `npx playwright test test/e2e/admin-baseline.spec.js` — 데스크톱·모바일 4/4 통과.
+- `npm run test:e2e` — 최초 menu accessible name locator 불일치로 중단 후 수정, 최종 데스크톱·모바일 14/14 통과. 관리자 WCAG 2 A/AA critical 위반 0·가로 오버플로 0.
+- `git diff --check` — 통과.
+- 운영 쓰기·Terraform plan/apply·배포·운영 브라우저 검증 — 아직 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 콘텐츠 영구 삭제는 contentId 재입력 전 비활성화한다. 비밀번호·피드백·ZIP·코호트·계정 변경은 각 작업의 별도 제출 버튼으로만 실행한다.
+- 관리자 E2E는 고정 mock 세션/API를 사용하며 운영 자격정보를 코드·테스트·문서·로그에 저장하지 않는다.
+- 다음 안전 액션은 기능 커밋·push 후 Lambda 배포와 기존 로그인 세션을 이용한 읽기 전용 운영 검증이다.

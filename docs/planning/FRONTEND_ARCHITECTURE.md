@@ -2,7 +2,7 @@
 
 ## 목적
 
-Phase 14는 React·TypeScript·Vite 기반을 `/app/`에서 먼저 검증했다. Phase 16부터 기존 URL별 화면을 순차 전환하며, 아직 전환하지 않은 업로드·보기·관리자 화면과 기존 데이터 계약은 유지한다.
+Phase 14는 React·TypeScript·Vite 기반을 `/app/`에서 먼저 검증했다. Phase 16~18에서 공개·업로드·보기·관리자 URL을 순차 전환했으며 기존 데이터 계약과 정적 HTML 롤백 자산은 유지한다.
 
 ## 구조
 
@@ -14,7 +14,9 @@ frontend/
 └── src/
     ├── components/       공통 동작·표면·상태·지표
     ├── styles/           디자인 토큰과 전역 레이아웃
-    ├── App.tsx           전환 지도와 기반 확인 화면
+    ├── pages/            업로드·보기·관리자 화면
+    ├── admin-api.ts      인증된 관리자 API client
+    ├── App.tsx           URL별 React 화면 진입점
     └── main.tsx          React 진입점
 
 public/app/               Vite 배포 산출물
@@ -40,7 +42,7 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 | `/cohort.html` | 16 | React 코호트 화면 전환 완료 |
 | `/upload.html` | 17 | React 업로드 화면 전환 완료 |
 | `/view.html` | 17 | React 격리 viewer 전환 완료 |
-| `/admin.html` | 18 | 기존 관리자 화면 유지 |
+| `/admin.html` | 18 | React 관리자 화면 전환 완료 |
 | `/app/` | 14 | 새 기반·전환 지도 제공 |
 
 기존 콘텐츠 ID, `/view.html?id={contentId}`, `contents/{contentId}/vN.html`, 비동기 ZIP과 `content.showcase.nxtcloud.kr` origin은 프런트엔드 전환으로 변경하지 않는다.
@@ -52,7 +54,7 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 - 파라미터 없는 기존 `/api/v2/contents` 전체 응답은 호환을 위해 유지한다.
 - `/api/v2/cohorts`는 `contentCount`, `gameCount`, `webpageCount`를 additive하게 제공한다.
 - KPI, 콘텐츠 유형 Donut, 코호트 가로 막대는 실제 API 집계를 표시하며 색상만으로 값을 구분하지 않는다.
-- `/admin.html`은 Phase 18 전까지 기존 화면을 유지한다.
+- 기존 `public/index.html`, `public/cohort.html`은 롤백 자산으로 유지한다.
 
 ## Phase 17 업로드·보기
 
@@ -62,6 +64,15 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 - 추천·피드백·파일 업데이트는 기존 API와 localStorage 중복 추천 가드를 유지한다. 각 실패는 현재 입력과 화면을 보존한 채 다시 시도할 수 있다.
 - 기존 `public/upload.html`, `public/view.html` 파일은 rollback 자산으로 남고 Express 라우트만 React 셸을 우선 제공한다.
 - Phase 17 운영 검증은 읽기 전용으로 수행하며 실제 콘텐츠·버전·피드백·추천을 만들지 않는다.
+
+## Phase 18 관리자
+
+- `/admin.html`은 동일 React 셸을 사용하되 응답에 `X-Robots-Tag: noindex, nofollow`를 설정한다. 기존 `public/admin.html`은 롤백 자산으로 보존한다.
+- 정보 구조는 대시보드·콘텐츠·코호트·내보내기·감사/시스템 다섯 영역으로 나눈다.
+- 콘텐츠 목록은 v2 관리자 페이지네이션·코호트·유형·검색 계약을 사용한다. 상세 패널에서 메타데이터, ContentVersion 객체 키·크기, 피드백을 한 흐름으로 검토한다.
+- 콘텐츠 삭제는 해당 contentId를 다시 입력해야 활성화된다. 콘텐츠 비밀번호 변경, 피드백 삭제, ZIP 생성, 코호트·관리자 변경은 모두 별도 명시 버튼으로만 실행한다.
+- ZIP은 `cohortId` 기반 비동기 작업을 만들며 최근 작업의 대기·실행·완료·실패·재시도 상태를 표시한다.
+- 운영 배포 검증은 기존 로그인 세션으로 조회 화면과 상세 패널만 확인하고 콘텐츠·피드백·코호트·계정·ZIP 쓰기는 실행하지 않는다.
 
 ## 검증
 
@@ -74,4 +85,4 @@ npm test
 npm run test:e2e
 ```
 
-Vitest는 공통 셸의 기존 URL 연결과 기준선 표기를 확인한다. Playwright는 `/app/`을 데스크톱·모바일에서 열어 링크, 390px 가로 오버플로, WCAG 2 A/AA critical 위반을 검사한다.
+Vitest는 공통 셸의 기존 URL 연결과 기준선 표기를 확인한다. Playwright는 공개·업로드·보기·관리자 화면을 데스크톱·모바일에서 열어 핵심 흐름, 390px 가로 오버플로, WCAG 2 A/AA critical 위반을 검사한다. 관리자 테스트는 고정 mock 세션과 API 응답을 사용하며 운영 자격정보를 포함하지 않는다.

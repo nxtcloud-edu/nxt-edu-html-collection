@@ -73,6 +73,22 @@ async function mockAdminApi(page) {
     latestKey: `contents/${item.contentId}/v${item.latestVersion}.html`,
   }));
   await page.route('**/api/admin/session', (route) => json(route, { ok: true }));
+  const adminContents = legacyGames.map((item, index) => ({
+    ...contents[index],
+    owner: { ...contents[index].owner, kind: index === 0 ? 'individual' : 'individual' },
+    cohort: { ...contents[index].cohort, status: 'active' },
+    latestObjectKey: item.latestKey,
+    fallbackObjectKey: null,
+    storageScheme: 'v2-contents',
+    createdAt: contents[index].updatedAt,
+  }));
+  const adminCohorts = [cohortA, cohortB].map((cohort) => ({ ...cohort, createdAt: null, updatedAt: null, editable: cohort === cohortB }));
+  await page.route(/\/api\/v2\/admin\/contents\?.*$/, (route) => json(route, { contents: adminContents, page: { pageSize: 25, total: 3, nextCursor: null } }));
+  await page.route('**/api/v2/admin/cohorts', (route) => json(route, { cohorts: adminCohorts }));
+  await page.route(/\/api\/v2\/admin\/contents\/[a-f0-9]{8}\/versions$/, (route) => json(route, { contentId: contents[0].contentId, metadataStatus: 'complete', versions: [{ contentId: contents[0].contentId, version: 3, objectKey: `contents/${contents[0].contentId}/v3.html`, originalFileName: 'carbon-map.html', sizeBytes: 8192, sha256: 'a'.repeat(64), uploadedAt: contents[0].updatedAt }] }));
+  await page.route('**/api/v2/admin/audit-logs?*', (route) => json(route, { auditLogs: [{ auditId: 'audit-1', actorId: 'fixture-admin', action: 'update-content-v2', targetType: 'content', targetId: contents[0].contentId, details: {}, occurredAt: contents[0].updatedAt }], page: { limit: 25, nextCursor: null } }));
+  await page.route('**/api/admin/exports?*', (route) => json(route, { exports: [] }));
+  await page.route(/\/api\/feedback\?.*$/, (route) => json(route, { feedback: [{ nickname: '동료 학습자', message: '데이터 표현이 이해하기 쉬워요.', createdAt: '2026-08-22T09:30:00.000Z' }] }));
   await page.route('**/api/cohorts', (route) => json(route, { cohorts: [{ name: cohortA.name }, { name: cohortB.name }] }));
   await page.route('**/api/categories', (route) => json(route, { categories: ['webpage', 'game'] }));
   await page.route('**/api/games', (route) => json(route, { games: legacyGames }));
