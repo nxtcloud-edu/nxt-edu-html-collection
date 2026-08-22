@@ -1,6 +1,6 @@
 # 콘텐츠 플랫폼 v2 데이터·API 계약
 
-Status: Phase 15 저장·관리자 API 구현 완료, 운영 backfill 전
+Status: Phase 15 저장·관리자 API 구현 및 운영 backfill 완료
 
 Date: 2026-08-21
 
@@ -211,6 +211,12 @@ v2 도입 중에도 다음 계약은 제거하지 않는다.
 - dry-run 결과의 대상·누락·충돌 수를 먼저 보고한다.
 - ContentVersion은 기존 `contents/{contentId}/vN.html`을 읽어 크기와 SHA-256을 계산한 뒤 조건부로 추가한다. 객체나 콘텐츠 포인터는 수정하지 않는다.
 - apply는 `conflicts: 0`, `failures: 0`일 때만 허용하며 확인 문자열을 요구한다. 재 dry-run에서 모든 레코드가 `existing`으로 분류돼야 한다.
+
+2026-08-22 운영 실행 결과:
+
+- dry-run에서 콘텐츠 283개·예상 버전 396개가 모두 `ready`, 충돌·실패 0이었다.
+- 조건부 apply로 ContentVersion 396개를 생성했으며 기존 S3 객체·콘텐츠 포인터·공유 URL은 변경하지 않았다.
+- 재 dry-run은 `ready: 0`, `existing: 396`, `conflicts: 0`, `failures: 0`으로 종료했다.
 
 ### Gate C — 신규 쓰기 전환
 

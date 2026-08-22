@@ -2859,3 +2859,34 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 화면별 전환 전까지 `/app/`은 기반·전환 지도이고 기존 `/`, `/cohort.html`, `/upload.html`, `/view.html`, `/admin.html`이 운영 경로다.
 - 해시 자산은 캐시·롤백 호환을 위해 빌드 시 자동 삭제하지 않는다. 정리는 사용량 확인 후 별도 phase로 수행한다.
 - 다음 Phase 15는 기존 API를 유지하면서 Cohort·ContentVersion·AuditLog와 ID 기반 v2 관리자 API를 additive하게 완성한다.
+
+## 2026-08-22 23:51 KST — Codex — Phase 15 데이터·관리자 API 완성
+
+### Intent
+- 기존 콘텐츠·URL·S3 객체를 보존하면서 Cohort·ContentVersion·AuditLog 저장 계약과 ID 기반 v2 관리자 API를 additive하게 완성하고 운영 배포한다.
+
+### Files changed
+- `repositories/version-repository.js`, `audit-repository.js`, `domain/admin-*.js` — 버전·감사 저장과 관리자 페이지네이션·수정 규칙.
+- `services/content-service.js`, `cohort-service.js`, `registry.js`, `object-storage.js` — 불변 버전 쓰기, 버전 메타, ID 기반 코호트 갱신.
+- `routes/admin-routes.js`, `public-routes.js`, `server.js`, `admin-auth.js` — v2 관리자 콘텐츠·버전·코호트·감사·export API와 감사 기록 주입.
+- `migrations/content-version-backfill.js`, `scripts/backfill-content-versions.js` — dry-run 우선·조건부 additive 백필.
+- 테스트 4개 파일 수정·2개 추가, README와 데이터·백엔드·결정·로드맵 문서 최신화.
+
+### Commands / verification
+- 집중·통합 테스트 최종 49/49 및 21/21 통과. 전체 `npm test` 116/116 통과.
+- `npm run typecheck:web`, Vitest 2/2, production build 통과.
+- 첫 Playwright 실행은 sandbox `listen EPERM`으로 실패. 승인된 로컬 서버 실행에서 데스크톱·모바일 14/14 통과.
+- `git diff --check`, 변경 `main.tf` fmt check 통과. 전체 fmt는 기존 비추적 `terraform.tfvars` 형식 때문에 실패해 파일을 수정하지 않음.
+- sandbox Terraform validate는 AWS provider protocol 로딩 실패. 실제 AWS Terraform plan은 성공했고 Lambda 1건만 in-place, 0 add·0 destroy였다.
+- `npm install --omit=dev` 후 plan/apply 완료. 최종 detailed plan exit 0, no changes.
+- 운영 health 200, v2·레거시 콘텐츠 각각 283개. 미인증 v2 관리자 콘텐츠·코호트·감사 API는 모두 401.
+- ContentVersion 운영 dry-run: contents 283, expectedVersions/ready 396, conflicts/failures 0. 조건부 apply created 396, conflicts 0. 재 dry-run ready 0, existing 396, conflicts/failures 0.
+- 로그인 관리자 브라우저 읽기 검증: 세션 유지, 콘텐츠 283개, 게임 182·웹 101, 누적 버전 396, 신규 저장 283.
+- 기능 커밋 `4baac87` origin/main push 완료.
+- S3 객체 생성·수정·삭제, 콘텐츠 포인터 변경·은퇴, 콘텐츠/피드백 삭제, ZIP 생성·다운로드 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- ContentVersion은 기존 DynamoDB 테이블의 `version#{contentId}` 파티션에 조건부 저장하고 AuditLog는 `audit` 파티션에 민감정보 없이 저장한다.
+- 레거시 중간 버전의 알 수 없는 업로드 시각·원본 파일명은 추정하지 않고 `null`로 둔다.
+- Phase 16은 `/app/` 기반 공개 홈·탐색·코호트 UI와 서버 페이지네이션·필터 연결이며 기존 공개 URL은 롤백 경계로 유지한다.

@@ -46,6 +46,10 @@
 - 웹 타입 검사, Vitest 2/2, 서버 108/108, 데스크톱·모바일 E2E 14/14와 앱 셸 critical 접근성 위반 0·가로 오버플로 0이 통과했다.
 - 운영 `/app/`은 지표 283·15·396과 기존 URL 링크를 렌더링한다. 시각 검토에서 한글 음절 줄바꿈을 수정했고, 캐시된 이전 index도 로드되도록 직전 해시 CSS·JS를 보존했다.
 - Phase 14 배포는 각 수정마다 Lambda 1건 in-place, 0 add·0 destroy였고 최종 Terraform plan은 no changes다. 기능 `661c6d6`, 캐시 제외 `117c0aa`, 시각 수정 `58e74a1`, 캐시 호환 `a4f0de2` 모두 origin/main이다.
+- Phase 15에서 ContentVersion·AuditLog repository와 ID 기반 v2 관리자 콘텐츠·버전·코호트·감사·export API를 추가했다. 기존 관리자·공개 API는 유지한다.
+- 전체 서버 116/116, 웹 타입 검사, Vitest 2/2, production build, 데스크톱·모바일 E2E 14/14가 통과했다. 기능 커밋 `4baac87`은 origin/main에 push했다.
+- Lambda 코드만 0 add·1 change·0 destroy로 배포했고 최종 Terraform plan은 no changes다. health, v2·레거시 목록 283개, 로그인 관리자 화면 283개·게임 182·웹 101·버전 396을 확인했다.
+- ContentVersion dry-run은 396 ready·충돌/실패 0이었고 조건부 apply로 396개를 생성했다. 재 dry-run은 existing 396·ready/conflict/failure 0이다. S3 객체·포인터·공유 URL은 바꾸지 않았다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -54,7 +58,7 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 15는 Cohort·ContentVersion·AuditLog 모델과 ID 기반 v2 관리자 API를 additive하게 완성한다.
-2. 기존 관리자 계약과 화면을 유지하면서 서버 페이지네이션·필터·감사 로그를 신규 경계에 추가하고 운영 쓰기는 테스트 데이터로만 검증한다.
+1. Phase 16은 `/app/` 기반 공개 홈·탐색·코호트 UI를 구현하고 v2 서버 페이지네이션·필터를 연결한다.
+2. 기존 `/`, `/cohort.html`을 제거하지 않고 새 화면의 운영 검증과 롤백 경계를 먼저 확보한다.
 3. 2026-08-30 22:13 KST 이후 Phase 11 사용량 수집·감사·fallback dry-run을 별도 수행한다.
 4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.
