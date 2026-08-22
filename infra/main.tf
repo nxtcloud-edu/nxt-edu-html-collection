@@ -73,6 +73,38 @@ resource "aws_acm_certificate_validation" "showcase" {
   validation_record_fqdns = [for record in aws_route53_record.showcase_certificate_validation : record.fqdn]
 }
 
+resource "aws_acm_certificate" "content" {
+  provider          = aws.us_east_1
+  domain_name       = "content.showcase.nxtcloud.kr"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "content_certificate_validation" {
+  for_each = {
+    for option in aws_acm_certificate.content.domain_validation_options : option.domain_name => {
+      name   = option.resource_record_name
+      record = option.resource_record_value
+      type   = option.resource_record_type
+    }
+  }
+
+  zone_id = data.aws_route53_zone.nxtcloud.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "content" {
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.content.arn
+  validation_record_fqdns = [for record in aws_route53_record.content_certificate_validation : record.fqdn]
+}
+
 
 resource "aws_s3_bucket_public_access_block" "games" {
   bucket = aws_s3_bucket.games.id
@@ -103,7 +135,10 @@ resource "aws_s3_bucket_policy" "games" {
       ]
       Condition = {
         StringEquals = {
-          "AWS:SourceArn" = aws_cloudfront_distribution.showcase.arn
+          "AWS:SourceArn" = [
+            aws_cloudfront_distribution.showcase.arn,
+            aws_cloudfront_distribution.content.arn,
+          ]
         }
       }
     }]
@@ -313,6 +348,41 @@ resource "aws_cloudfront_origin_access_control" "content" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_distribution" "content" {
+  enabled         = true
+  is_ipv6_enabled = true
+  aliases         = ["content.showcase.nxtcloud.kr"]
+  comment         = "Isolated NXT AI literacy student content"
+  price_class     = "PriceClass_200"
+
+  origin {
+    domain_name              = aws_s3_bucket.games.bucket_regional_domain_name
+    origin_id                = "s3-content"
+    origin_access_control_id = aws_cloudfront_origin_access_control.content.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "s3-content"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.content.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+}
+
 resource "aws_cloudfront_distribution" "showcase" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -414,6 +484,30 @@ resource "aws_route53_record" "showcase_ipv6" {
   alias {
     name                   = aws_cloudfront_distribution.showcase.domain_name
     zone_id                = aws_cloudfront_distribution.showcase.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "content_ipv4" {
+  zone_id = data.aws_route53_zone.nxtcloud.zone_id
+  name    = "content.showcase.nxtcloud.kr"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.content.domain_name
+    zone_id                = aws_cloudfront_distribution.content.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "content_ipv6" {
+  zone_id = data.aws_route53_zone.nxtcloud.zone_id
+  name    = "content.showcase.nxtcloud.kr"
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.content.domain_name
+    zone_id                = aws_cloudfront_distribution.content.hosted_zone_id
     evaluate_target_health = false
   }
 }

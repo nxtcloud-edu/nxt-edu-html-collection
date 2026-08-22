@@ -30,9 +30,11 @@ test('S3 Public Access Block은 네 가지 공개 경로를 모두 차단한다'
   assert.match(accessBlock, /depends_on = \[aws_s3_bucket_policy\.games\]/);
 });
 
-test('CloudFront는 contents와 games를 OAC S3 origin으로 전달한다', async () => {
+test('학생 콘텐츠는 전용 CloudFront 배포와 origin으로 격리한다', async () => {
   const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
   assert.match(terraform, /resource "aws_cloudfront_origin_access_control" "content"/);
+  assert.match(terraform, /resource "aws_cloudfront_distribution" "content"/);
+  assert.match(terraform, /aliases\s*= \["content\.showcase\.nxtcloud\.kr"\]/);
   assert.match(terraform, /signing_behavior\s*= "always"/);
   assert.match(terraform, /origin_id\s*= "s3-content"/);
   assert.match(terraform, /path_pattern\s*= "\/contents\/\*"[\s\S]*?target_origin_id\s*= "s3-content"/);
