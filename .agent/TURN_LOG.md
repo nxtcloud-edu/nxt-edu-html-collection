@@ -2995,3 +2995,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 관리자 콘텐츠도 공개 갤러리와 같은 불투명 cursor 원칙을 사용하되 25개 단위로 이전/다음 이력을 클라이언트에만 보관한다.
 - 보완 커밋·재배포 후 운영에서 다음 페이지 시작 행과 1페이지 복귀를 읽기 전용 확인한다.
+
+## 2026-08-23 00:43 KST — Codex — Phase 18 완료
+
+### Intent
+- cursor 환류 보완을 재배포하고 Phase 18 관리자 전환을 운영에서 읽기 전용으로 확정한다.
+
+### Commands / verification
+- 보완 커밋 `9e78988` origin/main push 완료.
+- 재배포 Terraform plan/apply 0 add·Lambda 1 change·0 destroy.
+- 캐시 우회 관리자 HTML은 새 `index-HG0J9f4C.js`, `index-C4CF0olQ.css`를 반환하고 두 자산 200.
+- 운영 관리자 1페이지 첫 행 `0e040222`에서 다음 25개 페이지 첫 행 `9760d95f`로 이동, 이전 25개로 복귀 후 첫 행 일치. 가로 오버플로 0.
+- 운영 쓰기·S3 객체/포인터 변경·콘텐츠/피드백/코호트/계정 수정·ZIP 생성/다운로드 — 실행 안 함.
+
+### Decisions / handoff
+- Phase 18 완료. 다음 단계는 Phase 19 전체 품질·전환 게이트이며 Phase 11 fallback 은퇴·S3 삭제와 독립적이다.
