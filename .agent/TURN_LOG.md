@@ -2688,3 +2688,36 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 학생 HTML은 관리자 쿠키와 동일한 `showcase.nxtcloud.kr`에서 제공하지 않고 `content.showcase.nxtcloud.kr`로 격리한다.
 - Phase 11은 사용량·정리 후보 분석부터 시작하며 기존 `games/*` 삭제는 별도 승인 전 수행하지 않는다.
+
+## 2026-08-22 22:18 KST — Codex — Phase 11 레거시 정리 감사·사용량 관찰 시작
+
+### Intent
+- `games/*` 삭제 전에 복사본 무결성·레지스트리 참조·실제 접근 사용량을 전수 확인하고, 근거가 없거나 소유가 불명인 객체를 자동 차단한다.
+
+### Files changed
+- `migrations/legacy-cleanup.js`, `scripts/audit-legacy-cleanup.js` — 읽기 전용 정리 계획, 7일 사용량 근거, active fallback·orphan·mirror 충돌 차단.
+- `migrations/cloudfront-usage.js`, `scripts/collect-legacy-usage.js` — CloudFront 표준 로그 파싱·집계와 관찰 기간·24시간 전달 지연 검증.
+- 관련 테스트와 `package.json` — 두 운영 명령과 안전 게이트 계약.
+- `infra/main.tf` — 쿠키 제외 CloudFront 로그, 비공개·AES256 로그 버킷, PAB 4종, 14일 TTL, 조직 자동 태그 보존.
+- 계획·운영 문서와 협업 상태 문서 — 관찰 시작 시각, 최초 실행 가능 시각, 삭제 승인 경계.
+
+### Commands / verification
+- 기존 복사 dry-run — contents 283, expected/verified 396/396, pending·blocked·conflict 0, orphan 2.
+- 기존 포인터 dry-run — switched 283, ready·blocked·conflict 0.
+- 신규 cleanup 운영 dry-run — legacy 398, registered/verified 396/396, deletionCandidates 0, activeReference 283, awaitingUsageEvidence 113, orphan 2, mirrorBlocked 0.
+- 집중 테스트 12/12, 로그 수집기 추가 후 8/8, storage 정책 5/5 pass.
+- 전체 `npm test` 최종 99/99 pass, 직렬 실행.
+- Terraform validate pass. 관찰 인프라 plan 5 add·2 in-place·0 destroy, apply 성공.
+- CloudFront distribution `E1WKPIDV02A1LX` — `Deployed`, Logging Enabled, IncludeCookies false, 로그 prefix `cloudfront/content/`.
+- 로그 버킷 — PAB 4종 true, AES256, 14일 lifecycle 확인. 조직 자동 태그 제거 계획은 `ignore_changes=[tags]`로 차단.
+- 사용량 수집기 plan/apply — Lambda 패키지 1 in-place, 0 destroy.
+- 배포 후 전용 콘텐츠 HTML 200, health 200.
+- 기능 커밋 `549a3ea`, 수집기 `1db46c3`, 태그 보존 `8ad50d1`, 문서 `3e3301b`; 모두 origin/main push.
+- S3 콘텐츠 객체와 DynamoDB 레지스트리 포인터 복사·이동·덮어쓰기·삭제·변경 — 실행 안 함.
+- cleanup `--apply`, 객체 삭제, fallback 포인터 은퇴 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- API가 `contents/*`를 반환한다는 사실만으로 과거 공유 URL 사용량 0을 추정하지 않는다.
+- 관찰 시작은 2026-08-22T13:13:00.629Z. 최소 7일 + 24시간 전달 지연 후 2026-08-30T13:13:00.629Z부터 첫 완전 근거를 만들 수 있다.
+- 사용량 0이어도 fallback 포인터 은퇴와 실제 객체 삭제는 별도 계획·승인을 요구한다.

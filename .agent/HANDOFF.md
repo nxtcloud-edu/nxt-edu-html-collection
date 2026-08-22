@@ -27,6 +27,10 @@
 - 앱 CloudFront의 S3 origin과 `/contents/*`·`/games/*` behavior를 제거했다. 공개 API 283/283개가 전용 콘텐츠 도메인을 반환하며 인앱 브라우저 iframe에서 실제 학생 웹페이지 DOM 렌더링을 확인했다.
 - 직접 S3 콘텐츠 URL은 403, 앱 도메인의 이전 콘텐츠 경로는 404, 전용 콘텐츠 URL과 health는 200이다. `games/*` 398개와 `contents/*` 396개는 그대로 보존했다.
 - 전체 테스트에서 드러난 로컬 export 상태 파일의 부분 읽기 경쟁 조건은 임시 파일 작성 후 atomic rename으로 수정했고 90/90을 통과했다.
+- Phase 11 읽기 전용 감사 도구는 복사본 해시·레지스트리 참조·최소 7일 CloudFront 요청 근거를 모두 요구하고 `--apply`를 거부한다. 운영 결과 삭제 후보 0, 활성 fallback 283, 사용량 근거 대기 113, 미등록 2다.
+- 콘텐츠 CloudFront 표준 로그는 2026-08-22 22:13 KST부터 쿠키 없이 `nxt-ai-literacy-content-access-logs/cloudfront/content/`에 수집한다. 버킷은 PAB 4종·AES256·14일 TTL이며 조직 자동 태그를 Terraform이 제거하지 않는다.
+- 로그 수집기는 7일 미만 구간, 로그 활성화 이전 구간, 종료 후 24시간이 지나지 않은 구간을 거부한다. 첫 완전 근거 실행 가능 시각은 2026-08-30 22:13 KST다.
+- Phase 11 배포 후 콘텐츠 HTML과 health는 200, CloudFront 배포 상태 `Deployed`, Logging Enabled·IncludeCookies false를 확인했다. S3 객체·DynamoDB 포인터 삭제나 변경은 수행하지 않았다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -35,6 +39,6 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 10 구현·단계별 배포·운영 API/브라우저/S3 경계 검증이 완료됐다.
-2. 다음 Phase 11은 레거시 사용량과 정리 후보를 먼저 분석한다.
-3. 기존 S3 객체 삭제는 별도 승인 전에는 수행하지 않는다.
+1. Phase 11 감사·관찰 인프라·수집기 배포까지 완료됐고 7일 관찰 중이다.
+2. 2026-08-30 22:13 KST 이후 문서의 `collect:legacy-usage`와 `audit:legacy-cleanup` 명령을 순서대로 실행한다.
+3. 사용량 0이어도 fallback 포인터 은퇴와 기존 S3 객체 삭제는 각각 별도 계획·승인 전에는 수행하지 않는다.

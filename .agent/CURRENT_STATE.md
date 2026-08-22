@@ -1,17 +1,17 @@
 # Current State
 
-Updated: 2026-08-22 20:54 KST
+Updated: 2026-08-22 22:18 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 10 문서 커밋 `f92e175`까지 origin/main에 push 완료.
-- Worktree: Phase 10 협업 저널 최종 갱신 중.
-- Tests: 전체 `npm test` 직렬 실행 90/90. 로컬 export JSON은 원자적 rename으로 부분 읽기 경쟁 조건 제거.
-- Terraform: 전용 콘텐츠 ACM·CloudFront·Route 53 생성, 앱 CloudFront S3 경로 제거, S3 PAB 4종 true와 OAC 전용 정책 적용. 생성·이동·삭제된 S3 객체 없음.
-- Prod: API 283/283개가 `content.showcase.nxtcloud.kr` URL을 반환. 전용 URL 200·iframe 렌더링, 직접 S3 403, 앱 도메인 이전 콘텐츠 경로 404, health 200.
+- Branch: `main`, Phase 11 관찰 문서 커밋 `3e3301b`까지 origin/main에 push 완료.
+- Worktree: Phase 11 협업 저널 최종 갱신 중.
+- Tests: 전체 `npm test` 직렬 실행 99/99.
+- Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
+- Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
 - User verification: 사용자가 운영 환경에서 실제 코호트 ZIP 다운로드를 직접 검증했다고 확인.
 
 ## Completed
@@ -28,7 +28,9 @@ Updated: 2026-08-22 20:54 KST
 - 개편 Phase 8 완료: 검증된 283개에 새 우선 포인터를 조건부 추가하고 레거시 fallback을 보존. 공개 API·ZIP·후속 버전 경로와 실제 브라우저 렌더링 검증.
 - 개편 Phase 9 완료: 비동기 ZIP 작업 상태·최근 이력·조건부 재시도·30일 TTL·Lambda 오류 alarm 배포. 운영 46개 ZIP이 실패 보존 후 재시도되어 `attempt 2`, `completed`; 관리자 UI 다운로드 상태와 alarm `OK` 확인.
 - 개편 Phase 10 완료: 학생 HTML을 전용 origin으로 격리하고 S3 직접 공개를 차단. `games/*` 398개와 `contents/*` 396개 보존 확인.
+- 개편 Phase 11 관찰 진행 중: 삭제 차단형 dry-run 감사와 CloudFront 로그 수집기를 구현·배포. 2026-08-22 22:13 KST 관찰 시작, 객체·포인터 삭제/변경 없음.
 
 ## Next safe action
-1. Phase 11에서 레거시 `games/*` 사용량과 미등록 객체 2개를 읽기 전용으로 분석한다.
-2. 기존 `games/*` 삭제는 별도 승인 전까지 수행하지 않는다.
+1. 2026-08-30 22:13 KST 이후 첫 7일 CloudFront 로그 사용량 근거를 수집하고 cleanup audit를 재실행한다.
+2. 사용량 근거 확인 후 fallback 포인터 은퇴 계획을 별도 검토한다.
+3. 기존 `games/*` 삭제는 별도 승인 전까지 수행하지 않는다.
