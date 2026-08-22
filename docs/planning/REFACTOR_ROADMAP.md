@@ -49,4 +49,5 @@
 - fallback 은퇴 도구는 조건부 갱신·이중 확인 문자열·사용량 보고서 필수 계약으로 배포했다. 운영 dry-run은 283개 모두 `awaitingUsageEvidence`, ready·conflict 0이며 포인터 갱신은 실행하지 않았다.
 - 최소 7일 관찰과 24시간 로그 전달 대기를 마친 2026-08-30 22:13 KST 이후 사용량 근거를 생성한다. `games/*` 객체 삭제는 후보 재산정과 별도 승인 전까지 수행하지 않는다.
 - Phase 12 완료: [개편 기준선](./RENEWAL_BASELINE.md)에 운영 283개·유형 182/101·버전 합계 396을 고정하고, 데스크톱·모바일 12개 Playwright E2E와 critical 접근성 위반 0 기준을 추가했다. 운영 코드·데이터 변경과 배포는 없다.
-- Phase 13~19는 Phase 11의 관찰·삭제 승인 절차와 독립적으로 진행한다. 각 phase는 테스트·문서·커밋·push를 독립적으로 끝내며 런타임 변경이 있을 때만 Terraform 배포한다.
+- Phase 13 완료: `server.js`를 composition root로 축소하고 public/admin routes, content/cohort services, content/feedback repositories, object-storage adapter로 경계를 분리했다. 외부 API·URL·데이터 계약은 유지했으며 단위·통합 108/108, 데스크톱·모바일 E2E 12/12, 운영 관리자 283개·게임 182·웹 101·버전 396을 확인했다.
+- Phase 14~19는 Phase 11의 관찰·삭제 승인 절차와 독립적으로 진행한다. 각 phase는 테스트·문서·커밋·push를 독립적으로 끝내며 런타임 변경이 있을 때만 Terraform 배포한다.

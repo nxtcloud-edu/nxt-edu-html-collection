@@ -1,15 +1,15 @@
 # Current State
 
-Updated: 2026-08-22 22:55 KST
+Updated: 2026-08-22 23:13 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 12 개편 기준선 커밋 `2e20877` 완료.
-- Worktree: Phase 12 협업 저널 최종 갱신 중이며 운영 코드 변경 없음.
-- Tests: 전체 `npm test` 직렬 실행 104/104, Playwright 데스크톱·모바일 E2E 12/12.
+- Branch: `main`, Phase 13 백엔드 경계 분리 커밋 `1d22a4c` 배포·push 완료.
+- Worktree: Phase 13 협업 저널 최종 갱신 중.
+- Tests: 전체 `npm test` 직렬 실행 108/108, Playwright 데스크톱·모바일 E2E 12/12.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
 - Log delivery: 관찰 시작 후 CloudFront gzip 로그 2개가 전용 S3 버킷에 도착했고 기존 파서가 14개 요청 레코드를 처리했다. 현재 레거시 요청 0건은 부분 표본이므로 은퇴 근거로 사용하지 않음.
@@ -32,9 +32,12 @@ Updated: 2026-08-22 22:55 KST
 - 개편 Phase 11 관찰 진행 중: 삭제 차단형 dry-run 감사와 CloudFront 로그 수집기를 구현·배포. 2026-08-22 22:13 KST 관찰 시작, 객체·포인터 삭제/변경 없음.
 - Phase 11 fallback 은퇴 준비 완료: 완전한 7일 사용량 근거·검증 복사본·정확한 이중 포인터·레거시 요청 0건을 모두 요구하는 조건부 도구를 배포. 운영 dry-run은 283개 모두 `awaitingUsageEvidence`, ready·conflict 0이며 apply는 실행하지 않음.
 - Phase 12 완료: 운영 283개·게임 182·웹 101·최신 버전 합계 396을 문서화하고, 공개·업로드·보기·관리자 핵심 흐름을 데스크톱·모바일 12개 Playwright E2E와 axe critical 위반 0으로 고정. 운영 코드·데이터·인프라 변경 없음.
+- Phase 13 완료: `server.js`를 composition root로 축소하고 public/admin routes, content/cohort services, content/feedback repositories, object-storage adapter를 분리. 외부 API·URL·S3/DynamoDB 계약 불변.
+- Phase 13 배포 완료: Lambda 코드 1건 in-place, 0 add·0 destroy. 최종 Terraform plan no changes.
+- Phase 13 운영 검증: health·코호트·콘텐츠·전용 콘텐츠 200, 코호트 15개, 콘텐츠 283개·게임 182·웹 101·버전 396. 로그인 관리자 화면의 283개 행과 ZIP 버튼 노출 확인.
 
 ## Next safe action
-1. Phase 13에서 `server.js`를 외부 계약 불변 상태로 routes/services/repositories/AWS adapters 경계로 분리한다.
-2. 각 추출 단계마다 104개 단위·통합 테스트와 Phase 12의 12개 E2E를 실행한다.
+1. Phase 14에서 React·TypeScript·Vite 프런트엔드 기반과 NXT Cloud 디자인 토큰·공통 컴포넌트를 추가한다.
+2. 기존 공개 URL과 정적 페이지는 유지한 채 독립적으로 빌드·검증 가능한 shell부터 도입한다.
 3. Phase 11 관찰은 병행하되 2026-08-30 22:13 KST 전에는 fallback apply를 실행하지 않는다.
 4. 기존 `games/*` 삭제는 포인터 은퇴 후에도 별도 승인 전까지 수행하지 않는다.

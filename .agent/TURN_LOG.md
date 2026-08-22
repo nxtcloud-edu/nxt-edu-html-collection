@@ -2797,3 +2797,33 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - E2E는 운영 계정이나 secret을 저장하지 않고 모의 인증·고정 fixture로 재현한다. 운영 계정은 사용자가 제공했지만 파일·로그에 기록하지 않았다.
 - Playwright·axe는 devDependency이며 Lambda 배포 전 `npm install --omit=dev`를 유지한다.
 - 다음 Phase 13은 외부 API·URL·운영 데이터를 바꾸지 않고 백엔드 경계만 분리한다.
+
+## 2026-08-22 23:13 KST — Codex — Phase 13 백엔드 경계 재구성
+
+### Intent
+- 외부 API·URL·운영 데이터 계약을 바꾸지 않고 단일 `server.js`의 라우팅·유스케이스·저장소·AWS SDK 책임을 명시적 계층으로 분리한다.
+
+### Files changed
+- `html-delivery/routes/public-routes.js`, `admin-routes.js` — 공개·v2·레거시·업로드·피드백·관리자·export 라우팅 분리.
+- `html-delivery/services/content-service.js`, `cohort-service.js` — 콘텐츠 생성·버전·레거시 upsert·삭제와 코호트 목록·추가·이름 변경 유스케이스 분리.
+- `html-delivery/repositories/feedback-repository.js`, `adapters/object-storage.js` — DynamoDB/로컬 피드백과 S3/로컬 객체 저장 경계 분리.
+- `html-delivery/server.js` — composition root, 공통 middleware·오류 처리·의존성 주입 중심으로 축소.
+- `html-delivery/test/backend-boundaries.test.js`, `README.md`, `docs/planning/BACKEND_ARCHITECTURE.md`, `DECISIONS.md` — 계층 계약 테스트와 구조·결정 문서화.
+
+### Commands / verification
+- 첫 집중 테스트는 sandbox의 `listen EPERM`으로 실행 불가했고 승인된 외부 실행에서 21/21 통과.
+- 서비스·공개 라우터·관리자 라우터 추출 단계별 집중 API 테스트 — 각 18/18 통과.
+- 신규 경계 테스트 4/4, 전체 `npm test` 직렬 실행 108/108, `npm run test:e2e` 데스크톱·모바일 12/12 통과.
+- `git diff --check` 통과. 추적 Terraform 파일 fmt check 통과. 무시된 로컬 `infra/terraform.tfvars`는 변경하지 않음.
+- Terraform validate는 sandbox provider protocol 제한으로 실패 후 승인된 외부 실행에서 통과.
+- `npm install --omit=dev` 후 Terraform plan/apply — 0 add·Lambda 1 in-place·0 destroy. 배포 후 최종 plan no changes.
+- 운영 읽기 검증 — health 200, 코호트 15개, 콘텐츠 283개·게임 182·웹 101·버전 396, 전용 콘텐츠 샘플 200.
+- 로그인 관리자 브라우저 읽기 검증 — 콘텐츠 283개, 행 283개, 게임 182·웹 101, 버전 396, 코호트 ZIP 버튼 노출.
+- 기능 커밋 `1d22a4c` origin/main push 완료.
+- S3·DynamoDB 콘텐츠 쓰기/삭제, fallback 포인터 변경·은퇴, ZIP 생성·다운로드 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- `server.js`는 조립과 공통 HTTP 경계만 소유하고, 업무 규칙은 service, 지속성은 repository/adapter가 소유한다.
+- 기존 API 응답·학생 viewer URL·`contents/{id}/vN.html`·비동기 ZIP·전용 content origin 계약을 유지한다.
+- 다음 Phase 14는 기존 화면을 즉시 교체하지 않고 React·TypeScript·Vite와 디자인 시스템 기반을 독립 빌드 경로로 도입한다.

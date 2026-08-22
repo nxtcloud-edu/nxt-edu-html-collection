@@ -39,6 +39,9 @@
 - Phase 12 기준선 커밋은 `2e20877`이다.
 - Playwright는 고정 fixture와 API interception으로 공개·업로드·보기·관리자 핵심 흐름을 데스크톱·모바일에서 검사한다. 최종 12/12, 기존 단위·통합 104/104가 통과했다.
 - Playwright와 axe는 devDependency다. Terraform ZIP이 `node_modules`를 포함하므로 런타임 배포 전 `npm install --omit=dev`를 유지한다.
+- Phase 13에서 `server.js`를 composition root와 middleware/error handler로 축소하고 public/admin routes, content/cohort services, content/feedback repositories, object-storage adapter를 분리했다. AWS SDK 직접 사용은 repository/adapter 경계 안으로 제한했다.
+- Phase 13 전체 테스트 108/108과 데스크톱·모바일 E2E 12/12가 통과했다. Terraform은 Lambda 코드 1건만 in-place 배포됐고 최종 plan은 no changes다.
+- 운영 API는 코호트 15개·콘텐츠 283개·게임 182·웹 101·버전 396이며 전용 콘텐츠 샘플도 200이다. 로그인 관리자 화면에서 동일 지표, 콘텐츠 행 283개, 코호트 ZIP 버튼 노출을 읽기 전용으로 확인했다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -47,7 +50,7 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 13은 `server.js`의 routes/services/repositories/AWS adapters 분리다. 공개·관리자 API 계약과 데이터는 바꾸지 않는다.
-2. 구조 추출 후 `npm test` 104개와 `npm run test:e2e` 12개를 모두 재실행한다.
+1. Phase 14는 React·TypeScript·Vite 기반, NXT Cloud 디자인 토큰과 공통 컴포넌트, 기존 URL을 수용할 앱 shell을 만든다.
+2. 기존 정적 화면은 즉시 교체하지 않고 새 빌드 산출물을 독립 경로에서 검증한 뒤 후속 Phase 16~18에서 화면별로 전환한다.
 3. 2026-08-30 22:13 KST 이후 Phase 11 사용량 수집·감사·fallback dry-run을 별도 수행한다.
 4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.
