@@ -2624,3 +2624,36 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - Phase 8 구현·운영 포인터 전환·문서·push·배포가 모두 완료됐다.
 - 다음 단계는 Phase 9이며 시작하지 않았다.
+
+## 2026-08-22 10:08 KST — Codex — Phase 9 비동기 export·재시도·모니터링
+
+### Intent
+- 코호트 ZIP 생성을 HTTP 요청 시간에서 분리하고 관리자에게 작업 상태·최근 이력·실패 재시도·운영 alarm을 제공한다.
+
+### Files changed
+- `export-jobs.js`, `export-dispatch.js`, `export-worker.js`, `lambda.js` — DynamoDB/로컬 작업 저장, 조건부 상태 전이, 동일 Lambda 비동기 호출과 워커 이벤트 처리.
+- `cohort-export.js`, `server.js` — 고정 export ID, 완료 시 새 서명 URL, 작업 목록·상세·재시도 API와 인증된 로컬 다운로드.
+- `public/admin.html` — 백그라운드 생성 요청, 상태 폴링, 최근 이력, 완료 다운로드, 실패 재시도 UI.
+- `infra/main.tf` — DynamoDB `expiresAt` TTL, Lambda 120초·자체 호출 권한·async 무재시도, Errors CloudWatch alarm.
+- 관련 테스트·README·제품 결정·로드맵·협업 상태 문서.
+
+### Commands / verification
+- `npm install` — `@aws-sdk/client-lambda` 추가, 취약점 0.
+- 집중 테스트 첫 실행 — 샌드박스 포트 제한으로 admin API 13건 `listen EPERM`; 제품 실패가 아니며 샌드박스 밖 전체 테스트로 재검증.
+- 전체 `npm test` 2회 — 최종 88/88 pass, 직렬 실행.
+- `terraform fmt -check main.tf` — pass. 첫 sandbox `terraform validate`는 provider plugin 실행 제한으로 실패; 샌드박스 밖 재실행 pass.
+- `terraform plan` — alarm·자체 호출 정책·async config 3 add, DynamoDB TTL·Lambda 2 in-place change, 0 destroy.
+- `git commit` — `fb0de30 feat: 비동기 코호트 내보내기와 모니터링 추가`; origin/main push 완료.
+- 저장 plan `/tmp/nxt-edu-phase9.tfplan` apply — 3 added, 2 changed, 0 destroyed.
+- 배포 후 health 200, 관리자 export 미인증 401, admin HTML 200, 최종 Terraform plan no changes.
+- 첫 운영 검증 명령은 `S3_BUCKET` 누락으로 로컬 ZIP 모드가 선택돼 작업 `51d0a0288ebd3a60e69b84903b054f4a`가 `failed`로 보존됨. 애플리케이션 운영 요청 경로 오류는 아님.
+- 동일 작업을 조건부 재시도 후 실제 Lambda `InvocationType=Event`로 실행 — 46개, `attempt: 2`, `completed`, `exports/51d0a0288ebd3a60e69b84903b054f4a.zip`.
+- S3 HeadObject — ZIP 357,109 bytes, `application/zip`, metadata contentcount 46.
+- DynamoDB TTL — `ENABLED`, attribute `expiresAt`. Lambda async — retry 0, event age 3600초. CloudWatch alarm — `OK`, Errors, 300초, threshold 1.
+- 인앱 브라우저 — 사용자 로그인 후 최근 내보내기에 코호트·46개·시도 2·완료·다운로드 버튼 표시 확인. 다운로드 클릭은 실행 안 함.
+- 기존 `games/*`, `contents/*` 객체 이동·덮어쓰기·삭제와 콘텐츠 레코드 수정 — 실행 안 함.
+
+### Decisions / handoff
+- 작업 메타는 30일, 비공개 ZIP은 1일 보관한다. ZIP 보관 만료 뒤 이력은 남지만 다운로드 URL은 발급하지 않는다.
+- Lambda 실패는 작업 상태를 먼저 보존한 뒤 throw하여 CloudWatch Errors alarm과 관리자 재시도를 함께 사용한다.
+- 다음 단계는 Phase 10 OAC·S3 비공개 전환 영향 분석이다. Phase 11 원본 삭제는 별도 승인 전 수행하지 않는다.

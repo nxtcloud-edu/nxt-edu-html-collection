@@ -35,4 +35,5 @@
 - Phase 6 완료: v2 코호트·콘텐츠 조회, 항상 신규 생성, contentId 기반 명시적 버전 추가 API를 배포하고 갤러리·코호트·상세·업로드 화면을 전환했다. 운영 v2 콘텐츠 283개와 레거시 API 283개, 두 업로드 탭을 확인했다.
 - Phase 7 완료: 등록 콘텐츠 283개의 레거시 버전 396개를 `contents/{contentId}/vN.html`로 덮어쓰기 없이 복사했다. 전수 size·SHA-256 검증과 재 dry-run에서 396/396 일치, pending·누락·충돌·실패 0건을 확인했다. 레지스트리에 연결되지 않은 무버전 객체 2개는 자동 추정하지 않고 원본에 보존했다.
 - Phase 8 완료: 검증된 콘텐츠 283개에 `latestObjectKey=contents/*`를 조건부 추가하고 기존 `latestKey=games/*`를 fallback으로 보존했다. v2·레거시 API 283개가 새 URL을 반환하며 실제 iframe 렌더링과 재 dry-run을 확인했다.
-- 다음 안전 작업은 Phase 9 비동기 export·모니터링이다. 기존 `games/*` 삭제는 Phase 11까지 수행하지 않는다.
+- Phase 9 완료: ZIP 요청을 동일 Lambda의 비동기 작업으로 분리하고 작업 상태·최근 이력·조건부 재시도·30일 메타 TTL·Lambda 오류 alarm을 배포했다. 운영 최대 코호트 46개 작업이 실패 상태 보존 후 재시도되어 `attempt 2`, `completed`로 끝났고 관리자 화면의 완료·다운로드 상태와 CloudWatch alarm `OK`를 확인했다.
+- 다음 안전 작업은 Phase 10 CloudFront OAC·S3 비공개 전환의 직접 S3 URL 영향 분석과 호환 설계다. 기존 `games/*` 삭제는 Phase 11까지 수행하지 않는다.

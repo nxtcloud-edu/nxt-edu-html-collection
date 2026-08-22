@@ -5,7 +5,7 @@
 - 관리자 화면에 코호트 ZIP 다운로드를 추가했다. 선택 코호트의 각 콘텐츠 최신 HTML과 CSV/JSON manifest를 포함한다.
 - 로컬 모드는 인증된 앱 다운로드 경로, 운영은 비공개 S3 `exports/` + 15분 presigned URL을 사용한다. 기존 `games/` 객체는 변경하지 않는다.
 - 배포 직후 Lambda Node 20에서 `archiver` CommonJS require가 실패해 전 경로 502가 발생했다. 동적 `import()`로 수정하고 즉시 재배포해 복구했다.
-- 수정 후 `npm test` 55/55. 프로덕션 health 200, games 283개, admin.html ZIP UI 반영, 미인증 export 401, 최종 Terraform plan no changes. 커밋·push는 실행하지 않았다.
+- 초기 Phase 0 수정 후 `npm test` 55/55와 운영 health를 확인했으며, 이후 단계별 커밋·push·배포 기록은 아래 최신 항목과 TURN_LOG에 누적했다.
 - 개편 Phase 1에서 `CONTENT_MODEL_V2.md`, `REFACTOR_ROADMAP.md`와 제품 결정 4건을 작성했다. 런타임·DynamoDB·S3 변경 없음.
 - 개편 Phase 2에서 `domain/content.js`, `repositories/content-repository.js`를 추가하고 `server.js` 콘텐츠 저장 호출을 repository 경계로 연결했다. 외부 계약 불변, 전체 테스트 62/62.
 - 개편 Phase 3에서 인증된 `GET /api/admin/cohort-overview`와 관리자 요약 카드·저장 키 열을 추가했다. 전체 테스트 63/63이며 DynamoDB·S3·Terraform·배포 변경은 없다.
@@ -20,14 +20,17 @@
 - Phase 8에서 `latestObjectKey` 우선 포인터를 283개에 조건부 추가했다. 기존 `latestKey=games/*` 283개는 fallback으로 보존했고 재 dry-run은 switched 283·ready/blocked/conflict 0이다.
 - v2·레거시 API 모두 `contents/*` URL 283개를 반환한다. 인앱 브라우저에서 갤러리 283개와 실제 `contents/0e040222/v5.html` iframe 렌더링을 확인하고 사용자 탭을 업로드 화면으로 복귀했다.
 - 후속 버전은 우선 포인터와 같은 `contents/*`에 저장하며, export는 새 키 실패 시 레거시 키를 fallback한다. 원본 일괄 삭제는 수행하지 않았다.
+- Phase 9에서 관리자 ZIP을 동일 Lambda 비동기 작업으로 분리했다. API/UI는 queued·running·completed·failed, 최근 이력, 시도 횟수, 실패 작업 조건부 재시도를 제공한다.
+- 작업 메타는 기존 DynamoDB의 `export#` 키와 30일 TTL, ZIP은 기존 비공개 `exports/*`와 1일 수명 주기를 사용한다. Lambda async 자동 재시도 0회, 최대 이벤트 수명 1시간, Errors alarm을 배포했다.
+- 운영 46개 작업 `51d0a0288ebd3a60e69b84903b054f4a`는 첫 검증 환경 누락으로 failed가 보존된 뒤 재시도되어 attempt 2·completed가 됐다. 관리자 모달의 완료·다운로드, 357,109-byte ZIP, TTL ENABLED, alarm OK를 확인했다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
 - `.zed/`는 기존 비추적 파일이며 수정하지 않았다.
 - 버킷 공개 정책은 `games/*`로 좁혀졌고 `exports/*`는 비공개다.
-- 브라우저 자동 검증에서는 로그아웃 상태였지만, 이후 사용자가 운영 환경에서 실제 ZIP 다운로드를 직접 검증했다고 확인했다.
+- Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 8 구현·배포·포인터 전환·운영 브라우저 검증이 완료됐다.
-2. 다음 Phase 9은 비동기 export·상태·재시도·모니터링이다.
+1. Phase 9 구현·배포·대량 작업·재시도·운영 브라우저·alarm 검증이 완료됐다.
+2. 다음 Phase 10은 CloudFront OAC·S3 비공개 전환이며 직접 S3 콘텐츠 URL 영향 분석부터 시작한다.
 3. 기존 S3 객체 삭제는 Phase 11이며 별도 승인 전에는 수행하지 않는다.

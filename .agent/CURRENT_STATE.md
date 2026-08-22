@@ -1,16 +1,16 @@
 # Current State
 
-Updated: 2026-08-21 16:33 KST
+Updated: 2026-08-22 10:08 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 8 구현·운영 기록을 origin/main에 push 완료.
-- Worktree: Phase 8 최종 상태 기록 후 clean.
-- Tests: Phase 8 전체 `npm test` 직렬 실행 85/85.
-- Terraform: Phase 8 Lambda 코드와 정리된 번들을 in-place apply. 최종 plan no changes.
+- Branch: `main`, Phase 9 기능 커밋 `fb0de30`을 origin/main에 push 완료.
+- Worktree: Phase 9 운영 결과 문서와 협업 저널 갱신 중.
+- Tests: Phase 9 전체 `npm test` 직렬 실행 88/88.
+- Terraform: Phase 9 alarm·자체 호출 정책·비동기 설정 3개 생성, DynamoDB TTL·Lambda 2개 in-place 변경, 삭제 0. 최종 plan no changes.
 - Prod: 283개 모두 `contents/*` 우선 포인터와 `games/*` fallback을 함께 보유. v2·레거시 API는 새 URL 283개를 반환하고 실제 iframe 렌더링 확인.
 - User verification: 사용자가 운영 환경에서 실제 코호트 ZIP 다운로드를 직접 검증했다고 확인.
 
@@ -26,7 +26,8 @@ Updated: 2026-08-21 16:33 KST
 - 개편 Phase 6 완료: v2 공개 조회·항상 신규 생성·명시적 버전 추가 API와 학생·갤러리 UX 전환을 배포. 레거시 API·공유 URL 유지.
 - 개편 Phase 7 완료: 등록된 기존 버전 396개를 새 키로 조건부 복사하고 재실행 전수 검증 통과. 원본과 읽기 포인터는 변경하지 않음.
 - 개편 Phase 8 완료: 검증된 283개에 새 우선 포인터를 조건부 추가하고 레거시 fallback을 보존. 공개 API·ZIP·후속 버전 경로와 실제 브라우저 렌더링 검증.
+- 개편 Phase 9 완료: 비동기 ZIP 작업 상태·최근 이력·조건부 재시도·30일 TTL·Lambda 오류 alarm 배포. 운영 46개 ZIP이 실패 보존 후 재시도되어 `attempt 2`, `completed`; 관리자 UI 다운로드 상태와 alarm `OK` 확인.
 
 ## Next safe action
-1. Phase 9 비동기 export 상태·재시도·모니터링 설계를 시작한다.
+1. Phase 10 CloudFront OAC·S3 비공개 전환 전에 현재 직접 S3 콘텐츠 URL의 영향과 호환 경로를 분석한다.
 2. 기존 `games/*` 삭제는 Phase 11 별도 승인 전까지 수행하지 않는다.

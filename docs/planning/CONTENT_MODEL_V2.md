@@ -284,3 +284,12 @@ Gate A에서는 API 경로, S3 키, DynamoDB 데이터, 프로덕션 동작을 �
 - 전체 테스트 75/75, 로컬 브라우저에서 두 업로드 탭과 v2 갤러리 로딩을 확인했다. Terraform validate 통과, Lambda 1건을 in-place 배포했고 최종 plan은 no changes다.
 - 운영 v2 API는 코호트 15개, 콘텐츠 283개(게임 182·웹 101), 코호트 누락·민감 필드 노출 0이다. 레거시 API 283개와 기존 `games/*` 키도 유지된다.
 - 운영 인앱 브라우저에서 갤러리 283개와 “새 콘텐츠 만들기 / 기존 콘텐츠 새 버전” 화면을 확인했다. 운영 쓰기 데이터는 추가하지 않았다.
+
+## 13. Phase 9 비동기 export 구현 결과
+
+- `POST /api/admin/exports`는 작업 메타를 `queued`로 저장하고 `202`를 반환한 뒤 동일 Lambda를 `InvocationType=Event`로 호출한다.
+- 워커는 조건부 claim 후 `running`으로 전환하고 ZIP 생성 성공 시 `completed`, 실패 시 오류 코드와 함께 `failed`를 보존한다. 실패 작업만 조건부 재시도하며 시도 횟수를 누적한다.
+- 최근 작업 목록과 단일 상태 API는 관리자 인증을 요구하고, 완료 작업에만 새 15분 S3 서명 URL을 발급한다. ZIP 1일 보관이 끝나면 작업 이력은 남기되 다운로드 버튼은 숨긴다.
+- 작업 메타는 기존 DynamoDB 테이블에 별도 `export#` 키로 저장하고 `expiresAt` 30일 TTL을 적용한다. 콘텐츠 목록 조회는 계속 `content#`만 읽으므로 기존 콘텐츠 레코드와 분리된다.
+- 비동기 Lambda 자동 재시도는 0회, 이벤트 최대 수명은 1시간이다. Lambda `Errors`가 5분에 1회 이상이면 `nxt-ai-literacy-export-failures` alarm이 경보 상태로 전환된다.
+- 2026-08-22 운영에서 46개 콘텐츠 ZIP을 실제 생성했다. 첫 검증 모드 오류는 `failed`로 보존됐고 조건부 재시도 후 `attempt 2`, `completed`가 됐다. S3 ZIP 357,109 bytes, DynamoDB TTL `ENABLED`, alarm `OK`, Terraform 최종 no changes를 확인했다.
