@@ -20,7 +20,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .rail__foot i { width: 8px; height: 8px; border-radius: 50%; background: var(--nxt-success); box-shadow: 0 0 0 4px rgba(21,115,71,.12); }
 main { min-width: 0; padding: 0 clamp(20px, 5vw, 76px); }
 .hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr); gap: var(--nxt-space-12); align-items: end; min-height: 520px; padding: var(--nxt-space-16) 0; border-bottom: 1px solid var(--nxt-line-strong); }
-.hero h1 { max-width: 850px; margin: 0; font-size: clamp(48px, 7.2vw, 112px); font-weight: 750; line-height: .92; letter-spacing: -.075em; }
+.hero h1 { max-width: 850px; margin: 0; font-size: clamp(48px, 6.4vw, 96px); font-weight: 750; line-height: .94; letter-spacing: -.07em; word-break: keep-all; }
 .hero__copy { padding-bottom: var(--nxt-space-2); }
 .hero__copy p { margin: 0 0 var(--nxt-space-6); color: var(--nxt-muted); font-size: 17px; line-height: 1.7; word-break: keep-all; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 10px 15px; border: 1px solid var(--nxt-line-strong); border-radius: var(--nxt-radius-sm); background: transparent; color: var(--nxt-ink); font: inherit; font-size: 14px; font-weight: 750; text-decoration: none; cursor: pointer; }
