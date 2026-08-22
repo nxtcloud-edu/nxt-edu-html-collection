@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: fileURLToPath(new URL('../public/app', import.meta.url)),
-    emptyOutDir: true,
+    // A cached index may request the immediately previous hashed assets during a Lambda rollout.
+    // Keep old assets until an explicit, separately reviewed cleanup phase.
+    emptyOutDir: false,
   },
 });
