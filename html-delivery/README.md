@@ -2,6 +2,10 @@
 
 수강생이 소속·이름과 HTML 파일을 제출하면 업로드된 콘텐츠의 접속 URL을 발급하는 Express 앱입니다. 로컬에서는 Node.js 서버로, 운영에서는 Lambda Function URL로 같은 `createApp()`을 실행합니다.
 
+## 백엔드 구조
+
+`server.js`는 단일 Lambda의 composition root입니다. HTTP는 `routes/`, use case는 `services/`, 영속 계약은 `repositories/`, S3 같은 외부 저장 구현은 `adapters/`, 순수 규칙은 `domain/`에 둡니다. 배포 단위와 AWS 리소스는 늘리지 않습니다. 자세한 의존 방향과 호환 경계는 [`docs/planning/BACKEND_ARCHITECTURE.md`](../docs/planning/BACKEND_ARCHITECTURE.md)를 참고합니다.
+
 ## 로컬 DRY_RUN 운영
 
 `S3_BUCKET`을 비워 두면 클라우드 호출 없이 `.local-deploy/`에 파일을 저장하고 앱이 직접 정적 서빙합니다.
@@ -51,6 +55,7 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 
 ```bash
 npm test
+npm run test:e2e
 ```
 
 ## cohortId backfill
