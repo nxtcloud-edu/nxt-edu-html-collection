@@ -90,16 +90,35 @@ resource "aws_s3_bucket_policy" "games" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid       = "PublicReadGetObject"
-      Effect    = "Allow"
-      Principal = "*"
-      Action    = "s3:GetObject"
-      Resource = [
-        "${aws_s3_bucket.games.arn}/games/*",
-        "${aws_s3_bucket.games.arn}/contents/*"
-      ]
-    }]
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource = [
+          "${aws_s3_bucket.games.arn}/games/*",
+          "${aws_s3_bucket.games.arn}/contents/*"
+        ]
+      },
+      {
+        Sid    = "AllowCloudFrontReadContent"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action = "s3:GetObject"
+        Resource = [
+          "${aws_s3_bucket.games.arn}/games/*",
+          "${aws_s3_bucket.games.arn}/contents/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.showcase.arn
+          }
+        }
+      }
+    ]
   })
 }
 
@@ -227,7 +246,7 @@ resource "aws_lambda_function" "uploader" {
     variables = {
       S3_BUCKET           = aws_s3_bucket.games.id
       S3_REGION           = var.region
-      BASE_URL            = "https://${aws_s3_bucket.games.id}.s3.${var.region}.amazonaws.com"
+      BASE_URL            = "https://showcase.nxtcloud.kr"
       FEEDBACK_TABLE      = aws_dynamodb_table.feedback.name
       APP_BASE_URL        = "https://showcase.nxtcloud.kr"
       ADMIN_ID            = var.admin_id
@@ -279,6 +298,10 @@ resource "aws_cloudwatch_metric_alarm" "export_failures" {
   dimensions = {
     FunctionName = aws_lambda_function.uploader.function_name
   }
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 resource "aws_lambda_function_url" "uploader" {
@@ -292,6 +315,14 @@ resource "aws_lambda_permission" "function_url" {
   function_name          = aws_lambda_function.uploader.function_name
   principal              = "*"
   function_url_auth_type = "NONE"
+}
+
+resource "aws_cloudfront_origin_access_control" "content" {
+  name                              = "nxt-ai-literacy-content-oac"
+  description                       = "Private S3 content access for showcase.nxtcloud.kr"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
 resource "aws_cloudfront_distribution" "showcase" {
@@ -315,6 +346,12 @@ resource "aws_cloudfront_distribution" "showcase" {
     }
   }
 
+  origin {
+    domain_name              = aws_s3_bucket.games.bucket_regional_domain_name
+    origin_id                = "s3-content"
+    origin_access_control_id = aws_cloudfront_origin_access_control.content.id
+  }
+
   default_cache_behavior {
     target_origin_id         = "lambda-function-url"
     viewer_protocol_policy   = "redirect-to-https"
@@ -334,6 +371,26 @@ resource "aws_cloudfront_distribution" "showcase" {
     compress                 = true
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/contents/*"
+    target_origin_id       = "s3-content"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/games/*"
+    target_origin_id       = "s3-content"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
   }
 
   restrictions {

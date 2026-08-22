@@ -120,8 +120,9 @@ test('contentId와 버전 key 계약을 지킨다', () => {
   assert.equal(isValidContentKey('games/20260712000000-abcd.html'), false);
 });
 
-test('S3 콘텐츠 URL은 별도 HTTPS REST 오리진을 사용한다', () => {
+test('운영 콘텐츠 URL은 커스텀 도메인을 사용하고 기본 S3 URL은 fallback으로 유지한다', () => {
   const key = 'games/12345678-v2.html';
+  assert.equal(buildPublicUrl(key, { bucket: 'gallery', baseUrl: 'https://showcase.nxtcloud.kr/' }), 'https://showcase.nxtcloud.kr/games/12345678-v2.html');
   assert.equal(buildPublicUrl(key, { bucket: 'gallery', region: 'ap-northeast-2' }), 'https://gallery.s3.ap-northeast-2.amazonaws.com/games/12345678-v2.html');
   assert.equal(buildPublicUrl(key, { port: 3210 }), 'http://localhost:3210/deployed/games/12345678-v2.html');
 });
