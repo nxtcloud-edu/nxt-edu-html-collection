@@ -10,19 +10,21 @@ test('갤러리에서 유형·정렬·페이지·수업 보기를 이동한다',
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'AI와 함께 만든 우리들의 콘텐츠' })).toBeVisible();
   await expect(page.getByText('12개의 콘텐츠')).toBeVisible();
-  await expect(page.locator('.game-card')).toHaveCount(10);
+  await expect(page.locator('.content-card')).toHaveCount(10);
 
   await page.getByRole('button', { name: '추천순' }).click();
-  await expect(page.locator('.game-card h3').first()).toHaveText('우리 동네 탄소 지도');
+  await expect(page.locator('.content-card h3').first()).toHaveText('우리 동네 탄소 지도');
 
   await page.getByRole('button', { name: '다음 →' }).click();
-  await expect(page.locator('.game-card')).toHaveCount(2);
+  await expect(page.locator('.content-card')).toHaveCount(2);
   await page.getByRole('button', { name: '웹페이지', exact: true }).click();
-  await expect(page.locator('#gameCount')).toHaveText('8개의 콘텐츠');
+  await expect(page.getByText('8개의 콘텐츠')).toBeVisible();
 
-  await page.getByRole('tab', { name: '수업별 모아보기' }).click();
-  await expect(page).toHaveURL(/#classes$/);
-  await expect(page.getByRole('link', { name: new RegExp(cohortA.name) })).toBeVisible();
+  const cohortLink = page.locator('.cohort-list').getByRole('link', { name: new RegExp(cohortA.name) });
+  await expect(cohortLink).toBeVisible();
+  await cohortLink.click();
+  await expect(page).toHaveURL(new RegExp(`/cohort\\.html\\?id=${cohortA.cohortId}`));
+  await expect(page.getByRole('heading', { name: cohortA.name })).toBeVisible();
 });
 
 test('업로드 화면은 신규 생성과 버전 추가를 명확히 분리한다', async ({ page }) => {

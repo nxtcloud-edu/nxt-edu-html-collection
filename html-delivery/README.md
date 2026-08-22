@@ -8,7 +8,7 @@
 
 ## 프런트엔드 구조
 
-`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 14에서는 `/app/` 셸만 제공하고 기존 `/`, `/cohort.html`, `/upload.html`, `/view.html`, `/admin.html`은 그대로 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
+`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 16에서 `/`와 `/cohort.html`을 React 공개 갤러리로 전환했으며 `/upload.html`, `/view.html`, `/admin.html`은 후속 전환 전까지 기존 화면을 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
 
 ```bash
 npm run typecheck:web
@@ -42,8 +42,8 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 ## API
 
 - `GET /api/health` → `{ "ok": true }`
-- `GET /api/v2/cohorts` → 불변 `cohortId`, 제출 방식과 팀 선택지를 포함한 코호트 목록
-- `GET /api/v2/contents` → `cohortId`, `type`, `sort` 필터를 지원하는 정규화 콘텐츠 목록
+- `GET /api/v2/cohorts` → 불변 `cohortId`, 제출 방식, 콘텐츠·게임·웹페이지 집계를 포함한 코호트 목록
+- `GET /api/v2/contents` → `cohortId`, `type`, `sort`, `query`, `pageSize`, 불투명 `cursor`를 지원하는 정규화 콘텐츠 목록
 - `GET /api/v2/contents/:contentId` → 비공개 저장 필드를 제외한 콘텐츠 상세
 - `GET /api/v2/contents/:contentId/versions` → 객체 키·해시를 제외한 공개 버전 번호 목록
 - `POST /api/v2/contents` → 항상 새 콘텐츠 생성

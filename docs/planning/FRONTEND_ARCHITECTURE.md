@@ -2,7 +2,7 @@
 
 ## 목적
 
-Phase 14는 기존 정적 HTML을 한 번에 교체하지 않는다. React·TypeScript·Vite 빌드와 NXT Cloud 디자인 시스템을 `/app/`에서 먼저 검증하고, Phase 16~18에서 기존 URL별 화면을 순차 전환한다.
+Phase 14는 React·TypeScript·Vite 기반을 `/app/`에서 먼저 검증했다. Phase 16부터 기존 URL별 화면을 순차 전환하며, 아직 전환하지 않은 업로드·보기·관리자 화면과 기존 데이터 계약은 유지한다.
 
 ## 구조
 
@@ -34,16 +34,25 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 
 ## URL 전환 계약
 
-| 현재 URL | 대상 phase | Phase 14 상태 |
+| 현재 URL | 대상 phase | 현재 상태 |
 |---|---:|---|
-| `/` | 16 | 기존 갤러리 유지 |
-| `/cohort.html` | 16 | 기존 코호트 화면 유지 |
+| `/` | 16 | React 갤러리 전환 완료 |
+| `/cohort.html` | 16 | React 코호트 화면 전환 완료 |
 | `/upload.html` | 17 | 기존 업로드 화면 유지 |
 | `/view.html` | 17 | 기존 격리 viewer 유지 |
 | `/admin.html` | 18 | 기존 관리자 화면 유지 |
 | `/app/` | 14 | 새 기반·전환 지도 제공 |
 
 기존 콘텐츠 ID, `/view.html?id={contentId}`, `contents/{contentId}/vN.html`, 비동기 ZIP과 `content.showcase.nxtcloud.kr` origin은 프런트엔드 전환으로 변경하지 않는다.
+
+## Phase 16 공개 탐색
+
+- Express는 `/`와 `/cohort.html`에서 `public/app/index.html`을 제공한다. 기존 정적 HTML 파일은 롤백 자산으로 보존한다.
+- 새 UI는 `/api/v2/contents?pageSize=10` cursor pagination을 사용하며 분류·정렬·검색·코호트 조건을 서버에 전달한다.
+- 파라미터 없는 기존 `/api/v2/contents` 전체 응답은 호환을 위해 유지한다.
+- `/api/v2/cohorts`는 `contentCount`, `gameCount`, `webpageCount`를 additive하게 제공한다.
+- KPI, 콘텐츠 유형 Donut, 코호트 가로 막대는 실제 API 집계를 표시하며 색상만으로 값을 구분하지 않는다.
+- `/upload.html`, `/view.html`, `/admin.html`은 각각 Phase 17·18 전까지 기존 화면을 유지한다.
 
 ## 검증
 

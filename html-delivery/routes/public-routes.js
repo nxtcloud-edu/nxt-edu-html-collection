@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('node:path');
+const { paginatePublicContents } = require('../domain/public-query');
 
 function createPublicRouter({
   categories,
@@ -35,24 +36,49 @@ function createPublicRouter({
 
   router.get('/api/categories', (_req, res) => res.json({ categories }));
   router.get('/api/v2/cohorts', async (_req, res, next) => {
-    try { return res.json({ cohorts: (await cohortOptions()).map(toV2Cohort) }); }
+    try {
+      const [cohorts, contents] = await Promise.all([cohortOptions(), contentService.list()]);
+      const counts = new Map();
+      contents.forEach((content) => {
+        const current = counts.get(content.cohortId) || { contentCount: 0, gameCount: 0, webpageCount: 0 };
+        current.contentCount += 1;
+        if (contentTypeFromCategory(content.category) === 'game') current.gameCount += 1;
+        else current.webpageCount += 1;
+        counts.set(content.cohortId, current);
+      });
+      return res.json({ cohorts: cohorts.map((cohort) => ({
+        ...toV2Cohort(cohort),
+        ...(counts.get(cohort.cohortId) || { contentCount: 0, gameCount: 0, webpageCount: 0 }),
+      })) });
+    }
     catch (error) { return next(error); }
   });
   router.get('/api/v2/contents', async (req, res, next) => {
     const requestedType = typeof req.query.type === 'string' ? req.query.type : '';
     const requestedCohortId = typeof req.query.cohortId === 'string' ? req.query.cohortId : '';
+    const query = typeof req.query.query === 'string' ? req.query.query.trim().slice(0, 60) : '';
     const sort = typeof req.query.sort === 'string' ? req.query.sort : 'latest';
+    const requestedPageSize = typeof req.query.pageSize === 'string' ? Number(req.query.pageSize) : null;
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null;
     if (requestedType && !categoryFromContentType(requestedType)) return res.status(400).json({ error: '지원하지 않는 콘텐츠 유형입니다.' });
     if (!['latest', 'likes'].includes(sort)) return res.status(400).json({ error: '지원하지 않는 정렬 방식입니다.' });
+    if (requestedPageSize !== null && (!Number.isInteger(requestedPageSize) || requestedPageSize < 1 || requestedPageSize > 48)) return res.status(400).json({ error: '페이지 크기는 1~48이어야 합니다.' });
     try {
       const cohorts = await cohortOptions();
       const cohortById = new Map(cohorts.map((cohort) => [cohort.cohortId, cohort]));
       if (requestedCohortId && !cohortById.has(requestedCohortId)) return res.status(400).json({ error: '등록된 코호트를 찾을 수 없습니다.' });
+      const normalizedQuery = query.toLocaleLowerCase('ko-KR');
       const contents = (await contentService.list())
         .filter((content) => !requestedCohortId || content.cohortId === requestedCohortId)
         .filter((content) => !requestedType || contentTypeFromCategory(content.category) === requestedType)
+        .filter((content) => !normalizedQuery || [contentTitle(content), content.name, content.affiliation]
+          .some((value) => String(value || '').toLocaleLowerCase('ko-KR').includes(normalizedQuery)))
         .map((content) => toPublicV2Content(content, cohortById.get(content.cohortId), req));
-      return res.json({ contents: sortV2Contents(contents, sort) });
+      const sorted = sortV2Contents(contents, sort);
+      if (requestedPageSize === null && !cursor && !query) return res.json({ contents: sorted });
+      const page = paginatePublicContents(sorted, { sort, cohortId: requestedCohortId, type: requestedType, query }, { pageSize: requestedPageSize || 10, cursor });
+      if (page.status !== 'ok') return res.status(400).json({ error: '페이지 커서가 유효하지 않습니다.' });
+      return res.json({ contents: page.items, total: page.total, nextCursor: page.nextCursor });
     } catch (error) { return next(error); }
   });
   router.get('/api/v2/contents/:contentId', async (req, res, next) => {

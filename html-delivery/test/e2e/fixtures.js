@@ -32,15 +32,26 @@ async function json(route, body, status = 200) {
 }
 
 async function mockPublicApi(page) {
-  await page.route('**/api/v2/cohorts', (route) => json(route, { cohorts: [cohortA, cohortB] }));
+  const cohortStats = [cohortA, cohortB].map((cohort) => {
+    const items = contents.filter((item) => item.cohort.cohortId === cohort.cohortId);
+    return { ...cohort, contentCount: items.length, gameCount: items.filter((item) => item.contentType === 'game').length, webpageCount: items.filter((item) => item.contentType === 'webpage').length };
+  });
+  await page.route('**/api/v2/cohorts', (route) => json(route, { cohorts: cohortStats }));
   await page.route(/\/api\/v2\/contents(?:\?.*)?$/, (route) => {
     const url = new URL(route.request().url());
     let items = contents;
     const cohortId = url.searchParams.get('cohortId');
     const type = url.searchParams.get('type');
+    const query = url.searchParams.get('query')?.toLowerCase();
+    const sort = url.searchParams.get('sort');
     if (cohortId) items = items.filter((item) => item.cohort.cohortId === cohortId);
     if (type) items = items.filter((item) => item.contentType === type);
-    return json(route, { contents: items });
+    if (query) items = items.filter((item) => [item.title, item.owner.name, item.cohort.name].some((value) => value.toLowerCase().includes(query)));
+    items = [...items].sort((a, b) => sort === 'likes' ? b.likes - a.likes : b.updatedAt.localeCompare(a.updatedAt));
+    const total = items.length;
+    const start = url.searchParams.get('cursor') === 'fixture-page-2' ? 10 : 0;
+    const pageSize = Number(url.searchParams.get('pageSize') || total);
+    return json(route, { contents: items.slice(start, start + pageSize), total, nextCursor: start + pageSize < total ? 'fixture-page-2' : null });
   });
   await page.route(/\/api\/v2\/contents\/[a-f0-9]{8}$/, (route) => json(route, { content: contents[0] }));
   await page.route(/\/api\/feedback\?.*$/, (route) => json(route, {

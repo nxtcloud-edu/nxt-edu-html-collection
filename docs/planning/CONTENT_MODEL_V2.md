@@ -129,8 +129,8 @@ manifest.json
 
 | Method | Path | 계약 |
 |---|---|---|
-| GET | `/api/v2/cohorts` | `{ cohorts: Cohort[] }` |
-| GET | `/api/v2/contents` | `{ contents: PublicContent[] }`; `cohortId`, `type`, `sort` 필터 |
+| GET | `/api/v2/cohorts` | `{ cohorts: Cohort[] }`; 공개 콘텐츠 유형별 집계 포함 |
+| GET | `/api/v2/contents` | `{ contents, total?, nextCursor? }`; `cohortId`, `type`, `sort`, `query`, `pageSize`, `cursor` 필터 |
 | GET | `/api/v2/contents/:contentId` | `{ content: PublicContent }` |
 | GET | `/api/v2/contents/:contentId/versions` | 공개 가능한 버전 메타 목록. 객체 키와 해시는 기본 응답에서 제외 |
 

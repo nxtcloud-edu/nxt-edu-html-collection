@@ -1,11 +1,4 @@
 import type { ReactNode } from 'react';
-import { Button } from './Button';
-
-const navigation = [
-  { label: '개요', href: '#overview' },
-  { label: '화면 전환 지도', href: '#routes' },
-  { label: '디자인 시스템', href: '#system' },
-];
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -16,15 +9,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span>NXT CLOUD</span><b>SHOWCASE</b>
         </a>
         <nav aria-label="현재 서비스 바로가기">
-          <Button href="/upload.html" variant="quiet">업로드</Button>
-          <Button href="/admin.html" variant="primary">관리자</Button>
+          <a href="/#gallery">둘러보기</a>
+          <a href="/#cohorts">수업별 보기</a>
+          <a className="nav-action" href="/upload.html">내 콘텐츠 업로드</a>
         </nav>
       </header>
       <div className="shell-grid">
-        <aside className="rail" aria-label="앱 셸 탐색">
-          <p className="rail__label">FOUNDATION / 14</p>
-          {navigation.map((item, index) => <a href={item.href} key={item.href}><span>0{index + 1}</span>{item.label}</a>)}
-          <div className="rail__foot"><i />기존 운영 URL 유지</div>
+        <aside className="rail" aria-label="갤러리 탐색">
+          <p className="rail__label">SHOWCASE / 16</p>
+          <a href="/#overview"><span>01</span>운영 현황</a>
+          <a href="/#gallery"><span>02</span>콘텐츠 탐색</a>
+          <a href="/#cohorts"><span>03</span>수업 컬렉션</a>
+          <div className="rail__foot"><i />283개 콘텐츠 보존</div>
         </aside>
         <main>{children}</main>
       </div>

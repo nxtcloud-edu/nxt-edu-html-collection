@@ -232,8 +232,8 @@ function toPublicV2Content(record, cohort, req) {
 }
 function sortV2Contents(contents, sort = 'latest') {
   return [...contents].sort((a, b) => sort === 'likes'
-    ? (b.likes - a.likes) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
-    : String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    ? (b.likes - a.likes) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) || a.contentId.localeCompare(b.contentId)
+    : String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) || a.contentId.localeCompare(b.contentId));
 }
 function validateV2CreateInput(body, file, cohorts) {
   const selectedCohort = cohorts.find((cohort) => cohort.cohortId === body?.cohortId);
@@ -320,6 +320,7 @@ function createApp() {
   const likeByIp = createSlidingWindowLimiter({ limit: 30, windowMs: 60_000 });
   const feedbackByIp = createSlidingWindowLimiter({ limit: 5, windowMs: 60_000 });
   app.use(express.json({ limit: '16kb' }));
+  app.get(['/', '/cohort.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public/app/index.html')));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use(createAdminRouter({
