@@ -34,6 +34,7 @@
 - fallback 포인터 은퇴 도구는 복사본 해시·정확한 현재 포인터·완전한 7일 사용량 근거·콘텐츠별 레거시 요청 0건을 요구한다. apply에는 사용량 보고서와 `RETIRE_LEGACY_FALLBACKS` 확인 문자열이 모두 필요하며 DynamoDB 조건부 갱신만 수행한다.
 - 전체 테스트 104/104 통과 후 Lambda 코드만 0 add·1 change·0 destroy로 배포했다. health·홈·v2 API 200, 콘텐츠 283개·cohortId 누락 0·전용 콘텐츠 도메인 URL 283개를 확인했다.
 - 배포 후 운영 fallback dry-run은 283개 모두 `awaitingUsageEvidence`, ready·retired·conflict 0이다. 포인터 apply와 S3 변경·삭제는 실행하지 않았다.
+- 2026-08-22 22:29 KST 관찰 체크에서 CloudFront gzip 로그 2개가 로그 버킷에 실제 도착했고 AES256·14일 만료 헤더를 확인했다. 기존 파서는 14개 요청 레코드와 레거시 요청 0건을 집계했으나 7일 미만 부분 표본이므로 의사결정 근거로 사용하지 않는다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.

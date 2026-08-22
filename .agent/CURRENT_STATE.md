@@ -1,6 +1,6 @@
 # Current State
 
-Updated: 2026-08-22 22:27 KST
+Updated: 2026-08-22 22:29 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
@@ -12,6 +12,7 @@ Updated: 2026-08-22 22:27 KST
 - Tests: 전체 `npm test` 직렬 실행 104/104.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
+- Log delivery: 관찰 시작 후 CloudFront gzip 로그 2개가 전용 S3 버킷에 도착했고 기존 파서가 14개 요청 레코드를 처리했다. 현재 레거시 요청 0건은 부분 표본이므로 은퇴 근거로 사용하지 않음.
 - User verification: 사용자가 운영 환경에서 실제 코호트 ZIP 다운로드를 직접 검증했다고 확인.
 
 ## Completed

@@ -2750,3 +2750,23 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - fallback 은퇴는 객체 삭제와 분리한다. 포인터 apply가 성공해도 `games/*`는 별도 삭제 승인 전까지 보존한다.
 - 2026-08-30 22:13 KST 이후 완전한 사용량 보고서를 생성한 다음 dry-run 결과를 먼저 검토한다.
 - 포인터 apply에는 사용량 보고서와 명시적 확인 문자열이 모두 필요하며 사용자 별도 승인 전에는 실행하지 않는다.
+
+## 2026-08-22 22:29 KST — Codex — Phase 11 로그 전달 체크포인트
+
+### Intent
+- 7일 관찰을 기다리는 동안 CloudFront 표준 로그가 전용 S3 버킷에 실제 전달되고 기존 수집 파서가 운영 형식을 처리하는지 읽기 전용으로 확인한다.
+
+### Files changed
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 로그 전달 확인 결과와 부분 표본 경계 기록.
+
+### Commands / verification
+- `aws s3api list-objects-v2` — `cloudfront/content/` 아래 gzip 로그 2개 도착 확인.
+- `aws s3api get-object` — 두 로그를 `/tmp`에 읽어 AES256과 14일 만료 정책 확인.
+- 기존 `parseCloudFrontLog`로 원문을 노출하지 않고 집계 — files 2, records 14, legacy requests 0, legacy keys 0.
+- DynamoDB 포인터 갱신, S3 콘텐츠 객체 변경·삭제, fallback apply — 실행 안 함.
+- 테스트·Terraform plan/apply — 코드·인프라 변경이 없어 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 로그 전달과 파서 호환성은 확인됐지만 현재 집계는 관찰 시작 직후 부분 표본이다.
+- 2026-08-30 22:13 KST 이후 생성하는 완전한 7일 보고서만 cleanup과 fallback 은퇴 판단에 사용한다.
