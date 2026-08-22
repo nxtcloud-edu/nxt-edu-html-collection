@@ -307,6 +307,34 @@ async function setContentLatestObjectKey({ contentId, expectedLatestKey, latestO
   }
 }
 
+async function retireContentLegacyFallback({ contentId, expectedLegacyKey, expectedV2Key }) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    const item = registry[contentId];
+    if (!item || item.latestKey !== expectedLegacyKey || item.latestObjectKey !== expectedV2Key) return false;
+    const { latestObjectKey: _latestObjectKey, ...rest } = item;
+    registry[contentId] = { ...rest, latestKey: expectedV2Key };
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  try {
+    await documentClient().send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      UpdateExpression: 'SET latestKey = :expectedV2Key REMOVE latestObjectKey',
+      ExpressionAttributeValues: {
+        ':expectedLegacyKey': expectedLegacyKey,
+        ':expectedV2Key': expectedV2Key,
+      },
+      ConditionExpression: 'attribute_exists(contentKey) AND latestKey = :expectedLegacyKey AND latestObjectKey = :expectedV2Key',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
+}
+
 async function updateContentPassword(contentId, credentials) {
   if (!TABLE_NAME) {
     const registry = await readLocalRegistry();
@@ -409,4 +437,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, setContentLatestObjectKey, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, retireContentLegacyFallback, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, setContentLatestObjectKey, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

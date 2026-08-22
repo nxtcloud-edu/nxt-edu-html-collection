@@ -11,7 +11,8 @@
     "migrate:content-objects": "node scripts/copy-legacy-content-objects.js",
     "migrate:content-read-pointers": "node scripts/switch-content-read-pointers.js",
     "audit:legacy-cleanup": "node scripts/audit-legacy-cleanup.js",
-    "collect:legacy-usage": "node scripts/collect-legacy-usage.js"
+    "collect:legacy-usage": "node scripts/collect-legacy-usage.js",
+    "migrate:retire-legacy-fallbacks": "node scripts/retire-legacy-fallbacks.js"
   },
   "engines": {
     "node": ">=20"
