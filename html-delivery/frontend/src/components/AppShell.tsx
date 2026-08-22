@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
-export function AppShell({ children }: { children: ReactNode }) {
+const galleryNavigation = [{ label: '운영 현황', href: '/#overview' }, { label: '콘텐츠 탐색', href: '/#gallery' }, { label: '수업 컬렉션', href: '/#cohorts' }];
+
+export function AppShell({ children, railLabel = 'SHOWCASE / 16', navigation = galleryNavigation, foot = '283개 콘텐츠 보존' }: { children: ReactNode; railLabel?: string; navigation?: { label: string; href: string }[]; foot?: string }) {
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -16,11 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <div className="shell-grid">
         <aside className="rail" aria-label="갤러리 탐색">
-          <p className="rail__label">SHOWCASE / 16</p>
-          <a href="/#overview"><span>01</span>운영 현황</a>
-          <a href="/#gallery"><span>02</span>콘텐츠 탐색</a>
-          <a href="/#cohorts"><span>03</span>수업 컬렉션</a>
-          <div className="rail__foot"><i />283개 콘텐츠 보존</div>
+          <p className="rail__label">{railLabel}</p>
+          {navigation.map((item, index) => <a href={item.href} key={item.href}><span>0{index + 1}</span>{item.label}</a>)}
+          <div className="rail__foot"><i />{foot}</div>
         </aside>
         <main>{children}</main>
       </div>

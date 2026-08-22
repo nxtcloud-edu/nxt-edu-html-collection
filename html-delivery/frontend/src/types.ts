@@ -6,6 +6,7 @@ export interface Cohort {
   name: string;
   dateLabel: string | null;
   submissionMode: 'individual' | 'team';
+  teamOptions: string[];
   status: 'active' | 'archived';
   contentCount: number;
   gameCount: number;
@@ -21,6 +22,7 @@ export interface Content {
   latestVersion: number;
   likes: number;
   updatedAt: string;
+  contentUrl: string;
   viewerUrl: string;
 }
 
@@ -28,4 +30,10 @@ export interface ContentPage {
   contents: Content[];
   total: number;
   nextCursor: string | null;
+}
+
+export interface Feedback {
+  nickname: string;
+  message: string;
+  createdAt: string;
 }

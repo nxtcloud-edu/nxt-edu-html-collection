@@ -8,7 +8,7 @@
 
 ## 프런트엔드 구조
 
-`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 16에서 `/`와 `/cohort.html`을 React 공개 갤러리로 전환했으며 `/upload.html`, `/view.html`, `/admin.html`은 후속 전환 전까지 기존 화면을 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
+`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 16~17에서 `/`, `/cohort.html`, `/upload.html`, `/view.html`을 React로 전환했으며 `/admin.html`은 Phase 18 전까지 기존 화면을 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
 
 Phase 16 운영 배포는 2026-08-23 완료했습니다. 첫 목록 요청은 10개와 cursor만 반환하고, 코호트 집계는 콘텐츠 283개·게임 182개·웹페이지 101개·운영 코호트 15개입니다. 파라미터 없는 v2 전체 목록과 기존 정적 HTML은 호환·롤백 경계로 보존합니다.
 

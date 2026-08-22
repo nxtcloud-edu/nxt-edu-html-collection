@@ -38,8 +38,8 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 |---|---:|---|
 | `/` | 16 | React 갤러리 전환 완료 |
 | `/cohort.html` | 16 | React 코호트 화면 전환 완료 |
-| `/upload.html` | 17 | 기존 업로드 화면 유지 |
-| `/view.html` | 17 | 기존 격리 viewer 유지 |
+| `/upload.html` | 17 | React 업로드 화면 전환 완료 |
+| `/view.html` | 17 | React 격리 viewer 전환 완료 |
 | `/admin.html` | 18 | 기존 관리자 화면 유지 |
 | `/app/` | 14 | 새 기반·전환 지도 제공 |
 
@@ -52,7 +52,16 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 - 파라미터 없는 기존 `/api/v2/contents` 전체 응답은 호환을 위해 유지한다.
 - `/api/v2/cohorts`는 `contentCount`, `gameCount`, `webpageCount`를 additive하게 제공한다.
 - KPI, 콘텐츠 유형 Donut, 코호트 가로 막대는 실제 API 집계를 표시하며 색상만으로 값을 구분하지 않는다.
-- `/upload.html`, `/view.html`, `/admin.html`은 각각 Phase 17·18 전까지 기존 화면을 유지한다.
+- `/admin.html`은 Phase 18 전까지 기존 화면을 유지한다.
+
+## Phase 17 업로드·보기
+
+- `/upload.html`은 새 콘텐츠 생성과 contentId 기반 버전 추가를 별도 tab·form으로 유지한다.
+- 소속에 따라 개인 이름 또는 서버가 제공한 팀 선택지를 표시하며 `.html`·1MB 제한을 브라우저와 서버 양쪽에서 검증한다.
+- `/view.html?id={contentId}`는 기존 공유 URL을 유지하고 학생 HTML을 `content.showcase.nxtcloud.kr` iframe에서 실행한다.
+- 추천·피드백·파일 업데이트는 기존 API와 localStorage 중복 추천 가드를 유지한다. 각 실패는 현재 입력과 화면을 보존한 채 다시 시도할 수 있다.
+- 기존 `public/upload.html`, `public/view.html` 파일은 rollback 자산으로 남고 Express 라우트만 React 셸을 우선 제공한다.
+- Phase 17 운영 검증은 읽기 전용으로 수행하며 실제 콘텐츠·버전·피드백·추천을 만들지 않는다.
 
 ## 검증
 

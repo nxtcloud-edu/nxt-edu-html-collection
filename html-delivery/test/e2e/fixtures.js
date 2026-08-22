@@ -4,6 +4,7 @@ const cohortA = {
   dateLabel: '8.20~21',
   status: 'active',
   submissionMode: 'individual',
+  teamOptions: [],
 };
 const cohortB = {
   cohortId: 'coh_bbbbbbbbbbbb',
@@ -11,7 +12,7 @@ const cohortB = {
   dateLabel: '8.22',
   status: 'active',
   submissionMode: 'team',
-  teams: ['비전팀', '클라우드팀'],
+  teamOptions: ['비전팀', '클라우드팀'],
 };
 
 const contents = Array.from({ length: 12 }, (_, index) => ({

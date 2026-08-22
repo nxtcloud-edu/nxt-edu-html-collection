@@ -320,7 +320,7 @@ function createApp() {
   const likeByIp = createSlidingWindowLimiter({ limit: 30, windowMs: 60_000 });
   const feedbackByIp = createSlidingWindowLimiter({ limit: 5, windowMs: 60_000 });
   app.use(express.json({ limit: '16kb' }));
-  app.get(['/', '/index.html', '/cohort.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public/app/index.html')));
+  app.get(['/', '/index.html', '/cohort.html', '/upload.html', '/view.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public/app/index.html')));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use(createAdminRouter({

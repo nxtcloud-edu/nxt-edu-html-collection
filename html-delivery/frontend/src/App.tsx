@@ -4,6 +4,8 @@ import { AppShell } from './components/AppShell';
 import { CohortBars, TypeDonut } from './components/Charts';
 import { ContentCard } from './components/ContentCard';
 import { StatusBadge } from './components/StatusBadge';
+import { UploadPage } from './pages/UploadPage';
+import { ViewPage } from './pages/ViewPage';
 import type { Cohort, ContentPage, ContentType, SortMode } from './types';
 
 const PAGE_SIZE = 10;
@@ -13,7 +15,7 @@ function routeCohortId() {
   return window.location.pathname === '/cohort.html' ? params.get('id') || '' : params.get('cohortId') || '';
 }
 
-export function App() {
+function GalleryPage() {
   const cohortId = routeCohortId();
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [cohortsError, setCohortsError] = useState('');
@@ -115,4 +117,10 @@ export function App() {
       <footer><span>© NXT Cloud</span><span>283 CONTENTS · 396 VERSIONS · PRESERVED</span></footer>
     </AppShell>
   );
+}
+
+export function App() {
+  if (window.location.pathname === '/upload.html') return <UploadPage />;
+  if (window.location.pathname === '/view.html') return <ViewPage />;
+  return <GalleryPage />;
 }

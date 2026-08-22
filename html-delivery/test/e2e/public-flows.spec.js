@@ -45,6 +45,10 @@ test('콘텐츠 보기 화면은 원본·메타데이터·피드백을 함께 �
   await expect(page.getByRole('button', { name: /추천/ })).toContainText('20');
   await expect(page.getByText('데이터 표현이 이해하기 쉬워요.')).toBeVisible();
   await expect(page.locator('iframe')).toHaveAttribute('src', /content\.showcase\.nxtcloud\.kr/);
+  await page.getByRole('button', { name: '파일 업데이트' }).click();
+  await expect(page.getByRole('dialog', { name: '파일 업데이트' })).toBeVisible();
+  await page.getByRole('button', { name: '취소' }).click();
+  await expect(page.getByRole('dialog', { name: '파일 업데이트' })).not.toBeVisible();
 });
 
 test('공개 핵심 화면에는 critical 접근성 위반이 없다', async ({ page }, testInfo) => {
