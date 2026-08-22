@@ -73,17 +73,20 @@ async function mockAdminApi(page) {
     latestKey: `contents/${item.contentId}/v${item.latestVersion}.html`,
   }));
   await page.route('**/api/admin/session', (route) => json(route, { ok: true }));
-  const adminContents = legacyGames.map((item, index) => ({
-    ...contents[index],
+  const adminContents = contents.slice(0, 4).map((item, index) => ({
+    ...item,
     owner: { ...contents[index].owner, kind: index === 0 ? 'individual' : 'individual' },
     cohort: { ...contents[index].cohort, status: 'active' },
-    latestObjectKey: item.latestKey,
+    latestObjectKey: `contents/${item.contentId}/v${item.latestVersion}.html`,
     fallbackObjectKey: null,
     storageScheme: 'v2-contents',
     createdAt: contents[index].updatedAt,
   }));
   const adminCohorts = [cohortA, cohortB].map((cohort) => ({ ...cohort, createdAt: null, updatedAt: null, editable: cohort === cohortB }));
-  await page.route(/\/api\/v2\/admin\/contents\?.*$/, (route) => json(route, { contents: adminContents, page: { pageSize: 25, total: 3, nextCursor: null } }));
+  await page.route(/\/api\/v2\/admin\/contents\?.*$/, (route) => {
+    const secondPage = new URL(route.request().url()).searchParams.get('cursor') === 'fixture-admin-page-2';
+    return json(route, { contents: secondPage ? adminContents.slice(3) : adminContents.slice(0, 3), page: { pageSize: 25, total: 4, nextCursor: secondPage ? null : 'fixture-admin-page-2' } });
+  });
   await page.route('**/api/v2/admin/cohorts', (route) => json(route, { cohorts: adminCohorts }));
   await page.route(/\/api\/v2\/admin\/contents\/[a-f0-9]{8}\/versions$/, (route) => json(route, { contentId: contents[0].contentId, metadataStatus: 'complete', versions: [{ contentId: contents[0].contentId, version: 3, objectKey: `contents/${contents[0].contentId}/v3.html`, originalFileName: 'carbon-map.html', sizeBytes: 8192, sha256: 'a'.repeat(64), uploadedAt: contents[0].updatedAt }] }));
   await page.route('**/api/v2/admin/audit-logs?*', (route) => json(route, { auditLogs: [{ auditId: 'audit-1', actorId: 'fixture-admin', action: 'update-content-v2', targetType: 'content', targetId: contents[0].contentId, details: {}, occurredAt: contents[0].updatedAt }], page: { limit: 25, nextCursor: null } }));
@@ -95,8 +98,8 @@ async function mockAdminApi(page) {
   await page.route('**/api/admin/cohort-overview?*', (route) => json(route, {
     overview: {
       cohort: null,
-      summary: { totalContents: 3, gameCount: 1, webpageCount: 2, totalVersions: 5, latestUpdatedAt: contents[0].updatedAt, exportReady: false },
-      storage: { legacyGames: 0, v2Contents: 3, unknown: 0 },
+      summary: { totalContents: 4, gameCount: 2, webpageCount: 2, totalVersions: 6, latestUpdatedAt: contents[0].updatedAt, exportReady: false },
+      storage: { legacyGames: 0, v2Contents: 4, unknown: 0 },
     },
   }));
 }

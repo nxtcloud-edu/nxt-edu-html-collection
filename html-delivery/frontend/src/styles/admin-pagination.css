@@ -1,0 +1,13 @@
+.admin-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px 0;
+}
+
+.admin-pager span {
+  color: var(--nxt-muted);
+  font-family: var(--nxt-mono);
+  font-size: 12px;
+}

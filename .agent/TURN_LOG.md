@@ -2971,3 +2971,27 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 콘텐츠 영구 삭제는 contentId 재입력 전 비활성화한다. 비밀번호·피드백·ZIP·코호트·계정 변경은 각 작업의 별도 제출 버튼으로만 실행한다.
 - 관리자 E2E는 고정 mock 세션/API를 사용하며 운영 자격정보를 코드·테스트·문서·로그에 저장하지 않는다.
 - 다음 안전 액션은 기능 커밋·push 후 Lambda 배포와 기존 로그인 세션을 이용한 읽기 전용 운영 검증이다.
+
+## 2026-08-23 00:39 KST — Codex — Phase 18 첫 배포 환류
+
+### Intent
+- 운영 읽기 검증에서 발견한 관리자 콘텐츠 첫 25개 이후 탐색 누락을 같은 Phase 안에서 보완한다.
+
+### Files changed
+- `AdminPage.tsx`, `admin-pagination.css`, `main.tsx` — cursor history 기반 이전/다음 25개 탐색과 현재 페이지 표시.
+- 관리자 E2E fixture/spec과 최종 Vite 해시 자산 — 두 번째 페이지 이동·복귀 회귀 고정.
+
+### Commands / verification
+- 첫 기능 커밋 `fffce92` origin/main push 완료.
+- 첫 Terraform plan/apply 0 add·Lambda 1 change·0 destroy.
+- 운영 HTTP admin 200, health 정상, `X-Robots-Tag: noindex, nofollow`, 새 JS/CSS 200.
+- 기존 로그인 세션으로 대시보드 283·101/182·396·15, 콘텐츠 283개와 표본 `0e040222` 버전 5개·피드백 0개, 코호트 15개, 완료 export 이력, 감사/시스템 화면 확인. 쓰기 버튼 실행 안 함.
+- 우측 패널 브라우저 폭 clientWidth=scrollWidth=697, 가로 오버플로 0.
+- 운영에서 첫 25개 이후 cursor 이동 UI 누락 발견 후 보완.
+- 보완 후 `npm run typecheck:web`, Vitest 2/2, production build 통과.
+- 관리자 집중 E2E 데스크톱·모바일 4/4, 전체 E2E 14/14 통과. 다음 페이지·이전 페이지 복귀 포함.
+- 운영 콘텐츠·피드백·코호트·계정·ZIP 생성/수정/삭제 — 실행 안 함.
+
+### Decisions / handoff
+- 관리자 콘텐츠도 공개 갤러리와 같은 불투명 cursor 원칙을 사용하되 25개 단위로 이전/다음 이력을 클라이언트에만 보관한다.
+- 보완 커밋·재배포 후 운영에서 다음 페이지 시작 행과 1페이지 복귀를 읽기 전용 확인한다.

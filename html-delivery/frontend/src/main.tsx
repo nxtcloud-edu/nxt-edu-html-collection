@@ -6,6 +6,7 @@ import './styles/global.css';
 import './styles/gallery.css';
 import './styles/workflow.css';
 import './styles/admin.css';
+import './styles/admin-pagination.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
