@@ -105,4 +105,23 @@ S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm
 
 2026-08-21 운영에서 283/283개 포인터 전환에 성공했습니다. 재 dry-run은 `switched: 283`, `ready: 0`, `blocked: 0`, `conflicts: 0`이며 기존 `games/*` fallback 283개와 새 `contents/*` 우선 포인터 283개를 함께 보존합니다.
 
+## 레거시 정리 감사
+
+정리 감사는 항상 읽기 전용이며 `--apply`와 확인 문자열을 거부합니다. 복사본 해시, 레지스트리 참조와 사용량 근거가 하나라도 부족하면 삭제 후보로 분류하지 않습니다.
+
+```bash
+S3_BUCKET=nxt-ai-literacy-games FEEDBACK_TABLE=nxt-edu-feedback S3_REGION=ap-northeast-2 npm run audit:legacy-cleanup -- --summary-only
+```
+
+2026-08-22 운영 결과는 레거시 398개, 등록·복사본 검증 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개입니다.
+
+CloudFront 로그 관찰 시작은 `2026-08-22T13:13:00.629Z`입니다. 아래 첫 7일 구간은 24시간 로그 전달 대기까지 끝나는 `2026-08-30T13:13:00.629Z` 이후에만 수집기가 허용합니다.
+
+```bash
+CONTENT_LOG_BUCKET=nxt-ai-literacy-content-access-logs S3_REGION=ap-northeast-2 npm run collect:legacy-usage -- --from=2026-08-22T13:13:00.629Z --to=2026-08-29T13:13:00.629Z --logging-start=2026-08-22T13:13:00.629Z --report=/tmp/legacy-usage.json
+S3_BUCKET=nxt-ai-literacy-games FEEDBACK_TABLE=nxt-edu-feedback S3_REGION=ap-northeast-2 npm run audit:legacy-cleanup -- --usage-report=/tmp/legacy-usage.json --report=/tmp/legacy-cleanup.json
+```
+
+사용량 0 근거가 생겨도 fallback 포인터 은퇴와 객체 삭제는 각각 조건부 계획·별도 승인을 거쳐야 합니다.
+
 `npm test`는 실 S3 호출, Lambda 배포, 버킷 생성이나 AWS CLI 실행을 수행하지 않습니다.

@@ -37,4 +37,5 @@
 - Phase 8 완료: 검증된 콘텐츠 283개에 `latestObjectKey=contents/*`를 조건부 추가하고 기존 `latestKey=games/*`를 fallback으로 보존했다. v2·레거시 API 283개가 새 URL을 반환하며 실제 iframe 렌더링과 재 dry-run을 확인했다.
 - Phase 9 완료: ZIP 요청을 동일 Lambda의 비동기 작업으로 분리하고 작업 상태·최근 이력·조건부 재시도·30일 메타 TTL·Lambda 오류 alarm을 배포했다. 운영 최대 코호트 46개 작업이 실패 상태 보존 후 재시도되어 `attempt 2`, `completed`로 끝났고 관리자 화면의 완료·다운로드 상태와 CloudWatch alarm `OK`를 확인했다.
 - Phase 10 완료: S3 Public Access Block 4종과 OAC 전용 정책을 적용하고 학생 HTML을 별도 CloudFront·도메인 `content.showcase.nxtcloud.kr`로 격리했다. API 283개 URL과 iframe 렌더링은 전용 도메인을 사용하며 직접 S3는 403, 앱 도메인의 `/contents/*`는 404다.
-- 다음 안전 작업은 Phase 11 레거시 사용량 관찰과 정리 대상 산정이다. 기존 `games/*` 객체 삭제는 별도 승인 전까지 수행하지 않는다.
+- Phase 11 관찰 진행 중: 읽기 전용 감사 결과 등록 객체 396개는 복사본 해시가 모두 일치하지만 최신 fallback 참조 283개, 사용량 근거 대기 113개, 미등록 2개로 삭제 후보는 0개다. 2026-08-22 22:13 KST부터 쿠키 제외 CloudFront 로그를 비공개 버킷에 수집하며 14일 뒤 자동 만료한다.
+- 최소 7일 관찰과 24시간 로그 전달 대기를 마친 2026-08-30 22:13 KST 이후 사용량 근거를 생성한다. `games/*` 객체 삭제는 후보 재산정과 별도 승인 전까지 수행하지 않는다.
