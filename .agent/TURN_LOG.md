@@ -2657,3 +2657,34 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 작업 메타는 30일, 비공개 ZIP은 1일 보관한다. ZIP 보관 만료 뒤 이력은 남지만 다운로드 URL은 발급하지 않는다.
 - Lambda 실패는 작업 상태를 먼저 보존한 뒤 throw하여 CloudWatch Errors alarm과 관리자 재시도를 함께 사용한다.
 - 다음 단계는 Phase 10 OAC·S3 비공개 전환 영향 분석이다. Phase 11 원본 삭제는 별도 승인 전 수행하지 않는다.
+
+## 2026-08-22 20:54 KST — Codex — Phase 10 학생 콘텐츠 origin 격리·S3 비공개
+
+### Intent
+- 기존 S3 객체와 읽기 포인터를 보존하면서 직접 S3 공개를 차단하고, 신뢰하지 않는 학생 HTML을 관리자 앱과 다른 origin으로 분리한다.
+
+### Files changed
+- `infra/main.tf`, `infra/outputs.tf` — OAC, S3 Public Access Block, 전용 ACM·CloudFront·Route 53, 앱 CloudFront 경로 분리, 콘텐츠 URL 환경변수와 output.
+- `html-delivery/test/storage-policy.test.js` — S3 비공개·OAC·전용 배포·앱 origin 격리 계약 테스트.
+- `html-delivery/export-jobs.js` — 전체 테스트에서 발견한 로컬 상태 JSON 부분 읽기를 atomic rename으로 방지.
+- 계획·운영 README와 협업 상태 문서 — Phase 10 결정, 운영 결과, 다음 경계 기록.
+
+### Commands / verification
+- Phase 10 1차 OAC 배포 — `269b7a2`, 1 add·3 change·0 destroy; 앱 도메인 콘텐츠 200과 API URL 전환 확인.
+- S3 직접 공개 차단 — `d63ecea`, 0 add·2 change·0 destroy; PAB 네 항목 true.
+- 임시 교차 origin 전환 — `03f4b42`, Lambda 1 in-place; API가 CloudFront 기본 도메인을 반환함을 확인.
+- 전용 콘텐츠 배포 — `c4e39cf`, ACM·검증·CloudFront·A/AAAA 6 add, S3 정책 1 change, 0 destroy. 전용 URL 실제 HTML 200.
+- 앱과 콘텐츠 origin 완전 분리 — `8e75616`, CloudFront·OAC·Lambda·S3 정책 4 in-place, 0 destroy.
+- 전체 `npm test` 첫 실행 — 89/90. 로컬 비동기 export JSON 부분 읽기 경쟁 조건 1건 재현.
+- atomic rename 수정 `07074ae`, Lambda 1 in-place 배포 후 전체 `npm test` 90/90 pass.
+- 운영 HTTP — 전용 콘텐츠 200, 앱 `/contents/*` 404, 직접 S3 403, health 200.
+- 공개 API — 283/283개 `content.showcase.nxtcloud.kr` URL, 예외 0.
+- 인앱 브라우저 — 로그인 관리자 283개·게임 182·웹 101 확인. 상세 보기 링크와 iframe이 전용 도메인을 사용하고 학생 HTML 내부 DOM 렌더링 확인 후 관리자 화면으로 복귀.
+- AWS 읽기 검증 — PAB 4종 true, 버킷 정책 Principal은 CloudFront 서비스·SourceArn은 전용 배포 `E1WKPIDV02A1LX` 하나. `games/*` 398개, `contents/*` 396개.
+- 문서 커밋 `f92e175` origin/main push. Terraform output `content_url` state 반영은 0 add·0 change·0 destroy.
+- 기존 S3 객체 복사·이동·덮어쓰기·삭제, DynamoDB 포인터 변경, 운영 콘텐츠 쓰기 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 학생 HTML은 관리자 쿠키와 동일한 `showcase.nxtcloud.kr`에서 제공하지 않고 `content.showcase.nxtcloud.kr`로 격리한다.
+- Phase 11은 사용량·정리 후보 분석부터 시작하며 기존 `games/*` 삭제는 별도 승인 전 수행하지 않는다.

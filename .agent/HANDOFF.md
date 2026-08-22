@@ -23,14 +23,18 @@
 - Phase 9에서 관리자 ZIP을 동일 Lambda 비동기 작업으로 분리했다. API/UI는 queued·running·completed·failed, 최근 이력, 시도 횟수, 실패 작업 조건부 재시도를 제공한다.
 - 작업 메타는 기존 DynamoDB의 `export#` 키와 30일 TTL, ZIP은 기존 비공개 `exports/*`와 1일 수명 주기를 사용한다. Lambda async 자동 재시도 0회, 최대 이벤트 수명 1시간, Errors alarm을 배포했다.
 - 운영 46개 작업 `51d0a0288ebd3a60e69b84903b054f4a`는 첫 검증 환경 누락으로 failed가 보존된 뒤 재시도되어 attempt 2·completed가 됐다. 관리자 모달의 완료·다운로드, 357,109-byte ZIP, TTL ENABLED, alarm OK를 확인했다.
+- Phase 10에서 `content.showcase.nxtcloud.kr` 전용 ACM·CloudFront·Route 53을 추가하고 S3 읽기를 해당 배포의 OAC로만 제한했다. S3 Public Access Block 네 항목은 모두 true다.
+- 앱 CloudFront의 S3 origin과 `/contents/*`·`/games/*` behavior를 제거했다. 공개 API 283/283개가 전용 콘텐츠 도메인을 반환하며 인앱 브라우저 iframe에서 실제 학생 웹페이지 DOM 렌더링을 확인했다.
+- 직접 S3 콘텐츠 URL은 403, 앱 도메인의 이전 콘텐츠 경로는 404, 전용 콘텐츠 URL과 health는 200이다. `games/*` 398개와 `contents/*` 396개는 그대로 보존했다.
+- 전체 테스트에서 드러난 로컬 export 상태 파일의 부분 읽기 경쟁 조건은 임시 파일 작성 후 atomic rename으로 수정했고 90/90을 통과했다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
 - `.zed/`는 기존 비추적 파일이며 수정하지 않았다.
-- 버킷 공개 정책은 `games/*`로 좁혀졌고 `exports/*`는 비공개다.
+- 버킷은 완전 비공개이며 `games/*`·`contents/*`는 전용 콘텐츠 CloudFront OAC만 읽는다. `exports/*`는 계속 비공개 서명 URL만 사용한다.
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 9 구현·배포·대량 작업·재시도·운영 브라우저·alarm 검증이 완료됐다.
-2. 다음 Phase 10은 CloudFront OAC·S3 비공개 전환이며 직접 S3 콘텐츠 URL 영향 분석부터 시작한다.
-3. 기존 S3 객체 삭제는 Phase 11이며 별도 승인 전에는 수행하지 않는다.
+1. Phase 10 구현·단계별 배포·운영 API/브라우저/S3 경계 검증이 완료됐다.
+2. 다음 Phase 11은 레거시 사용량과 정리 후보를 먼저 분석한다.
+3. 기존 S3 객체 삭제는 별도 승인 전에는 수행하지 않는다.
