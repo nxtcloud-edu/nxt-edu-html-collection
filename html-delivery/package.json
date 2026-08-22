@@ -7,6 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test --test-concurrency=1 test/*.test.js",
+    "dev:web": "vite --config frontend/vite.config.ts",
+    "build:web": "vite build --config frontend/vite.config.ts",
+    "typecheck:web": "tsc --noEmit -p frontend/tsconfig.json",
+    "test:web": "vitest run --config frontend/vitest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js",
@@ -34,6 +38,18 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.62.1",
-    "adm-zip": "^0.6.0"
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "adm-zip": "^0.6.0",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }

@@ -224,6 +224,7 @@ data "archive_file" "lambda" {
     ".local-export-jobs.json",
     ".local-feedback.jsonl",
     ".local-registry.json",
+    "frontend",
     "README.md",
     "migrations",
     "scripts",

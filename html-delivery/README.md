@@ -6,6 +6,16 @@
 
 `server.js`는 단일 Lambda의 composition root입니다. HTTP는 `routes/`, use case는 `services/`, 영속 계약은 `repositories/`, S3 같은 외부 저장 구현은 `adapters/`, 순수 규칙은 `domain/`에 둡니다. 배포 단위와 AWS 리소스는 늘리지 않습니다. 자세한 의존 방향과 호환 경계는 [`docs/planning/BACKEND_ARCHITECTURE.md`](../docs/planning/BACKEND_ARCHITECTURE.md)를 참고합니다.
 
+## 프런트엔드 구조
+
+`frontend/`는 React·TypeScript·Vite 기반의 새 UI 소스입니다. Phase 14에서는 `/app/` 셸만 제공하고 기존 `/`, `/cohort.html`, `/upload.html`, `/view.html`, `/admin.html`은 그대로 유지합니다. 디자인 토큰과 공통 컴포넌트는 `frontend/src/`에 두고, 배포 파일은 `public/app/`으로 빌드합니다. 자세한 전환·빌드 계약은 [`docs/planning/FRONTEND_ARCHITECTURE.md`](../docs/planning/FRONTEND_ARCHITECTURE.md)를 참고합니다.
+
+```bash
+npm run typecheck:web
+npm run test:web
+npm run build:web
+```
+
 ## 로컬 DRY_RUN 운영
 
 `S3_BUCKET`을 비워 두면 클라우드 호출 없이 `.local-deploy/`에 파일을 저장하고 앱이 직접 정적 서빙합니다.
@@ -55,6 +65,9 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 
 ```bash
 npm test
+npm run typecheck:web
+npm run test:web
+npm run build:web
 npm run test:e2e
 ```
 
