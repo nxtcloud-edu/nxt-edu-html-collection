@@ -18,6 +18,7 @@ test('object storage adapter는 로컬 HTML 저장·URL·삭제를 같은 계약
     const storage = createObjectStorage({ localDirectory: directory, localPort: 4321 });
     await storage.putHtml('contents/abc12345/v1.html', Buffer.from('<h1>ok</h1>'), { version: '1' });
     assert.equal(await fs.readFile(path.join(directory, 'contents/abc12345/v1.html'), 'utf8'), '<h1>ok</h1>');
+    await assert.rejects(storage.putHtml('contents/abc12345/v1.html', Buffer.from('overwrite'), { version: '1' }), (error) => error.code === 'EEXIST');
     assert.equal(storage.publicUrl('contents/abc12345/v1.html'), 'http://localhost:4321/deployed/contents/abc12345/v1.html');
     await storage.deleteObject('contents/abc12345/v1.html');
     await assert.rejects(fs.access(path.join(directory, 'contents/abc12345/v1.html')),
@@ -61,6 +62,13 @@ test('content service는 신규 콘텐츠 저장 순서와 버전 키 계약을 
   };
   const service = createContentService({
     contentRepository: repository,
+    versionRepository: {
+      save: async (item) => { calls.push(['version-meta', item.contentId, item.version, item.sha256]); return true; },
+      list: async () => [],
+      deleteForContent: async () => 0,
+      publicVersion: (item, latestVersion) => ({ version: item.version, isLatest: item.version === latestVersion }),
+      adminVersion: (item, latestVersion) => ({ ...item, isLatest: item.version === latestVersion }),
+    },
     feedbackRepository: { deleteForContent: async () => 0 },
     objectStorage: { putHtml: async (key) => calls.push(['put', key]), deleteObject: async () => {} },
     createContentId: () => 'abc12345',
@@ -77,10 +85,18 @@ test('content service는 신규 콘텐츠 저장 순서와 버전 키 계약을 
     ownerName: '학생', title: '작품', category: '웹페이지', password: 'secret', file: { buffer: Buffer.from('html') },
   });
   assert.equal(created.latestObjectKey, 'contents/abc12345/v1.html');
-  assert.deepEqual(calls.slice(0, 2), [['put', 'contents/abc12345/v1.html'], ['create', 'abc12345']]);
+  assert.deepEqual(calls.slice(0, 3).map((item) => item.slice(0, 3)), [
+    ['put', 'contents/abc12345/v1.html'],
+    ['version-meta', 'abc12345', 1],
+    ['create', 'abc12345'],
+  ]);
   const versioned = await service.addVersion({ contentId: 'abc12345', password: 'secret', title: '작품 2', file: { buffer: Buffer.from('html2') } });
   assert.equal(versioned.content.latestVersion, 2);
-  assert.deepEqual(calls.slice(2), [['put', 'contents/abc12345/v2.html'], ['version', 'abc12345', 2]]);
+  assert.deepEqual(calls.slice(3).map((item) => item.slice(0, 3)), [
+    ['put', 'contents/abc12345/v2.html'],
+    ['version-meta', 'abc12345', 2],
+    ['version', 'abc12345', 2],
+  ]);
 });
 
 test('cohort service는 기본·커스텀 목록과 이름 변경 시 콘텐츠 갱신을 조율한다', async () => {

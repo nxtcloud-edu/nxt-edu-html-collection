@@ -162,7 +162,7 @@ function createAdminAuth(deps = {}) {
       const nextCredential = hashPassword(newPassword);
       if (isEnvAdmin) await saveAdminCredential({ ...nextCredential, updatedAt: new Date().toISOString() });
       else if (!await updateAdminAccountPassword(adminId, nextCredential)) return res.status(401).json({ error: ADMIN_CURRENT_PASSWORD_FAILED_MESSAGE });
-      auditAdminAction('change-password', null);
+      await auditAdminAction('change-password', null, { actorId: adminId, targetType: 'admin', targetId: adminId });
       return res.json({ ok: true });
     } catch (error) { return next(error); }
   }
@@ -177,7 +177,7 @@ function createAdminAuth(deps = {}) {
       if (!validInitialAdminPassword(password)) return res.status(400).json({ error: '비밀번호는 8~72자로 입력하세요.' });
       if (id === config.id || (await getAdminAccounts()).some((account) => account.id === id)) return res.status(409).json({ error: '이미 있는 관리자예요.' });
       await addAdminAccount({ id, ...hashPassword(password) });
-      auditAdminAction('add-admin', null);
+      await auditAdminAction('add-admin', null, { actorId: req.adminId || config.id, targetType: 'admin', targetId: id });
       return res.json({ ok: true });
     } catch (error) { return next(error); }
   }

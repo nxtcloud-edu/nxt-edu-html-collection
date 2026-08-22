@@ -27,7 +27,7 @@ function createObjectStorage({
     if (!bucket) {
       const destination = path.join(localDirectory, key);
       await fs.mkdir(path.dirname(destination), { recursive: true });
-      await fs.writeFile(destination, buffer);
+      await fs.writeFile(destination, buffer, { flag: 'wx' });
       return;
     }
     await s3().send(new PutObjectCommand({
@@ -35,6 +35,7 @@ function createObjectStorage({
       Key: key,
       Body: buffer,
       ContentType: 'text/html; charset=utf-8',
+      IfNoneMatch: '*',
       Metadata: metadata,
     }));
   }

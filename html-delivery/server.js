@@ -2,7 +2,7 @@ const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
 const { createObjectStorage } = require('./adapters/object-storage');
-const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
+const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateCustomCohortById, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
 const { contentDisposition, createExportDownload, EXPORT_ID_PATTERN, localExportPath } = require('./cohort-export');
 const { dispatchExportJob } = require('./export-dispatch');
@@ -12,7 +12,9 @@ const { categoryFromContentType, contentTypeFromCategory, normalizeLegacyCategor
 const { CONTENT_KEY_PATTERN, allVersionKeysForContent, createVersionKey, isValidContentKey, preferredContentKey, storageSchemeForKey } = require('./domain/content-storage');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 const { createContentRepository } = require('./repositories/content-repository');
+const { createAuditRepository } = require('./repositories/audit-repository');
 const { createFeedbackRepository, parseFeedbackLog } = require('./repositories/feedback-repository');
+const { createVersionRepository } = require('./repositories/version-repository');
 const { createPublicRouter } = require('./routes/public-routes');
 const { createAdminRouter } = require('./routes/admin-routes');
 const { createContentService } = require('./services/content-service');
@@ -61,8 +63,11 @@ const contentRepository = createContentRepository({
 });
 const objectStorage = createObjectStorage({ localDirectory: LOCAL_DEPLOY_DIR, localPort: PORT });
 const feedbackRepository = createFeedbackRepository({ localFile: LOCAL_FEEDBACK_LOG });
+const versionRepository = createVersionRepository();
+const auditRepository = createAuditRepository();
 const contentService = createContentService({
   contentRepository,
+  versionRepository,
   feedbackRepository,
   objectStorage,
   createContentId: newContentId,
@@ -80,6 +85,7 @@ const cohortService = createCohortService({
   getCustomCohorts,
   addCustomCohort,
   renameCustomCohort,
+  updateCustomCohortById,
   deriveLegacyCohortId,
   newCohortId,
   isCohortId: (value) => COHORT_ID_PATTERN.test(value),
@@ -201,9 +207,9 @@ function toV2Cohort(cohort) {
     cohortId: cohort.cohortId,
     name: cohort.name,
     dateLabel: cohort.date || null,
-    submissionMode: teamOptions.length ? 'team' : 'individual',
+    submissionMode: cohort.submissionMode || (teamOptions.length ? 'team' : 'individual'),
     teamOptions,
-    status: 'active',
+    status: cohort.status || 'active',
     createdAt: cohort.createdAt || null,
     updatedAt: cohort.updatedAt || null,
   };
@@ -284,8 +290,22 @@ function validateAdminContentPatch(existing, body = {}, validAffiliations = COHO
 function validateNewPassword(newPassword) {
   return typeof newPassword === 'string' && newPassword.length >= 4 && newPassword.length <= 30;
 }
-function auditAdminAction(admin_action, contentId) {
-  console.log(JSON.stringify({ admin_action, contentId, at: new Date().toISOString() }));
+async function auditAdminAction(admin_action, targetId, context = {}) {
+  const occurredAt = new Date().toISOString();
+  const event = {
+    actorId: context.actorId || 'system',
+    action: admin_action,
+    targetType: context.targetType || (targetId ? 'content' : 'system'),
+    targetId: context.targetId ?? targetId ?? null,
+    details: context.details || {},
+    occurredAt,
+  };
+  console.log(JSON.stringify({ admin_action, contentId: targetId || null, actorId: event.actorId, at: occurredAt }));
+  try { return await auditRepository.record(event); }
+  catch (error) {
+    console.error('감사 로그 저장 실패:', error.message);
+    return null;
+  }
 }
 async function exportJobResponse(job) {
   const result = publicExportJob(job);
@@ -306,6 +326,7 @@ function createApp() {
     adminAuth,
     cohortService,
     contentService,
+    auditRepository,
     feedbackRepository,
     exportJobs: {
       create: createExportJob,
@@ -326,9 +347,11 @@ function createApp() {
       auditAdminAction,
       buildCohortOverview,
       hashPassword,
+      isCohortId: (value) => typeof value === 'string' && COHORT_ID_PATTERN.test(value),
       isValidContentId,
       normalizeContent,
       publicLegacyContent,
+      publicUrl,
       requestBaseUrl,
       validateAdminContentPatch,
       validateNewPassword,

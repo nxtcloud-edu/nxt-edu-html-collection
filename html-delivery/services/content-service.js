@@ -1,5 +1,9 @@
+const crypto = require('node:crypto');
+const path = require('node:path');
+
 function createContentService({
   contentRepository,
+  versionRepository,
   feedbackRepository,
   objectStorage,
   createContentId,
@@ -13,6 +17,7 @@ function createContentService({
 } = {}) {
   const required = {
     contentRepository,
+    versionRepository,
     feedbackRepository,
     objectStorage,
     createContentId,
@@ -27,12 +32,31 @@ function createContentService({
     if (!value) throw new TypeError(`content service ${name} is required`);
   }
 
-  async function storeVersion({ contentId, title, version, key, file }) {
+  function versionRecord({ contentId, version, key, file, uploadedAt }) {
+    return {
+      contentId,
+      version,
+      objectKey: key,
+      originalFileName: typeof file.originalname === 'string' ? path.basename(file.originalname).slice(0, 255) : null,
+      sizeBytes: file.buffer.length,
+      sha256: crypto.createHash('sha256').update(file.buffer).digest('hex'),
+      uploadedAt,
+    };
+  }
+
+  async function storeVersion({ contentId, title, version, key, file, uploadedAt }) {
     await objectStorage.putHtml(key, file.buffer, {
       contentid: contentId,
       title: encodeURIComponent(title),
       version: String(version),
     });
+    const record = versionRecord({ contentId, version, key, file, uploadedAt });
+    if (!await versionRepository.save(record)) {
+      const error = new Error('이미 기록된 콘텐츠 버전입니다.');
+      error.code = 'VERSION_CONFLICT';
+      throw error;
+    }
+    return record;
   }
 
   async function create({ cohort, ownerName, title, category, password, file }) {
@@ -57,7 +81,7 @@ function createContentService({
       createdAt2: uploadedAt,
       updatedAt: uploadedAt,
     };
-    await storeVersion({ contentId, title, version, key, file });
+    await storeVersion({ contentId, title, version, key, file, uploadedAt });
     await contentRepository.create(item);
     return item;
   }
@@ -70,7 +94,7 @@ function createContentService({
     const key = createVersionKey(existing.contentId, version, { existingKey: preferredContentKey(existing) });
     const uploadedAt = now();
     const storageFields = versionStorageFields(existing, key);
-    await storeVersion({ contentId: existing.contentId, title, version, key, file });
+    await storeVersion({ contentId: existing.contentId, title, version, key, file, uploadedAt });
     await contentRepository.updateVersion(existing.contentId, {
       title,
       latestVersion: version,
@@ -108,7 +132,7 @@ function createContentService({
       createdAt2: existing?.createdAt2 || uploadedAt,
       updatedAt: uploadedAt,
     };
-    await storeVersion({ contentId, title: identity.title, version, key, file });
+    await storeVersion({ contentId, title: identity.title, version, key, file, uploadedAt });
     if (existing) {
       await contentRepository.updateVersion(contentId, {
         title: identity.title,
@@ -127,8 +151,33 @@ function createContentService({
     if (!existing) return false;
     await Promise.all(allVersionKeysForContent(existing).map(objectStorage.deleteObject));
     await feedbackRepository.deleteForContent(contentId);
+    await versionRepository.deleteForContent(contentId);
     await contentRepository.delete(contentId);
     return true;
+  }
+
+  async function listVersions(contentId, { admin = false } = {}) {
+    const content = await contentRepository.getPrivate(contentId);
+    if (!content) return null;
+    const stored = await versionRepository.list(contentId);
+    const storedByVersion = new Map(stored.map((item) => [item.version, item]));
+    const records = Array.from({ length: content.latestVersion }, (_, index) => {
+      const version = index + 1;
+      return storedByVersion.get(version) || {
+        contentId,
+        version,
+        objectKey: createVersionKey(contentId, version, { existingKey: preferredContentKey(content) }),
+        originalFileName: null,
+        sizeBytes: null,
+        sha256: null,
+        uploadedAt: version === content.latestVersion ? content.updatedAt : (version === 1 ? content.createdAt2 : null),
+      };
+    });
+    const serialize = admin ? versionRepository.adminVersion : versionRepository.publicVersion;
+    return {
+      metadataStatus: stored.length === content.latestVersion ? 'complete' : (stored.length ? 'partial' : 'legacy-synthesized'),
+      versions: records.map((item) => serialize(item, content.latestVersion)),
+    };
   }
 
   return Object.freeze({
@@ -139,6 +188,7 @@ function createContentService({
     getPublic: contentRepository.getPublic,
     incrementLikes: contentRepository.incrementLikes,
     list: contentRepository.list,
+    listVersions,
     updateFields: contentRepository.updateFields,
     updatePassword: contentRepository.updatePassword,
     upsertLegacy,

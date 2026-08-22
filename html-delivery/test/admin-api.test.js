@@ -8,6 +8,8 @@ const { COHORT_ID_PATTERN, deriveLegacyCohortId } = require('../domain/cohort');
 const { cohortOptions, createApp } = require('../server');
 const { LOCAL_EXPORT_DIR } = require('../cohort-export');
 const { LOCAL_EXPORT_JOBS } = require('../export-jobs');
+const { LOCAL_AUDIT_LOG } = require('../repositories/audit-repository');
+const { LOCAL_VERSIONS } = require('../repositories/version-repository');
 const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, getRegistryItem, hashPassword, renameCustomCohort, saveRegistryItem, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
@@ -21,6 +23,8 @@ async function cleanLocalState() {
   await fs.rm(LOCAL_ADMIN_ACCOUNTS, { force: true });
   await fs.rm(LOCAL_COHORTS, { force: true });
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
+  await fs.rm(LOCAL_AUDIT_LOG, { force: true });
+  await fs.rm(LOCAL_VERSIONS, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
   await fs.rm(LOCAL_EXPORT_DIR, { recursive: true, force: true });
   await fs.rm(LOCAL_EXPORT_JOBS, { force: true });
@@ -806,6 +810,98 @@ test('관리 콘텐츠 삭제는 로컬 배포 파일, 갤러리, 피드백을 �
     assert.equal((await gallery.json()).games.some((game) => game.contentId === created.body.contentId), false);
     const feedback = await fetch(`${baseUrl}/api/feedback?id=${created.body.contentId}`);
     assert.deepEqual((await feedback.json()).feedback, []);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+test('v2 관리자 API는 ID 기반 페이지네이션·버전 메타·코호트·감사 로그를 제공한다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    const first = await uploadContent(baseUrl, { secret: runtimeSecret(), title: '관리자 v2 첫 작품' });
+    const second = await uploadContent(baseUrl, { secret: runtimeSecret(), title: '관리자 v2 둘째 작품', category: '웹페이지' });
+    assert.equal(first.response.status, 201);
+    assert.equal(second.response.status, 201);
+
+    assert.equal((await fetch(`${baseUrl}/api/v2/admin/contents`)).status, 401);
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const headers = { cookie: authenticated.cookie };
+
+    const firstPageResponse = await fetch(`${baseUrl}/api/v2/admin/contents?pageSize=1`, { headers });
+    assert.equal(firstPageResponse.status, 200);
+    const firstPage = await firstPageResponse.json();
+    assert.equal(firstPage.contents.length, 1);
+    assert.equal(firstPage.page.total, 2);
+    assert.ok(firstPage.page.nextCursor);
+    assert.equal(firstPage.contents[0].latestObjectKey.startsWith('contents/'), true);
+    assert.equal(JSON.stringify(firstPage).includes('passwordHash'), false);
+
+    const secondPage = await (await fetch(`${baseUrl}/api/v2/admin/contents?pageSize=1&cursor=${encodeURIComponent(firstPage.page.nextCursor)}`, { headers })).json();
+    assert.equal(secondPage.contents.length, 1);
+    assert.notEqual(secondPage.contents[0].contentId, firstPage.contents[0].contentId);
+    const filtered = await (await fetch(`${baseUrl}/api/v2/admin/contents?type=webpage&query=${encodeURIComponent('둘째')}`, { headers })).json();
+    assert.deepEqual(filtered.contents.map((item) => item.contentId), [second.body.contentId]);
+    assert.equal((await fetch(`${baseUrl}/api/v2/admin/contents?cursor=broken`, { headers })).status, 400);
+
+    const versions = await (await fetch(`${baseUrl}/api/v2/admin/contents/${first.body.contentId}/versions`, { headers })).json();
+    assert.equal(versions.metadataStatus, 'complete');
+    assert.equal(versions.versions[0].originalFileName, 'content.html');
+    assert.match(versions.versions[0].sha256, /^[0-9a-f]{64}$/);
+    assert.equal(versions.versions[0].objectKey, `contents/${first.body.contentId}/v1.html`);
+
+    const updatedTitle = 'ID 기반으로 수정한 작품';
+    const patched = await fetch(`${baseUrl}/api/v2/admin/contents/${first.body.contentId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ title: updatedTitle, contentType: 'webpage' }),
+    });
+    assert.equal(patched.status, 200);
+    assert.equal((await patched.json()).content.title, updatedTitle);
+
+    const cohortsBefore = await (await fetch(`${baseUrl}/api/v2/admin/cohorts`, { headers })).json();
+    assert.equal(cohortsBefore.cohorts.every((cohort) => COHORT_ID_PATTERN.test(cohort.cohortId)), true);
+    assert.equal(cohortsBefore.cohorts.find((cohort) => cohort.name === '2026-고대세종-ai').editable, false);
+    const createdCohortResponse = await fetch(`${baseUrl}/api/v2/admin/cohorts`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: '2026-v2-테스트', dateLabel: '8.22' }),
+    });
+    assert.equal(createdCohortResponse.status, 201);
+    const createdCohort = (await createdCohortResponse.json()).cohort;
+    assert.equal(createdCohort.editable, true);
+    const archived = await fetch(`${baseUrl}/api/v2/admin/cohorts/${createdCohort.cohortId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'archived', name: '2026-v2-테스트-보관' }),
+    });
+    assert.equal(archived.status, 200);
+    assert.equal((await archived.json()).cohort.status, 'archived');
+
+    const baseCohort = cohortsBefore.cohorts.find((cohort) => cohort.name === first.identity.affiliation);
+    const exportResponse = await fetch(`${baseUrl}/api/v2/admin/exports`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ cohortId: baseCohort.cohortId }),
+    });
+    assert.equal(exportResponse.status, 202);
+    const exportBody = await exportResponse.json();
+    assert.equal(exportBody.export.cohort, first.identity.affiliation);
+    assert.equal((await waitForExport(baseUrl, exportBody.export.exportId, authenticated.cookie)).status, 'completed');
+
+    const auditResponse = await fetch(`${baseUrl}/api/v2/admin/audit-logs?limit=20`, { headers });
+    assert.equal(auditResponse.status, 200);
+    const audit = await auditResponse.json();
+    assert.equal(audit.auditLogs.some((item) => item.action === 'update-content-v2' && item.targetId === first.body.contentId), true);
+    assert.equal(audit.auditLogs.some((item) => item.action === 'create-cohort-v2' && item.targetId === createdCohort.cohortId), true);
+    assert.equal(audit.auditLogs.some((item) => item.action === 'export-cohort-v2'), true);
+    assert.equal(JSON.stringify(audit).includes(admin.secret), false);
   } finally {
     console.log = originalLog;
     await close(server);

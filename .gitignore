@@ -7,6 +7,8 @@ html-delivery/.local-deploy/
 html-delivery/.local-exports/
 html-delivery/uploads.log.jsonl
 html-delivery/.local-feedback.jsonl
+html-delivery/.local-audit.jsonl
+html-delivery/.local-versions.json
 html-delivery/.local-registry.json
 html-delivery/.local-admin-credential.json
 html-delivery/.local-admin-accounts.json

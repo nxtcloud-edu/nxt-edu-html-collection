@@ -65,7 +65,15 @@ test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다
     { name: '2026-국민대-ai워크플로우', teams: ['1팀', '2팀', '3팀', '4팀', '5팀'], date: '6.24~30' },
     { name: '2026-서남-해커톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀'], date: '7.10' },
   ];
-  assert.deepEqual(await cohortOptions(), expected.map((cohort) => ({ cohortId: deriveLegacyCohortId(cohort.name), ...cohort })));
+  assert.deepEqual(await cohortOptions(), expected.map((cohort) => ({
+    cohortId: deriveLegacyCohortId(cohort.name),
+    ...cohort,
+    submissionMode: cohort.teams ? 'team' : 'individual',
+    status: 'active',
+    createdAt: null,
+    updatedAt: null,
+    source: 'base',
+  })));
 });
 
 test('커스텀 코호트 이름은 확장된 업로드 검증에서만 수용한다', () => {

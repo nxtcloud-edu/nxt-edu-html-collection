@@ -67,17 +67,8 @@ function createPublicRouter({
   router.get('/api/v2/contents/:contentId/versions', async (req, res, next) => {
     if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
     try {
-      const content = await contentService.getPublic(req.params.contentId);
-      if (!content) return res.sendStatus(404);
-      const versions = Array.from({ length: content.latestVersion }, (_, index) => {
-        const version = index + 1;
-        return {
-          version,
-          isLatest: version === content.latestVersion,
-          uploadedAt: version === content.latestVersion ? content.updatedAt : (version === 1 ? content.createdAt2 : null),
-        };
-      });
-      return res.json({ versions });
+      const result = await contentService.listVersions(req.params.contentId);
+      return result ? res.json({ versions: result.versions }) : res.sendStatus(404);
     } catch (error) { return next(error); }
   });
   router.post('/api/v2/contents', upload.single('file'), async (req, res, next) => {

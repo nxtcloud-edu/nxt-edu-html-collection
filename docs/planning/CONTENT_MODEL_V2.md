@@ -1,10 +1,10 @@
 # 콘텐츠 플랫폼 v2 데이터·API 계약
 
-Status: 설계 확정
+Status: Phase 15 저장·관리자 API 구현 완료, 운영 backfill 전
 
 Date: 2026-08-21
 
-Scope: 계약과 마이그레이션 안전장치만 정의한다. 이 문서 작성 단계에서는 런타임 코드·DynamoDB·S3를 변경하지 않는다.
+Scope: v2 계약과 마이그레이션 안전장치를 정의하고 Phase 15 구현 상태를 기록한다.
 
 ## 1. 제품 경계
 
@@ -96,6 +96,11 @@ Scope: 계약과 마이그레이션 안전장치만 정의한다. 이 문서 작
 - 한 번 기록된 버전 객체는 덮어쓰지 않는다.
 - `sha256`은 복사·마이그레이션 검증 기준이다.
 - 기존 데이터에서 알 수 없는 `originalFileName`은 `null`을 허용한다.
+- 레거시 v1은 콘텐츠 생성 시각, 최신 버전은 콘텐츠 수정 시각을 사용할 수 있다. 그 사이 과거 버전처럼 근거가 없는 `uploadedAt`은 추정하지 않고 `null`을 허용한다.
+
+### 3.4 AuditLog
+
+관리자 변경은 `action`, `actor`, `targetType`, `targetId`, `occurredAt`, 민감정보를 제외한 `details`로 기록한다. 비밀번호·HTML 본문·세션 토큰은 저장하지 않는다. 감사 로그 저장 실패가 이미 성공한 관리자 변경을 실패 응답으로 바꾸지는 않으며, 이 경우 CloudWatch 오류 로그로 운영자에게 드러낸다.
 
 ## 4. 저장 키 계약
 
@@ -145,10 +150,15 @@ manifest.json
 | Method | Path | 의미 |
 |---|---|---|
 | GET | `/api/v2/admin/contents` | 저장 키·상태를 포함한 관리자 목록 |
+| GET | `/api/v2/admin/contents/:contentId/versions` | 크기·해시·객체 키를 포함한 관리자 버전 목록 |
 | PATCH | `/api/v2/admin/contents/:contentId` | 제목·코호트·소유자·유형 수정 |
+| GET | `/api/v2/admin/cohorts` | 활성·보관 코호트 목록 |
 | POST | `/api/v2/admin/cohorts` | 불변 ID를 가진 코호트 생성 |
 | PATCH | `/api/v2/admin/cohorts/:cohortId` | 표시 이름·일자·상태 수정 |
 | POST | `/api/v2/admin/exports` | `cohortId` 기준 export 생성 |
+| GET | `/api/v2/admin/audit-logs` | cursor 기반 최신순 관리자 감사 로그 |
+
+관리자 콘텐츠 목록은 `pageSize`, 불투명 `cursor`, `cohortId`, `type`, `query`를 사용한다. 코호트 이름 대신 불변 ID로 수정·내보내기 대상을 식별한다.
 
 ## 6. 레거시 호환 계약
 
@@ -199,6 +209,8 @@ v2 도입 중에도 다음 계약은 제거하지 않는다.
 - 코호트 ID와 정규화 필드를 기존 레코드에 추가한다.
 - 기존 필드는 그대로 둔다.
 - dry-run 결과의 대상·누락·충돌 수를 먼저 보고한다.
+- ContentVersion은 기존 `contents/{contentId}/vN.html`을 읽어 크기와 SHA-256을 계산한 뒤 조건부로 추가한다. 객체나 콘텐츠 포인터는 수정하지 않는다.
+- apply는 `conflicts: 0`, `failures: 0`일 때만 허용하며 확인 문자열을 요구한다. 재 dry-run에서 모든 레코드가 `existing`으로 분류돼야 한다.
 
 ### Gate C — 신규 쓰기 전환
 

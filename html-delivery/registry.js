@@ -144,8 +144,9 @@ async function replaceCustomCohortsIfUnchanged(cohorts, expectedCohorts) {
   }
 }
 
-async function addCustomCohort({ name, date, cohortId = newCohortId() }) {
-  const cohorts = [...await getCustomCohorts(), { cohortId, name, date: date || null, createdAt: new Date().toISOString() }];
+async function addCustomCohort({ name, date, status = 'active', cohortId = newCohortId() }) {
+  const now = new Date().toISOString();
+  const cohorts = [...await getCustomCohorts(), { cohortId, name, date: date || null, status, createdAt: now, updatedAt: now }];
   await saveCustomCohorts(cohorts);
 }
 
@@ -153,7 +154,16 @@ async function renameCustomCohort(oldName, newName) {
   const cohorts = await getCustomCohorts();
   const index = cohorts.findIndex((cohort) => cohort.name === oldName);
   if (index === -1) return false;
-  cohorts[index] = { ...cohorts[index], cohortId: cohorts[index].cohortId || deriveLegacyCohortId(oldName), name: newName };
+  cohorts[index] = { ...cohorts[index], cohortId: cohorts[index].cohortId || deriveLegacyCohortId(oldName), name: newName, updatedAt: new Date().toISOString() };
+  await saveCustomCohorts(cohorts);
+  return true;
+}
+
+async function updateCustomCohortById(cohortId, fields) {
+  const cohorts = await getCustomCohorts();
+  const index = cohorts.findIndex((cohort) => cohort.cohortId === cohortId);
+  if (index === -1) return false;
+  cohorts[index] = { ...cohorts[index], ...fields, cohortId, updatedAt: fields.updatedAt || new Date().toISOString() };
   await saveCustomCohorts(cohorts);
   return true;
 }
@@ -437,4 +447,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, retireContentLegacyFallback, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, setContentLatestObjectKey, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_ACCOUNTS_KEY, ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, listRegistryItems, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, renameCustomCohort, replaceCustomCohortsIfUnchanged, retireContentLegacyFallback, saveAdminCredential, saveCustomCohorts, saveRegistryItem, setContentCohortId, setContentLatestObjectKey, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateCustomCohortById, updateRegistryVersion, verifyPassword };

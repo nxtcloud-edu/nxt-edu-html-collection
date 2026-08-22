@@ -48,6 +48,12 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 - `GET /api/v2/contents/:contentId/versions` → 객체 키·해시를 제외한 공개 버전 번호 목록
 - `POST /api/v2/contents` → 항상 새 콘텐츠 생성
 - `POST /api/v2/contents/:contentId/versions` → 소유 비밀번호 확인 후 지정 콘텐츠에 새 버전 추가
+- `GET /api/v2/admin/contents` → `pageSize`, `cursor`, `cohortId`, `type`, `query` 기반 관리자 목록
+- `GET /api/v2/admin/contents/:contentId/versions` → 객체 키·크기·SHA-256을 포함한 버전 메타데이터
+- `PATCH /api/v2/admin/contents/:contentId` → ID 기반 콘텐츠 메타데이터 수정
+- `GET|POST /api/v2/admin/cohorts`, `PATCH /api/v2/admin/cohorts/:cohortId` → 코호트 조회·생성·보관
+- `GET /api/v2/admin/audit-logs` → 민감정보를 제외한 최신순 관리자 변경 기록
+- `POST /api/v2/admin/exports` → `cohortId` 기준 비동기 ZIP 생성
 - `POST /api/upload` multipart 필드 `affiliation`, `category`, `name`, `title`, `password`, `file` → `201 { url, directUrl, contentId, title, version, uploadedAt }`
 - `GET /api/admin/cohort-overview?cohort={코호트명}` → 콘텐츠 수·유형·누적 버전·저장 키 방식·ZIP 준비 상태 (관리자 인증 필요, `cohort` 생략 시 전체)
 - `GET /api/admin/exports?limit=20` → 최근 비동기 ZIP 작업 상태 (관리자 인증 필요)
@@ -86,6 +92,22 @@ FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:cohort-i
 ```
 
 운영 테이블은 2026-08-21 backfill을 완료했습니다. 코호트 15개와 콘텐츠 283개가 모두 ID를 가지며 재 dry-run 결과 `contentsToUpdate: 0`, `unresolved: 0`, `conflicts: 0`입니다.
+
+## ContentVersion backfill
+
+기본 실행은 S3 객체와 DynamoDB를 읽기만 하는 dry-run입니다. 기존 `contents/{contentId}/vN.html`의 크기와 SHA-256을 계산해 메타데이터 생성 대상·기존 일치·충돌·실패를 분류합니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:content-versions -- --summary-only
+```
+
+`conflicts: 0`, `failures: 0`인 경우에만 additive 쓰기를 실행합니다. 기존 S3 객체·콘텐츠 포인터는 변경하지 않으며 버전 레코드는 조건부 생성합니다.
+
+```bash
+S3_BUCKET=<버킷명> FEEDBACK_TABLE=<테이블명> S3_REGION=ap-northeast-2 npm run backfill:content-versions -- --apply --confirm=BACKFILL_CONTENT_VERSIONS --summary-only
+```
+
+레거시 데이터에서 원래 파일명은 알 수 없으므로 `originalFileName`은 `null`입니다. 생성·최신 버전 외에 근거가 없는 중간 버전의 `uploadedAt`도 추정하지 않고 `null`로 둡니다.
 
 Phase 5 신규 저장 경로는 2026-08-21 운영에 배포했습니다. 기존 콘텐츠 283개의 `games/*` 키는 변경하지 않았고, 신규 콘텐츠부터 `contents/{contentId}/v1.html`을 사용합니다. 테스트 콘텐츠로 v1·v2 생성, 최신 포인터, 관리자 목록, ZIP 포함, 삭제까지 검증했으며 삭제 후 기존 283개 상태로 원복했습니다. 기존 S3 객체 복사·이동·삭제는 수행하지 않았습니다.
 

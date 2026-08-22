@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createApp } = require('../server');
+const { LOCAL_AUDIT_LOG } = require('../repositories/audit-repository');
+const { LOCAL_VERSIONS } = require('../repositories/version-repository');
 const {
   LOCAL_ADMIN_ACCOUNTS,
   LOCAL_ADMIN_CREDENTIAL,
@@ -21,6 +23,8 @@ async function cleanLocalState() {
   await Promise.all([
     fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true }),
     fs.rm(LOCAL_FEEDBACK_LOG, { force: true }),
+    fs.rm(LOCAL_AUDIT_LOG, { force: true }),
+    fs.rm(LOCAL_VERSIONS, { force: true }),
     fs.rm(LOCAL_REGISTRY, { force: true }),
     fs.rm(LOCAL_COHORTS, { force: true }),
     fs.rm(LOCAL_ADMIN_CREDENTIAL, { force: true }),
