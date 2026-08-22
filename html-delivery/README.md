@@ -16,6 +16,8 @@ Phase 17도 2026-08-23 운영 배포했습니다. 업로드는 신규 생성과 
 
 Phase 18 관리자 화면도 2026-08-23 운영 배포했습니다. 대시보드·콘텐츠·코호트·내보내기·감사/시스템으로 구성하며, 콘텐츠 상세에서 버전·피드백을 함께 검토합니다. 목록은 25개 cursor 이전/다음 탐색을 제공합니다. 삭제는 contentId 재입력, 비밀번호·ZIP·코호트·계정 변경은 각각 명시적 버튼을 요구합니다. 관리자 E2E fixture에는 운영 자격정보를 사용하지 않습니다.
 
+Phase 19 품질 게이트도 2026-08-23 완료했습니다. 현재 해시 자산 raw/gzip 예산, 데스크톱·모바일 시각 기준 8개, 공개 3화면·관리자 5영역 critical/serious 접근성 0과 가로 오버플로 0을 자동 검사합니다. 운영 전환 절차는 [`RELEASE_CHECKLIST.md`](../docs/planning/RELEASE_CHECKLIST.md)를 따릅니다.
+
 ```bash
 npm run typecheck:web
 npm run test:web
