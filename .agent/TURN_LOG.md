@@ -2770,3 +2770,30 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 로그 전달과 파서 호환성은 확인됐지만 현재 집계는 관찰 시작 직후 부분 표본이다.
 - 2026-08-30 22:13 KST 이후 생성하는 완전한 7일 보고서만 cleanup과 fallback 은퇴 판단에 사용한다.
+
+## 2026-08-22 22:55 KST — Codex — Phase 12 개편 기준선 고정
+
+### Intent
+- Phase 13~19 리팩토링과 재디자인 전, 기존 공개·업로드·보기·관리자 동선과 운영 데이터 기준을 반복 검증 가능한 상태로 고정한다.
+
+### Files changed
+- `html-delivery/playwright.config.js`, `test/e2e/*`, `package.json`, `package-lock.json` — 데스크톱·모바일 Playwright, 고정 fixture, axe 접근성 기준선과 전용 명령.
+- `docs/planning/RENEWAL_BASELINE.md`, `REFACTOR_ROADMAP.md`, `infra/README.md` — 운영 스냅샷, Phase 12~19, 배포 devDependency 경계.
+- `.gitignore`, 협업 상태 문서 — E2E 산출물 제외와 다음 안전 액션 기록.
+
+### Commands / verification
+- `npm install --save-dev @playwright/test @axe-core/playwright`, `npx playwright install chromium` — 성공, 취약점 0.
+- 첫 E2E — 6/12 통과. strict locator 2종과 fixture contentId 형식 오류를 확인하고 테스트를 수정.
+- 수정 후 `npm run test:e2e` — 데스크톱·모바일 12/12 통과.
+- 기존 `npm test` 첫 실행 — Node test runner가 `test/e2e`까지 수집해 105/107. 단위 테스트 glob을 `test/*.test.js`로 명시한 후 104/104 통과.
+- 운영 공개 HTTP 읽기 — 홈·업로드·관리자·health·v2 cohorts·v2 contents 모두 200.
+- 운영 공개 API — 콘텐츠 283, 게임 182, 웹페이지 101, 최신 버전 합계 396.
+- 로그인된 운영 관리자 화면 읽기 — 콘텐츠 283, 게임 182, 웹 101, 누적 버전 396, 신규 저장 283으로 API와 일치.
+- Phase 12 기준선 커밋 `2e20877`.
+- 운영 데이터 POST/PATCH/DELETE, ZIP 생성·다운로드, Terraform plan/apply·배포 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- E2E는 운영 계정이나 secret을 저장하지 않고 모의 인증·고정 fixture로 재현한다. 운영 계정은 사용자가 제공했지만 파일·로그에 기록하지 않았다.
+- Playwright·axe는 devDependency이며 Lambda 배포 전 `npm install --omit=dev`를 유지한다.
+- 다음 Phase 13은 외부 API·URL·운영 데이터를 바꾸지 않고 백엔드 경계만 분리한다.

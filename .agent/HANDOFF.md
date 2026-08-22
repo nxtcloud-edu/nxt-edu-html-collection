@@ -35,6 +35,10 @@
 - 전체 테스트 104/104 통과 후 Lambda 코드만 0 add·1 change·0 destroy로 배포했다. health·홈·v2 API 200, 콘텐츠 283개·cohortId 누락 0·전용 콘텐츠 도메인 URL 283개를 확인했다.
 - 배포 후 운영 fallback dry-run은 283개 모두 `awaitingUsageEvidence`, ready·retired·conflict 0이다. 포인터 apply와 S3 변경·삭제는 실행하지 않았다.
 - 2026-08-22 22:29 KST 관찰 체크에서 CloudFront gzip 로그 2개가 로그 버킷에 실제 도착했고 AES256·14일 만료 헤더를 확인했다. 기존 파서는 14개 요청 레코드와 레거시 요청 0건을 집계했으나 7일 미만 부분 표본이므로 의사결정 근거로 사용하지 않는다.
+- Phase 12에서 운영 동작·데이터를 바꾸지 않고 개편 기준선을 추가했다. 운영 공개 API와 로그인 관리자 화면은 콘텐츠 283개·게임 182·웹 101·버전 합계 396으로 일치했다.
+- Phase 12 기준선 커밋은 `2e20877`이다.
+- Playwright는 고정 fixture와 API interception으로 공개·업로드·보기·관리자 핵심 흐름을 데스크톱·모바일에서 검사한다. 최종 12/12, 기존 단위·통합 104/104가 통과했다.
+- Playwright와 axe는 devDependency다. Terraform ZIP이 `node_modules`를 포함하므로 런타임 배포 전 `npm install --omit=dev`를 유지한다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -43,7 +47,7 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 11 감사·관찰 인프라·수집기 배포까지 완료됐고 7일 관찰 중이다.
-2. 2026-08-30 22:13 KST 이후 문서의 `collect:legacy-usage`와 `audit:legacy-cleanup` 명령을 순서대로 실행한다.
-3. 같은 보고서로 `migrate:retire-legacy-fallbacks` dry-run을 실행해 대상과 충돌을 검토한다.
+1. Phase 13은 `server.js`의 routes/services/repositories/AWS adapters 분리다. 공개·관리자 API 계약과 데이터는 바꾸지 않는다.
+2. 구조 추출 후 `npm test` 104개와 `npm run test:e2e` 12개를 모두 재실행한다.
+3. 2026-08-30 22:13 KST 이후 Phase 11 사용량 수집·감사·fallback dry-run을 별도 수행한다.
 4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.
