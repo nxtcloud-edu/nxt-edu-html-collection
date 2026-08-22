@@ -45,6 +45,8 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 
 학생 업로드 화면은 “새 콘텐츠 만들기”와 “기존 콘텐츠 새 버전”을 분리합니다. 새 콘텐츠는 같은 이름·제목이 있어도 새 ID로 생성하며, 버전 추가는 콘텐츠 ID와 소유 비밀번호를 명시해야 합니다. 기존 `/api/games`, `/api/content`, `/api/upload`는 호환 경로로 유지합니다.
 
+운영 콘텐츠 URL은 `https://content.showcase.nxtcloud.kr/{objectKey}`입니다. 학생 HTML은 앱·관리자 세션의 `showcase.nxtcloud.kr`과 다른 origin에서 실행되며, S3 직접 URL은 공개되지 않습니다. `games/*` 원본과 `contents/*` 복사본은 그대로 보존합니다.
+
 ## 테스트
 
 ```bash

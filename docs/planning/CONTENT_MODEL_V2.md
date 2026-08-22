@@ -233,8 +233,16 @@ v2 도입 중에도 다음 계약은 제거하지 않는다.
 
 ### Gate F — 보안 전환
 
-- 직접 S3 URL 사용 현황을 조사한 뒤 CloudFront OAC와 버킷 완전 비공개를 별도 배포한다.
-- `showcase.nxtcloud.kr`의 뷰어와 콘텐츠 URL이 유지되는지 검증한다.
+- CloudFront OAC와 S3 Public Access Block 4종으로 `games/*`·`contents/*` 직접 S3 읽기를 차단한다.
+- 신뢰하지 않는 학생 HTML은 앱·관리자 세션과 다른 `content.showcase.nxtcloud.kr` origin에서 제공한다.
+
+2026-08-22 운영 실행 결과:
+
+- 전용 ACM 인증서·CloudFront 배포·Route 53 A/AAAA 레코드를 생성하고 S3 정책의 읽기 주체를 전용 배포 하나로 제한했다.
+- 앱 CloudFront에서 S3 origin과 `/games/*`·`/contents/*` behavior를 제거했다.
+- 공개 API 283/283개 콘텐츠 URL이 전용 도메인을 사용하고 실제 iframe HTML 렌더링을 확인했다.
+- 전용 콘텐츠 URL은 200, 직접 S3 URL은 403, 앱 도메인의 이전 콘텐츠 경로는 404다.
+- 기존 S3 객체와 DynamoDB 포인터는 복사·이동·삭제·수정하지 않았다.
 
 ### Gate G — 레거시 정리
 
