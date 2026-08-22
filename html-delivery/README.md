@@ -21,7 +21,7 @@ npm start
 
 S3 모드의 발급 URL은 `${BASE_URL}/${key}`이고, DRY_RUN에서는 `${BASE_URL}/deployed/${key}`를 사용합니다. 신규 콘텐츠는 `contents/{contentId}/v{version}.html`, 기존 레거시 콘텐츠의 새 버전은 기존 `games/{contentId}-v{version}.html` prefix를 유지합니다. Lambda 배포 파일시스템은 휘발성·읽기 전용이므로 S3 모드의 `uploads.log.jsonl` 기록 실패는 업로드 성공을 막지 않고 콘솔 경고만 남깁니다.
 
-관리자는 `/admin`에서 코호트를 선택해 최신 버전 HTML을 ZIP으로 내려받을 수 있습니다. ZIP에는 `순번_이름(또는 팀명)_제목_v버전.html` 파일과 원본 S3 키·콘텐츠 ID·조회 URL을 연결하는 `manifest.csv`, `manifest.json`이 포함됩니다. 운영 ZIP은 같은 버킷의 비공개 `exports/` 경로에 만들고 15분 유효한 서명 URL로 전달하며, 수명 주기로 1일 뒤 삭제합니다. ZIP과 삭제 기능은 `games/*`와 `contents/*`를 모두 지원하며 기존 객체를 자동 이동하지 않습니다.
+관리자는 `/admin`에서 코호트를 선택해 최신 버전 HTML ZIP 생성을 요청할 수 있습니다. 요청은 작업 메타데이터를 먼저 저장하고 별도 Lambda 실행으로 처리되며, 관리자 화면에서 대기·생성 중·완료·실패 상태와 시도 횟수, 실패 작업 재시도를 확인합니다. ZIP에는 `순번_이름(또는 팀명)_제목_v버전.html` 파일과 원본 S3 키·콘텐츠 ID·조회 URL을 연결하는 `manifest.csv`, `manifest.json`이 포함됩니다. 운영 ZIP은 같은 버킷의 비공개 `exports/` 경로에 만들고 15분 유효한 서명 URL로 전달하며, 수명 주기로 1일 뒤 삭제합니다. 작업 이력은 30일 TTL을 사용하고 ZIP 보관 만료 뒤에는 다운로드 버튼을 제공하지 않습니다. ZIP과 삭제 기능은 `games/*`와 `contents/*`를 모두 지원하며 기존 객체를 자동 이동하지 않습니다.
 
 S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `text/html; charset=utf-8` Content-Type이 설정됩니다. 코호트·소유자·제목의 기준 데이터는 DynamoDB 콘텐츠 레코드에 저장합니다.
 
@@ -36,7 +36,10 @@ S3 객체에는 `contentid`, URL 인코딩된 `title`, `version` Metadata와 `te
 - `POST /api/v2/contents/:contentId/versions` → 소유 비밀번호 확인 후 지정 콘텐츠에 새 버전 추가
 - `POST /api/upload` multipart 필드 `affiliation`, `category`, `name`, `title`, `password`, `file` → `201 { url, directUrl, contentId, title, version, uploadedAt }`
 - `GET /api/admin/cohort-overview?cohort={코호트명}` → 콘텐츠 수·유형·누적 버전·저장 키 방식·ZIP 준비 상태 (관리자 인증 필요, `cohort` 생략 시 전체)
-- `POST /api/admin/exports` JSON 필드 `cohort` → 해당 코호트 최신 HTML의 ZIP 생성 결과 (관리자 인증 필요)
+- `GET /api/admin/exports?limit=20` → 최근 비동기 ZIP 작업 상태 (관리자 인증 필요)
+- `POST /api/admin/exports` JSON 필드 `cohort` → `202`와 대기 상태의 ZIP 작업 생성 (관리자 인증 필요)
+- `GET /api/admin/exports/:exportId` → 단일 작업 상태, 완료 시 새 서명 다운로드 URL (관리자 인증 필요)
+- `POST /api/admin/exports/:exportId/retry` → 실패 작업을 조건부 재시도 (관리자 인증 필요)
 - `GET /api/admin/exports/:exportId/download` → 로컬 모드에서 생성한 ZIP 다운로드 (관리자 인증 필요)
 - 파일은 `.html`만 허용하며 최대 1MB, 소속·이름은 trim 후 각각 1~40자입니다.
 

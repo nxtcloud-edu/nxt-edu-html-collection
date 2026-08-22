@@ -9,6 +9,10 @@ test('Lambda handler를 함수로 export한다', () => {
   assert.equal(typeof handler, 'function');
 });
 
+test('Lambda는 유효하지 않은 비동기 내보내기 이벤트를 거부한다', async () => {
+  await assert.rejects(handler({ type: 'admin-export-job', exportId: 'invalid' }, {}), /유효하지 않은 내보내기 작업 이벤트/);
+});
+
 test('Lambda가 PNG 응답을 base64 바이너리로 전달한다', async () => {
   const response = await handler({
     version: '2.0',

@@ -7,6 +7,7 @@ const AdmZip = require('adm-zip');
 const { COHORT_ID_PATTERN, deriveLegacyCohortId } = require('../domain/cohort');
 const { cohortOptions, createApp } = require('../server');
 const { LOCAL_EXPORT_DIR } = require('../cohort-export');
+const { LOCAL_EXPORT_JOBS } = require('../export-jobs');
 const { LOCAL_ADMIN_ACCOUNTS, LOCAL_ADMIN_CREDENTIAL, LOCAL_COHORTS, LOCAL_REGISTRY, addAdminAccount, addCustomCohort, getAdminAccounts, getCustomCohorts, getRegistryItem, hashPassword, renameCustomCohort, saveRegistryItem, updateAdminAccountPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
@@ -22,6 +23,7 @@ async function cleanLocalState() {
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
   await fs.rm(LOCAL_EXPORT_DIR, { recursive: true, force: true });
+  await fs.rm(LOCAL_EXPORT_JOBS, { force: true });
 }
 
 function withAdminEnv() {
@@ -88,6 +90,17 @@ async function uploadContent(baseUrl, { affiliation = '2026-고대세종-ai', ca
   form.set('file', htmlBlob(), 'content.html');
   const response = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: form });
   return { response, body: await response.json(), identity: { affiliation, category, name, title } };
+}
+
+async function waitForExport(baseUrl, exportId, cookie) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const response = await fetch(`${baseUrl}/api/admin/exports/${exportId}`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const job = (await response.json()).export;
+    if (job.status === 'completed' || job.status === 'failed') return job;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.fail('내보내기 작업이 제한 시간 안에 끝나지 않았습니다.');
 }
 
 test('관리자 env가 없으면 admin API가 503을 반환한다', async () => {
@@ -712,12 +725,29 @@ test('관리자 코호트 export는 최신 HTML을 읽기 쉬운 파일명과 ma
       headers: { 'content-type': 'application/json', cookie: authenticated.cookie },
       body: JSON.stringify({ cohort }),
     });
-    assert.equal(response.status, 201);
-    const exported = await response.json();
+    assert.equal(response.status, 202);
+    const queued = (await response.json()).export;
+    assert.equal(queued.status, 'queued');
+    assert.equal(queued.attempt, 0);
+    assert.equal(queued.cohort, cohort);
+    assert.equal(Object.hasOwn(queued, 'contentIds'), false);
+    const exported = await waitForExport(baseUrl, queued.exportId, authenticated.cookie);
+    assert.equal(exported.status, 'completed');
+    assert.equal(exported.attempt, 1);
     assert.equal(exported.count, 2);
     assert.equal(exported.cohort, cohort);
     assert.match(exported.fileName, /^2026-고대세종-ai_콘텐츠_\d{4}-\d{2}-\d{2}\.zip$/);
     assert.match(exported.downloadUrl, /^\/api\/admin\/exports\/[0-9a-f]{32}\/download\?/);
+
+    const history = await fetch(`${baseUrl}/api/admin/exports`, { headers: { cookie: authenticated.cookie } });
+    assert.equal(history.status, 200);
+    const historyBody = await history.json();
+    assert.equal(historyBody.exports[0].exportId, exported.exportId);
+    assert.equal(historyBody.exports[0].status, 'completed');
+    assert.match(historyBody.exports[0].downloadUrl, /^\/api\/admin\/exports\//);
+
+    const invalidRetry = await fetch(`${baseUrl}/api/admin/exports/${exported.exportId}/retry`, { method: 'POST', headers: { cookie: authenticated.cookie } });
+    assert.equal(invalidRetry.status, 409);
 
     const blockedDownload = await fetch(`${baseUrl}${exported.downloadUrl}`);
     assert.equal(blockedDownload.status, 401);

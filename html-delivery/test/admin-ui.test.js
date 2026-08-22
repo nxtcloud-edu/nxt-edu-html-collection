@@ -47,10 +47,16 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.match(admin, /<button id="openExportButton"[^>]*>코호트 ZIP 다운로드<\/button>/);
   assert.match(admin, /<dialog id="exportModal"/);
   assert.match(admin, /id="exportCohortSelect"/);
-  assert.match(admin, /id="exportSubmitButton"[^>]*>ZIP 생성 및 다운로드<\/button>/);
+  assert.match(admin, /id="exportSubmitButton"[^>]*>ZIP 생성 요청<\/button>/);
+  assert.match(admin, /id="exportJobs"/);
   assert.match(admin, /openExportButton\.addEventListener\('click',[\s\S]*exportModal\.showModal\(\)/);
   assert.match(admin, /exportForm\.addEventListener\('submit',[\s\S]*\/api\/admin\/exports/);
-  assert.match(admin, /link\.download=data\.fileName/);
+  assert.match(admin, /link\.download=job\.fileName/);
+  assert.match(admin, /queued:'대기 중'/);
+  assert.match(admin, /running:'생성 중'/);
+  assert.match(admin, /completed:'완료'/);
+  assert.match(admin, /failed:'실패'/);
+  assert.match(admin, /\/api\/admin\/exports\/\$\{job\.exportId\}\/retry/);
   assert.match(admin, /id="cohortOverview"/);
   assert.match(admin, /id="overviewTotal"/);
   assert.match(admin, /id="overviewTypes"/);

@@ -13,6 +13,11 @@ resource "aws_dynamodb_table" "feedback" {
     name = "createdAt"
     type = "S"
   }
+
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
 }
 
 resource "aws_s3_bucket" "games" {
@@ -125,6 +130,7 @@ data "archive_file" "lambda" {
     ".env.example",
     ".local-deploy",
     ".local-exports",
+    ".local-export-jobs.json",
     ".local-feedback.jsonl",
     ".local-registry.json",
     "README.md",
@@ -212,7 +218,7 @@ resource "aws_lambda_function" "uploader" {
   runtime       = "nodejs20.x"
   handler       = "lambda.handler"
   memory_size   = 512
-  timeout       = 60
+  timeout       = 120
 
   filename         = data.archive_file.lambda.output_path
   source_code_hash = data.archive_file.lambda.output_base64sha256
@@ -236,6 +242,43 @@ resource "aws_lambda_function" "uploader" {
     aws_iam_role_policy.s3_upload,
     aws_iam_role_policy_attachment.lambda_logs,
   ]
+}
+
+resource "aws_iam_role_policy" "lambda_self_invoke" {
+  name = "nxt-ai-literacy-lambda-self-invoke"
+  role = aws_iam_role.uploader.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "lambda:InvokeFunction"
+      Resource = aws_lambda_function.uploader.arn
+    }]
+  })
+}
+
+resource "aws_lambda_function_event_invoke_config" "export_worker" {
+  function_name                = aws_lambda_function.uploader.function_name
+  maximum_event_age_in_seconds = 3600
+  maximum_retry_attempts       = 0
+}
+
+resource "aws_cloudwatch_metric_alarm" "export_failures" {
+  alarm_name          = "nxt-ai-literacy-export-failures"
+  alarm_description   = "관리자 비동기 ZIP 내보내기 Lambda 오류 감지"
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.uploader.function_name
+  }
 }
 
 resource "aws_lambda_function_url" "uploader" {

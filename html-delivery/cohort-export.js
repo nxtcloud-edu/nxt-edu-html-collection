@@ -168,6 +168,7 @@ async function createLocalArchive({ exportId, fileName, entries, manifestOptions
     fileName,
     count: entries.length,
     cohort,
+    storageKey: null,
     downloadUrl: `/api/admin/exports/${exportId}/download?filename=${encodeURIComponent(fileName)}`,
   };
 }
@@ -205,17 +206,24 @@ async function createS3Archive({ exportId, fileName, entries, manifestOptions, c
     throw error;
   }
   const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: DOWNLOAD_TTL_SECONDS });
-  return { exportId, fileName, count: entries.length, cohort, downloadUrl, expiresIn: DOWNLOAD_TTL_SECONDS };
+  return { exportId, fileName, count: entries.length, cohort, storageKey: key, downloadUrl, expiresIn: DOWNLOAD_TTL_SECONDS };
 }
 
-async function createCohortExport({ cohort, contents, appBaseUrl, bucket = process.env.S3_BUCKET, region = process.env.S3_REGION || 'ap-northeast-2', now = new Date() }) {
-  const exportId = crypto.randomBytes(16).toString('hex');
+async function createCohortExport({ exportId = crypto.randomBytes(16).toString('hex'), cohort, contents, appBaseUrl, bucket = process.env.S3_BUCKET, region = process.env.S3_REGION || 'ap-northeast-2', now = new Date() }) {
+  if (!EXPORT_ID_PATTERN.test(exportId)) throw new Error('유효하지 않은 내보내기 ID입니다.');
   const entries = buildExportEntries(contents);
   const createdAt = now.toISOString();
   const fileName = exportFileName(cohort, now);
   const manifestOptions = { cohort, createdAt, appBaseUrl };
   if (!bucket) return createLocalArchive({ exportId, fileName, entries, manifestOptions, cohort });
   return createS3Archive({ exportId, fileName, entries, manifestOptions, cohort, bucket, region });
+}
+
+async function createExportDownload({ exportId, fileName, bucket = process.env.S3_BUCKET, region = process.env.S3_REGION || 'ap-northeast-2' }) {
+  if (!EXPORT_ID_PATTERN.test(exportId)) throw new Error('유효하지 않은 내보내기 ID입니다.');
+  if (!bucket) return `/api/admin/exports/${exportId}/download?filename=${encodeURIComponent(fileName)}`;
+  const client = new S3Client({ region });
+  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: `exports/${exportId}.zip` }), { expiresIn: DOWNLOAD_TTL_SECONDS });
 }
 
 function localExportPath(exportId) {
@@ -230,6 +238,7 @@ module.exports = {
   buildManifest,
   contentDisposition,
   createCohortExport,
+  createExportDownload,
   exportFileName,
   localExportPath,
   safeFilenamePart,

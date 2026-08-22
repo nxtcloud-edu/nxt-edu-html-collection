@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const express = require('express');
 const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -7,7 +8,9 @@ const { DynamoDBDocumentClient, DeleteCommand, PutCommand, QueryCommand } = requ
 const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { addAdminAccount, addCustomCohort, deleteRegistryItem, findByIdentity, getAdminAccounts, getAdminCredential, getContent: getRegisteredContent, getCustomCohorts, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, renameCustomCohort, saveAdminCredential, saveRegistryItem, updateAdminAccountPassword, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
 const { createAdminAuth } = require('./admin-auth');
-const { contentDisposition, createCohortExport, exportFileName, localExportPath, safeFilenamePart } = require('./cohort-export');
+const { contentDisposition, createExportDownload, EXPORT_ID_PATTERN, localExportPath } = require('./cohort-export');
+const { dispatchExportJob } = require('./export-dispatch');
+const { createExportJob, failExportJob, getExportJob, listExportJobs, publicExportJob, requeueExportJob } = require('./export-jobs');
 const { COHORT_ID_PATTERN, deriveLegacyCohortId, newCohortId } = require('./domain/cohort');
 const { categoryFromContentType, contentTypeFromCategory, normalizeLegacyCategory, toDomainContent } = require('./domain/content');
 const { CONTENT_KEY_PATTERN, allVersionKeysForContent, createVersionKey, isValidContentKey, preferredContentKey, storageSchemeForKey } = require('./domain/content-storage');
@@ -261,6 +264,11 @@ function validateNewPassword(newPassword) {
 function auditAdminAction(admin_action, contentId) {
   console.log(JSON.stringify({ admin_action, contentId, at: new Date().toISOString() }));
 }
+async function exportJobResponse(job) {
+  const result = publicExportJob(job);
+  if (result?.status === 'completed' && Date.parse(result.archiveExpiresAt) > Date.now()) result.downloadUrl = await createExportDownload(result);
+  return result;
+}
 function parseFeedbackLog(contents, contentId) {
   return contents.split('\n').filter(Boolean).flatMap((line) => {
     try { const item = JSON.parse(line); return item.contentKey === contentId ? [item] : []; }
@@ -439,27 +447,71 @@ function createApp() {
       return res.json({ ok: true });
     } catch (error) { return next(error); }
   });
+  app.get('/api/admin/exports', adminAuth.requireAdmin, async (req, res, next) => {
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 50) : 20;
+    try {
+      const jobs = await listExportJobs(limit);
+      return res.json({ exports: await Promise.all(jobs.map(exportJobResponse)) });
+    } catch (error) { return next(error); }
+  });
   app.post('/api/admin/exports', adminAuth.requireAdmin, async (req, res, next) => {
     const cohort = typeof req.body?.cohort === 'string' ? req.body.cohort.trim() : '';
     try {
       if (!(await cohortOptions()).some((item) => item.name === cohort)) return res.sendStatus(404);
       const contents = (await contentRepository.list()).filter((content) => content.affiliation === cohort);
       if (!contents.length) return res.status(409).json({ error: '다운로드할 콘텐츠가 없습니다.' });
-      const result = await createCohortExport({ cohort, contents, appBaseUrl: requestBaseUrl(req) });
-      auditAdminAction('export-cohort', null);
-      return res.status(201).json(result);
+      const exportId = crypto.randomBytes(16).toString('hex');
+      const job = await createExportJob({
+        exportId,
+        cohort,
+        contentIds: contents.map((content) => content.contentId),
+        requestedAt: new Date().toISOString(),
+        requestedBy: req.adminId,
+        appBaseUrl: requestBaseUrl(req),
+      });
+      try { await dispatchExportJob(exportId); }
+      catch (error) {
+        await failExportJob(exportId, { failedAt: new Date().toISOString(), errorCode: 'DISPATCH_FAILED' });
+        throw error;
+      }
+      auditAdminAction('export-cohort', exportId);
+      return res.status(202).json({ export: publicExportJob(job) });
+    } catch (error) { return next(error); }
+  });
+  app.get('/api/admin/exports/:exportId', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!EXPORT_ID_PATTERN.test(req.params.exportId)) return res.sendStatus(404);
+    try {
+      const job = await getExportJob(req.params.exportId);
+      if (!job) return res.sendStatus(404);
+      return res.json({ export: await exportJobResponse(job) });
+    } catch (error) { return next(error); }
+  });
+  app.post('/api/admin/exports/:exportId/retry', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!EXPORT_ID_PATTERN.test(req.params.exportId)) return res.sendStatus(404);
+    try {
+      if (!await getExportJob(req.params.exportId)) return res.sendStatus(404);
+      const requestedAt = new Date().toISOString();
+      if (!await requeueExportJob(req.params.exportId, requestedAt)) return res.status(409).json({ error: '실패한 작업만 재시도할 수 있습니다.' });
+      try { await dispatchExportJob(req.params.exportId); }
+      catch (error) {
+        await failExportJob(req.params.exportId, { failedAt: new Date().toISOString(), errorCode: 'DISPATCH_FAILED' });
+        throw error;
+      }
+      auditAdminAction('retry-export', req.params.exportId);
+      return res.status(202).json({ export: publicExportJob(await getExportJob(req.params.exportId)) });
     } catch (error) { return next(error); }
   });
   app.get('/api/admin/exports/:exportId/download', adminAuth.requireAdmin, async (req, res, next) => {
     if (process.env.S3_BUCKET) return res.sendStatus(404);
     const filePath = localExportPath(req.params.exportId);
     if (!filePath) return res.sendStatus(404);
-    const requestedName = typeof req.query.filename === 'string' && req.query.filename.endsWith('.zip')
-      ? `${safeFilenamePart(req.query.filename.slice(0, -4), 'cohort-contents', 140)}.zip`
-      : exportFileName('cohort');
     try {
+      const job = await getExportJob(req.params.exportId);
+      if (!job) return res.sendStatus(404);
+      if (job.status !== 'completed') return res.status(409).json({ error: '아직 완료되지 않은 내보내기입니다.' });
       await fs.access(filePath);
-      res.set('Content-Disposition', contentDisposition(requestedName));
+      res.set('Content-Disposition', contentDisposition(job.fileName));
       return res.sendFile(filePath, { dotfiles: 'allow' });
     } catch (error) {
       if (error.code === 'ENOENT') return res.sendStatus(404);
