@@ -56,6 +56,10 @@ test('v2 공개 조회는 cohortId와 정규화된 콘텐츠 필드를 사용하
   await cleanLocalState();
   const { server, baseUrl } = await listen(createApp());
   try {
+    const rootDocument = await (await fetch(`${baseUrl}/index.html`)).text();
+    assert.match(rootDocument, /NXT Cloud AI 콘텐츠 쇼케이스/);
+    assert.match(rootDocument, /\/app\/assets\/index-[^"']+\.js/);
+
     const cohortsResponse = await fetch(`${baseUrl}/api/v2/cohorts`);
     assert.equal(cohortsResponse.status, 200);
     const cohorts = (await cohortsResponse.json()).cohorts;

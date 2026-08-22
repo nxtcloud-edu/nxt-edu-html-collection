@@ -47,7 +47,7 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 
 ## Phase 16 공개 탐색
 
-- Express는 `/`와 `/cohort.html`에서 `public/app/index.html`을 제공한다. 기존 정적 HTML 파일은 롤백 자산으로 보존한다.
+- Express는 `/`, CloudFront default root가 전달하는 `/index.html`, `/cohort.html`에서 `public/app/index.html`을 제공한다. 기존 정적 HTML 파일은 롤백 자산으로 보존한다.
 - 새 UI는 `/api/v2/contents?pageSize=10` cursor pagination을 사용하며 분류·정렬·검색·코호트 조건을 서버에 전달한다.
 - 파라미터 없는 기존 `/api/v2/contents` 전체 응답은 호환을 위해 유지한다.
 - `/api/v2/cohorts`는 `contentCount`, `gameCount`, `webpageCount`를 additive하게 제공한다.
