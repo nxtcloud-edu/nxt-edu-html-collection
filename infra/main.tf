@@ -26,6 +26,10 @@ resource "aws_s3_bucket" "games" {
 
 resource "aws_s3_bucket" "content_access_logs" {
   bucket = "nxt-ai-literacy-content-access-logs"
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 resource "aws_s3_bucket_ownership_controls" "content_access_logs" {
