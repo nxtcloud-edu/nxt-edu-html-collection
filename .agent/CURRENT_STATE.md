@@ -1,15 +1,15 @@
 # Current State
 
-Updated: 2026-08-22 23:51 KST
+Updated: 2026-08-23 00:11 KST
 
 ## Active owners
 - Codex: 사용자 지시에 따라 별도 Hermes 세션·워크오더 없이 현재 main 워크트리에서 직접 작업.
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 15 기능 커밋 `4baac87` 배포·push 완료.
-- Worktree: Phase 15 협업 저널 최종 갱신 중.
-- Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 116/116, Playwright 데스크톱·모바일 E2E 14/14.
+- Branch: `main`, Phase 16 기능 `786b90e`와 루트 경로 수정 `3437c94` 배포·push 완료.
+- Worktree: Phase 16 협업 저널 최종 갱신 중.
+- Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 118/118, Playwright 데스크톱·모바일 E2E 14/14.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
 - Log delivery: 관찰 시작 후 CloudFront gzip 로그 2개가 전용 S3 버킷에 도착했고 기존 파서가 14개 요청 레코드를 처리했다. 현재 레거시 요청 0건은 부분 표본이므로 은퇴 근거로 사용하지 않음.
@@ -41,9 +41,11 @@ Updated: 2026-08-22 23:51 KST
 - Phase 15 완료: ContentVersion·AuditLog repository, ID 기반 v2 관리자 콘텐츠 페이지네이션·필터·버전·코호트·감사·export API를 추가하고 기존 API를 유지.
 - Phase 15 운영 backfill 완료: 콘텐츠 283개·예상 버전 396개를 조건부 생성. 재 dry-run ready 0·existing 396·conflict/failure 0. S3 객체·콘텐츠 포인터 변경 없음.
 - Phase 15 배포 검증: Lambda 1건 in-place, 0 add·0 destroy, 최종 Terraform no changes. health 및 v2/레거시 콘텐츠 283개, 로그인 관리자 현황 283·182/101·396 유지.
+- Phase 16 완료: `/`·`/index.html`·`/cohort.html`을 React 공개 갤러리로 전환. 실데이터 KPI·Donut·가로 막대, 10개 cursor pagination, 서버 분류·정렬·검색을 배포.
+- Phase 16 운영 검증: 콘텐츠 283·게임 182·웹 101·코호트 15, 첫 페이지 10개·다음 페이지 11번 시작, 고대세종 AI 코호트 3개, 데스크톱 가로 오버플로 0. 최종 Terraform no changes.
 
 ## Next safe action
-1. Phase 16에서 `/app/` 기반 공개 홈·탐색·코호트 화면을 React로 구현하고 서버 페이지네이션·필터를 연결한다.
-2. 기존 공개 URL을 즉시 제거하지 않고 화면별 전환·롤백 경계를 유지한다.
+1. Phase 17에서 `/upload.html`과 `/view.html`을 React로 전환하고 신규 생성·버전 추가·격리 viewer·피드백 오류 복구 UX를 완성한다.
+2. 기존 업로드·보기 정적 HTML은 운영 검증 전후 롤백 경계로 유지한다.
 3. Phase 11 관찰은 병행하되 2026-08-30 22:13 KST 전에는 fallback apply를 실행하지 않는다.
 4. 기존 `games/*` 삭제는 포인터 은퇴 후에도 별도 승인 전까지 수행하지 않는다.

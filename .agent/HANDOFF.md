@@ -50,6 +50,9 @@
 - 전체 서버 116/116, 웹 타입 검사, Vitest 2/2, production build, 데스크톱·모바일 E2E 14/14가 통과했다. 기능 커밋 `4baac87`은 origin/main에 push했다.
 - Lambda 코드만 0 add·1 change·0 destroy로 배포했고 최종 Terraform plan은 no changes다. health, v2·레거시 목록 283개, 로그인 관리자 화면 283개·게임 182·웹 101·버전 396을 확인했다.
 - ContentVersion dry-run은 396 ready·충돌/실패 0이었고 조건부 apply로 396개를 생성했다. 재 dry-run은 existing 396·ready/conflict/failure 0이다. S3 객체·포인터·공유 URL은 바꾸지 않았다.
+- Phase 16에서 `/`·`/index.html`·`/cohort.html`을 React 공개 갤러리로 전환했다. 서버는 분류·정렬·검색과 10개 cursor pagination을 제공하고 무파라미터 전체 응답은 호환 유지한다.
+- 운영 집계는 283개·게임 182·웹 101·코호트 15다. 인앱 브라우저에서 첫 페이지 10개, 다음 페이지 11번 시작, 고대세종 AI 코호트 3개와 가로 오버플로 0을 확인했다.
+- 최초 배포에서 CloudFront default root가 `/index.html`을 전달해 루트만 레거시 화면이 나온 문제를 발견했다. `/index.html`도 React 셸로 연결하고 회귀 테스트를 추가해 `3437c94`로 재배포했다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -58,7 +61,7 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 16은 `/app/` 기반 공개 홈·탐색·코호트 UI를 구현하고 v2 서버 페이지네이션·필터를 연결한다.
-2. 기존 `/`, `/cohort.html`을 제거하지 않고 새 화면의 운영 검증과 롤백 경계를 먼저 확보한다.
+1. Phase 17은 `/upload.html`·`/view.html`을 React로 전환하고 생성·버전 추가·격리 viewer·피드백 오류 복구 UX를 완성한다.
+2. 콘텐츠 ID, viewer URL, content origin과 기존 업로드 API 호환 경계를 유지한다.
 3. 2026-08-30 22:13 KST 이후 Phase 11 사용량 수집·감사·fallback dry-run을 별도 수행한다.
 4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.

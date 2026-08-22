@@ -2890,3 +2890,31 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - ContentVersion은 기존 DynamoDB 테이블의 `version#{contentId}` 파티션에 조건부 저장하고 AuditLog는 `audit` 파티션에 민감정보 없이 저장한다.
 - 레거시 중간 버전의 알 수 없는 업로드 시각·원본 파일명은 추정하지 않고 `null`로 둔다.
 - Phase 16은 `/app/` 기반 공개 홈·탐색·코호트 UI와 서버 페이지네이션·필터 연결이며 기존 공개 URL은 롤백 경계로 유지한다.
+
+## 2026-08-23 00:11 KST — Codex — Phase 16 공개 갤러리 재디자인
+
+### Intent
+- 기존 콘텐츠·공유 URL을 보존하면서 공개 홈과 코호트 탐색을 React로 전환하고 초기 283개 전체 다운로드를 cursor pagination으로 교체한다.
+
+### Files changed
+- `frontend/src/App.tsx`, `api.ts`, `types.ts`, `components/Charts.tsx`, `ContentCard.tsx`, `styles/gallery.css` — 실데이터 KPI·Donut·가로 막대, 콘텐츠 탐색·검색·페이지·코호트 UI.
+- `domain/public-query.js`, `routes/public-routes.js` — 필터 범위가 묶인 cursor와 코호트 콘텐츠 유형 집계.
+- `server.js` — `/`, CloudFront `/index.html`, `/cohort.html`을 React 셸로 연결.
+- Vitest·공개 query 단위 테스트·v2 통합 테스트·데스크톱/모바일 E2E와 프런트·API 문서 갱신.
+
+### Commands / verification
+- 타입 검사, Vitest 2/2, production build 통과. 전체 `npm test` 118/118 통과.
+- 첫 E2E는 Phase 14 문구 기대와 코호트 링크 strict 중복으로 10/14 통과. 새 계약·locator 범위를 수정한 뒤 최종 데스크톱·모바일 14/14 통과.
+- E2E에서 공개 핵심 화면 WCAG 2 A/AA critical 위반 0, 모바일·데스크톱 가로 오버플로 0.
+- 로컬 인앱 브라우저 시각 검토 후 문서 제목과 같은 정렬값의 `contentId` tie-break를 보완.
+- 기능 커밋 `786b90e`, CloudFront 루트 수정 `3437c94` origin/main push 완료.
+- 첫 Terraform plan/apply 0 add·Lambda 1 change·0 destroy. `/cohort.html`은 신 화면이었으나 `/`는 CloudFront default root가 `/index.html`을 전달해 레거시 화면임을 운영 검증에서 발견.
+- `/index.html` React 셸 연결과 통합 회귀 테스트 후 두 번째 plan/apply도 0 add·Lambda 1 change·0 destroy. 최종 Terraform detailed plan exit 0, no changes.
+- 운영 API: 코호트 15·콘텐츠 283·게임 182·웹 101, paged 10/283과 nextCursor, 무파라미터 전체 283 유지.
+- 운영 인앱 브라우저: KPI·Donut·상위 코호트 막대, 콘텐츠 10개, 다음 페이지 11번 시작, 고대세종 AI 코호트 3개, clientWidth=scrollWidth 1280 확인.
+- S3 객체·DynamoDB 콘텐츠/포인터·피드백 쓰기/삭제, ZIP 생성·다운로드 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 공개 UI는 pageSize=10 cursor를 사용하고 무파라미터 v2 전체 응답과 기존 정적 HTML은 외부 호환·롤백 자산으로 유지한다.
+- Phase 17은 업로드·보기 React 전환이며 콘텐츠 ID·viewer URL·학생 HTML 별도 origin을 그대로 유지한다.
