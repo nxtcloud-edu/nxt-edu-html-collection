@@ -2721,3 +2721,32 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - API가 `contents/*`를 반환한다는 사실만으로 과거 공유 URL 사용량 0을 추정하지 않는다.
 - 관찰 시작은 2026-08-22T13:13:00.629Z. 최소 7일 + 24시간 전달 지연 후 2026-08-30T13:13:00.629Z부터 첫 완전 근거를 만들 수 있다.
 - 사용량 0이어도 fallback 포인터 은퇴와 실제 객체 삭제는 별도 계획·승인을 요구한다.
+
+## 2026-08-22 22:27 KST — Codex — Phase 11 fallback 은퇴 준비
+
+### Intent
+- 관찰 기간이 끝난 뒤 안전하게 fallback 읽기 의존성을 제거할 수 있도록 조건부 계획·적용 도구를 준비하되 현재 운영 포인터와 S3 객체는 변경하지 않는다.
+
+### Files changed
+- `migrations/fallback-retirement.js`, `scripts/retire-legacy-fallbacks.js` — 복사본 검증·정확한 포인터·7일 사용량·레거시 요청 0건 게이트와 조건부 apply.
+- `registry.js`, `package.json` — 레거시 포인터를 v2 기준으로 조건부 은퇴하는 저장소 연산과 운영 명령.
+- `test/fallback-retirement.test.js` — 준비·차단·충돌·재실행·이중 확인 계약 테스트.
+- 계획·운영 문서 — dry-run/apply 경계, 최초 실행 시각과 운영 결과.
+
+### Commands / verification
+- 집중 테스트 `node --test test/fallback-retirement.test.js test/legacy-cleanup.test.js test/content-storage.test.js` — 12/12 pass.
+- 운영 배포 전 fallback dry-run — 콘텐츠 283, awaitingUsageEvidence 283, ready·retired·observedUsage·blocked·conflict 0.
+- 전체 `npm test` 직렬 실행 — 104/104 pass.
+- `terraform -chdir=infra validate` — pass.
+- sandbox 내부 Terraform plan은 provider schema 실행 제한으로 실패했고, 승인된 외부 실행으로 재시도해 0 add·Lambda 1 in-place·0 destroy를 확인했다.
+- 저장 plan apply — 0 add·1 change·0 destroy. Lambda 코드만 갱신.
+- 운영 HTTP — health·홈·v2 contents API 모두 200. 콘텐츠 283, cohortId 누락 0, 전용 콘텐츠 도메인 URL 283.
+- 배포 후 운영 fallback dry-run — 콘텐츠 283 모두 awaitingUsageEvidence, ready·retired·conflict 0.
+- 기능 커밋 `9ea4699`, 문서 커밋 `f7becb7`; origin/main push 완료.
+- DynamoDB fallback 포인터 apply, S3 객체 복사·이동·덮어쓰기·삭제 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- fallback 은퇴는 객체 삭제와 분리한다. 포인터 apply가 성공해도 `games/*`는 별도 삭제 승인 전까지 보존한다.
+- 2026-08-30 22:13 KST 이후 완전한 사용량 보고서를 생성한 다음 dry-run 결과를 먼저 검토한다.
+- 포인터 apply에는 사용량 보고서와 명시적 확인 문자열이 모두 필요하며 사용자 별도 승인 전에는 실행하지 않는다.

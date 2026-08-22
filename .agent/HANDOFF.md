@@ -31,6 +31,9 @@
 - 콘텐츠 CloudFront 표준 로그는 2026-08-22 22:13 KST부터 쿠키 없이 `nxt-ai-literacy-content-access-logs/cloudfront/content/`에 수집한다. 버킷은 PAB 4종·AES256·14일 TTL이며 조직 자동 태그를 Terraform이 제거하지 않는다.
 - 로그 수집기는 7일 미만 구간, 로그 활성화 이전 구간, 종료 후 24시간이 지나지 않은 구간을 거부한다. 첫 완전 근거 실행 가능 시각은 2026-08-30 22:13 KST다.
 - Phase 11 배포 후 콘텐츠 HTML과 health는 200, CloudFront 배포 상태 `Deployed`, Logging Enabled·IncludeCookies false를 확인했다. S3 객체·DynamoDB 포인터 삭제나 변경은 수행하지 않았다.
+- fallback 포인터 은퇴 도구는 복사본 해시·정확한 현재 포인터·완전한 7일 사용량 근거·콘텐츠별 레거시 요청 0건을 요구한다. apply에는 사용량 보고서와 `RETIRE_LEGACY_FALLBACKS` 확인 문자열이 모두 필요하며 DynamoDB 조건부 갱신만 수행한다.
+- 전체 테스트 104/104 통과 후 Lambda 코드만 0 add·1 change·0 destroy로 배포했다. health·홈·v2 API 200, 콘텐츠 283개·cohortId 누락 0·전용 콘텐츠 도메인 URL 283개를 확인했다.
+- 배포 후 운영 fallback dry-run은 283개 모두 `awaitingUsageEvidence`, ready·retired·conflict 0이다. 포인터 apply와 S3 변경·삭제는 실행하지 않았다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -41,4 +44,5 @@
 ## Next safe action
 1. Phase 11 감사·관찰 인프라·수집기 배포까지 완료됐고 7일 관찰 중이다.
 2. 2026-08-30 22:13 KST 이후 문서의 `collect:legacy-usage`와 `audit:legacy-cleanup` 명령을 순서대로 실행한다.
-3. 사용량 0이어도 fallback 포인터 은퇴와 기존 S3 객체 삭제는 각각 별도 계획·승인 전에는 수행하지 않는다.
+3. 같은 보고서로 `migrate:retire-legacy-fallbacks` dry-run을 실행해 대상과 충돌을 검토한다.
+4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.
