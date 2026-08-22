@@ -32,14 +32,22 @@ test('S3 Public Access Block은 네 가지 공개 경로를 모두 차단한다'
 
 test('학생 콘텐츠는 전용 CloudFront 배포와 origin으로 격리한다', async () => {
   const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
+  const contentDistribution = terraform.slice(
+    terraform.indexOf('resource "aws_cloudfront_distribution" "content"'),
+    terraform.indexOf('resource "aws_cloudfront_distribution" "showcase"'),
+  );
+  const showcaseDistribution = terraform.slice(
+    terraform.indexOf('resource "aws_cloudfront_distribution" "showcase"'),
+    terraform.indexOf('resource "aws_route53_record" "showcase_ipv4"'),
+  );
   assert.match(terraform, /resource "aws_cloudfront_origin_access_control" "content"/);
   assert.match(terraform, /resource "aws_cloudfront_distribution" "content"/);
   assert.match(terraform, /aliases\s*= \["content\.showcase\.nxtcloud\.kr"\]/);
   assert.match(terraform, /signing_behavior\s*= "always"/);
-  assert.match(terraform, /origin_id\s*= "s3-content"/);
-  assert.match(terraform, /path_pattern\s*= "\/contents\/\*"[\s\S]*?target_origin_id\s*= "s3-content"/);
-  assert.match(terraform, /path_pattern\s*= "\/games\/\*"[\s\S]*?target_origin_id\s*= "s3-content"/);
-  assert.match(terraform, /BASE_URL\s*= "https:\/\/dgo7fgp88ouzo\.cloudfront\.net"/);
+  assert.match(contentDistribution, /origin_id\s*= "s3-content"/);
+  assert.doesNotMatch(showcaseDistribution, /origin_id\s*= "s3-content"/);
+  assert.doesNotMatch(showcaseDistribution, /path_pattern\s*= "\/(contents|games)\/\*"/);
+  assert.match(terraform, /BASE_URL\s*= "https:\/\/content\.showcase\.nxtcloud\.kr"/);
   assert.doesNotMatch(terraform, /^\s*BASE_URL\s*=\s*"https:\/\/showcase\.nxtcloud\.kr"/m);
 });
 

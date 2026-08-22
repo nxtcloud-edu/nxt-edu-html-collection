@@ -135,10 +135,7 @@ resource "aws_s3_bucket_policy" "games" {
       ]
       Condition = {
         StringEquals = {
-          "AWS:SourceArn" = [
-            aws_cloudfront_distribution.showcase.arn,
-            aws_cloudfront_distribution.content.arn,
-          ]
+          "AWS:SourceArn" = aws_cloudfront_distribution.content.arn
         }
       }
     }]
@@ -269,7 +266,7 @@ resource "aws_lambda_function" "uploader" {
     variables = {
       S3_BUCKET           = aws_s3_bucket.games.id
       S3_REGION           = var.region
-      BASE_URL            = "https://dgo7fgp88ouzo.cloudfront.net"
+      BASE_URL            = "https://content.showcase.nxtcloud.kr"
       FEEDBACK_TABLE      = aws_dynamodb_table.feedback.name
       APP_BASE_URL        = "https://showcase.nxtcloud.kr"
       ADMIN_ID            = var.admin_id
@@ -342,7 +339,7 @@ resource "aws_lambda_permission" "function_url" {
 
 resource "aws_cloudfront_origin_access_control" "content" {
   name                              = "nxt-ai-literacy-content-oac"
-  description                       = "Private S3 content access for showcase.nxtcloud.kr"
+  description                       = "Private S3 access for isolated student content distribution"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -404,12 +401,6 @@ resource "aws_cloudfront_distribution" "showcase" {
     }
   }
 
-  origin {
-    domain_name              = aws_s3_bucket.games.bucket_regional_domain_name
-    origin_id                = "s3-content"
-    origin_access_control_id = aws_cloudfront_origin_access_control.content.id
-  }
-
   default_cache_behavior {
     target_origin_id         = "lambda-function-url"
     viewer_protocol_policy   = "redirect-to-https"
@@ -429,26 +420,6 @@ resource "aws_cloudfront_distribution" "showcase" {
     compress                 = true
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
-  }
-
-  ordered_cache_behavior {
-    path_pattern           = "/contents/*"
-    target_origin_id       = "s3-content"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
-  }
-
-  ordered_cache_behavior {
-    path_pattern           = "/games/*"
-    target_origin_id       = "s3-content"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
   }
 
   restrictions {
