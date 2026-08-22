@@ -124,4 +124,18 @@ S3_BUCKET=nxt-ai-literacy-games FEEDBACK_TABLE=nxt-edu-feedback S3_REGION=ap-nor
 
 사용량 0 근거가 생겨도 fallback 포인터 은퇴와 객체 삭제는 각각 조건부 계획·별도 승인을 거쳐야 합니다.
 
+fallback 포인터 은퇴 도구도 기본값은 dry-run입니다. 복사본 전수 검증, 현재 레거시·v2 포인터의 정확한 일치, 완전한 7일 사용량 근거, 해당 콘텐츠의 `games/{contentId}-v*` 요청 0건을 모두 만족해야 `ready`가 됩니다.
+
+```bash
+S3_BUCKET=nxt-ai-literacy-games FEEDBACK_TABLE=nxt-edu-feedback S3_REGION=ap-northeast-2 npm run migrate:retire-legacy-fallbacks -- --usage-report=/tmp/legacy-usage.json --summary-only --report=/tmp/fallback-retirement.json
+```
+
+실제 갱신은 별도 승인 후에만 아래 두 안전장치를 함께 제공해야 합니다. 조건부 갱신은 현재 `latestKey=games/*`와 `latestObjectKey=contents/*`가 계획과 정확히 일치할 때만 `latestKey`를 v2 키로 바꾸고 `latestObjectKey`를 제거합니다. S3 객체는 변경하거나 삭제하지 않습니다.
+
+```bash
+S3_BUCKET=nxt-ai-literacy-games FEEDBACK_TABLE=nxt-edu-feedback S3_REGION=ap-northeast-2 npm run migrate:retire-legacy-fallbacks -- --apply --confirm=RETIRE_LEGACY_FALLBACKS --usage-report=/tmp/legacy-usage.json --report=/tmp/fallback-retirement-applied.json
+```
+
+2026-08-22 배포 직후 운영 dry-run은 콘텐츠 283개 모두 `awaitingUsageEvidence`, `ready: 0`, `conflicts: 0`으로 차단했습니다. `--apply`는 실행하지 않았습니다.
+
 `npm test`는 실 S3 호출, Lambda 배포, 버킷 생성이나 AWS CLI 실행을 수행하지 않습니다.
