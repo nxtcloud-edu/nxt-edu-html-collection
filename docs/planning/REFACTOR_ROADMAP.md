@@ -53,4 +53,5 @@
 - Phase 14 완료: React·TypeScript·Vite 앱을 `/app/`에 독립 배포하고 NXT Cloud 토큰, Button·Surface·StatusBadge·MetricCard·AppShell 공통 컴포넌트와 기존 URL 전환 지도를 추가했다. 기존 화면은 유지했으며 타입 검사, Vitest 2/2, 전체 108/108, 데스크톱·모바일 E2E 14/14, critical 접근성 위반 0을 확인했다.
 - Phase 15 완료: ContentVersion·AuditLog repository와 ID 기반 v2 관리자 콘텐츠·코호트·버전·감사·export API를 배포했다. 기존 283개 콘텐츠의 396개 버전 메타를 S3 크기·SHA-256 검증 후 조건부 backfill했고 재 dry-run은 existing 396·충돌/실패 0이다. 기존 객체·포인터·공유 URL은 유지했다.
 - Phase 16 완료: `/`·`/index.html`·`/cohort.html`을 React 공개 갤러리로 전환하고 실제 KPI·Donut·코호트 가로 막대, 서버 검색·정렬·필터·10개 cursor pagination을 배포했다. 운영 283개·게임 182·웹 101·코호트 15개와 코호트 표본 3개를 브라우저에서 확인했다.
+- Phase 17 완료: `/upload.html`·`/view.html`을 React로 전환하고 신규 생성/ID 기반 버전 추가, 별도 origin iframe, 추천·피드백·파일 업데이트와 오류 복구 UI를 배포했다. 운영 쓰기 없이 기존 `0e040222` v5 표본의 iframe·dialog·피드백 영역을 확인했다.
 - Phase 15~19는 Phase 11의 관찰·삭제 승인 절차와 독립적으로 진행한다. 각 phase는 테스트·문서·커밋·push를 독립적으로 끝내며 런타임 변경이 있을 때만 Terraform 배포한다.

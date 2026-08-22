@@ -53,6 +53,9 @@
 - Phase 16에서 `/`·`/index.html`·`/cohort.html`을 React 공개 갤러리로 전환했다. 서버는 분류·정렬·검색과 10개 cursor pagination을 제공하고 무파라미터 전체 응답은 호환 유지한다.
 - 운영 집계는 283개·게임 182·웹 101·코호트 15다. 인앱 브라우저에서 첫 페이지 10개, 다음 페이지 11번 시작, 고대세종 AI 코호트 3개와 가로 오버플로 0을 확인했다.
 - 최초 배포에서 CloudFront default root가 `/index.html`을 전달해 루트만 레거시 화면이 나온 문제를 발견했다. `/index.html`도 React 셸로 연결하고 회귀 테스트를 추가해 `3437c94`로 재배포했다.
+- Phase 17에서 `/upload.html`·`/view.html`을 React로 전환했다. 생성/버전 추가 분리, 개인/팀 선택, 1MB HTML 검증, 별도 origin iframe, 추천·피드백·업데이트 dialog와 오류 복구를 유지한다.
+- 타입 검사, Vitest 2/2, 서버 118/118, 데스크톱·모바일 E2E 14/14와 critical 접근성 위반 0이 통과했다. 기능 커밋 `6d18d9d`는 origin/main이다.
+- 운영은 고대세종 코호트 사전 선택·두 업로드 탭과 `0e040222` v5 viewer·실제 iframe·피드백·업데이트 dialog를 읽기 전용 확인했다. 콘텐츠·버전·추천·피드백 쓰기는 실행하지 않았다.
 
 ## Collision risks / boundaries
 - 작업 시작 전부터 `admin.html`, `registry.js`, `server.js`, 관리자 테스트에 코호트 이름 변경 수정이 존재했다. 신규 ZIP 변경은 이를 보존한 채 같은 파일에 추가됐다.
@@ -61,7 +64,7 @@
 - Phase 9 브라우저 검증 시 사용자가 다시 로그인해 관리자 모달의 46개 작업·시도 2·완료·다운로드 버튼을 확인했다. 다운로드 자체는 사용자가 이전 단계에서 검증했으므로 다시 누르지 않았다.
 
 ## Next safe action
-1. Phase 17은 `/upload.html`·`/view.html`을 React로 전환하고 생성·버전 추가·격리 viewer·피드백 오류 복구 UX를 완성한다.
-2. 콘텐츠 ID, viewer URL, content origin과 기존 업로드 API 호환 경계를 유지한다.
+1. Phase 18은 `/admin.html`을 React 관리자 대시보드·코호트·콘텐츠·export·피드백·감사/시스템 화면으로 전환한다.
+2. 기존 관리자 인증·권한·감사 API와 명시적 확인 경계를 유지하며 운영 검증은 읽기 전용으로 한다.
 3. 2026-08-30 22:13 KST 이후 Phase 11 사용량 수집·감사·fallback dry-run을 별도 수행한다.
 4. 사용량 0이어도 fallback 포인터 apply와 기존 S3 객체 삭제는 각각 별도 승인 전에는 수행하지 않는다.

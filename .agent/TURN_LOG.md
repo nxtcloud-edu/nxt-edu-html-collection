@@ -2918,3 +2918,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 공개 UI는 pageSize=10 cursor를 사용하고 무파라미터 v2 전체 응답과 기존 정적 HTML은 외부 호환·롤백 자산으로 유지한다.
 - Phase 17은 업로드·보기 React 전환이며 콘텐츠 ID·viewer URL·학생 HTML 별도 origin을 그대로 유지한다.
+
+## 2026-08-23 00:20 KST — Codex — Phase 17 업로드·보기 재디자인
+
+### Intent
+- 기존 ID·viewer URL·학생 HTML origin과 API를 유지하면서 신규 생성/버전 추가, 콘텐츠 보기, 추천·피드백·업데이트 UX를 React로 전환한다.
+
+### Files changed
+- `pages/UploadPage.tsx`, `ViewPage.tsx`, `styles/workflow.css` — 개인/팀 업로드, 버전 추가, 격리 viewer, 피드백, 추천, 업데이트 dialog, 오류 복구 UI.
+- `api.ts`, `types.ts`, `App.tsx`, `AppShell.tsx` — 공개 쓰기/조회 API client, 경로별 페이지와 공통 navigation.
+- `server.js` — `/upload.html`, `/view.html` React 셸 우선 제공. 기존 정적 파일은 rollback 자산으로 보존.
+- v2 route 회귀·E2E와 프런트 구조·README 문서 최신화.
+
+### Commands / verification
+- 타입 검사, Vitest 2/2, production build, 전체 `npm test` 118/118 통과.
+- 데스크톱·모바일 E2E 14/14, 공개 핵심 화면 WCAG 2 A/AA critical 위반 0. 업데이트 dialog 열기·취소 포함.
+- 로컬 인앱 브라우저에서 업로드 입력 계층·두 경로·가로 오버플로 0 시각 검토.
+- 기능 커밋 `6d18d9d` origin/main push 완료.
+- Terraform plan/apply 0 add·Lambda 1 change·0 destroy. 최종 detailed plan exit 0, no changes.
+- 운영 HTTP `/upload.html`, `/view.html`, 현재 JS/CSS 200. 표본 `0e040222`는 v5, 전용 content origin 유지.
+- 운영 인앱 브라우저에서 코호트 사전 선택, 신규/버전 tab, iframe 실제 렌더링, 피드백 영역, 업데이트 dialog, clientWidth=scrollWidth 1280 확인.
+- 운영 콘텐츠·버전·추천·피드백 생성/수정/삭제, S3 객체·포인터 변경, ZIP 생성 — 실행 안 함.
+- `check-journal.sh .agent` — 저장소에 없어 실행 안 함.
+
+### Decisions / handoff
+- 브라우저·서버 양쪽에서 HTML/1MB 경계를 검증하고 오류 시 입력·현재 화면을 유지해 재시도한다.
+- Phase 18은 React 관리자 전환이며 기존 인증·권한·감사와 명시적 확인 계약을 유지한다.
