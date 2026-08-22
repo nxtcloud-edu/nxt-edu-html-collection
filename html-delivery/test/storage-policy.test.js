@@ -37,7 +37,8 @@ test('CloudFront는 contents와 games를 OAC S3 origin으로 전달한다', asyn
   assert.match(terraform, /origin_id\s*= "s3-content"/);
   assert.match(terraform, /path_pattern\s*= "\/contents\/\*"[\s\S]*?target_origin_id\s*= "s3-content"/);
   assert.match(terraform, /path_pattern\s*= "\/games\/\*"[\s\S]*?target_origin_id\s*= "s3-content"/);
-  assert.match(terraform, /BASE_URL\s*= "https:\/\/showcase\.nxtcloud\.kr"/);
+  assert.match(terraform, /BASE_URL\s*= "https:\/\/dgo7fgp88ouzo\.cloudfront\.net"/);
+  assert.doesNotMatch(terraform, /^\s*BASE_URL\s*=\s*"https:\/\/showcase\.nxtcloud\.kr"/m);
 });
 
 test('비동기 내보내기는 작업 TTL, Lambda 자체 호출, 무재시도, 오류 경보를 구성한다', async () => {

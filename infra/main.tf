@@ -234,7 +234,7 @@ resource "aws_lambda_function" "uploader" {
     variables = {
       S3_BUCKET           = aws_s3_bucket.games.id
       S3_REGION           = var.region
-      BASE_URL            = "https://showcase.nxtcloud.kr"
+      BASE_URL            = "https://dgo7fgp88ouzo.cloudfront.net"
       FEEDBACK_TABLE      = aws_dynamodb_table.feedback.name
       APP_BASE_URL        = "https://showcase.nxtcloud.kr"
       ADMIN_ID            = var.admin_id
