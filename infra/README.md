@@ -23,14 +23,15 @@ Terraform 1.5.7 기준으로 실행합니다.
 terraform -chdir=infra init -backend=false
 terraform -chdir=infra fmt -check
 terraform -chdir=infra validate
-cd html-delivery && npm test
+(cd html-delivery && npm test)
+(cd html-delivery && npm run test:e2e)
 ```
 
 `init -backend=false`는 원격 state를 만들지 않습니다. validate는 Terraform 구성의 구문과 provider 스키마만 확인하며 실제 Lambda·S3 배포 성공을 의미하지 않습니다.
 
 ## 적용·배포 준비 (검증자/운영자 전용)
 
-`archive_file`은 로컬 `html-delivery/node_modules`를 ZIP에 포함합니다. 따라서 Terraform 적용 전에 반드시 운영 의존성을 설치해야 합니다.
+`archive_file`은 로컬 `html-delivery/node_modules`를 ZIP에 포함합니다. Playwright·axe 같은 개발 의존성을 Lambda에 포함하지 않도록 Terraform 적용 전에 반드시 운영 의존성만 설치해야 합니다.
 
 ```bash
 cd html-delivery

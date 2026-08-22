@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
     "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js",
     "migrate:content-objects": "node scripts/copy-legacy-content-objects.js",
     "migrate:content-read-pointers": "node scripts/switch-content-read-pointers.js",
@@ -30,6 +32,8 @@
     "serverless-http": "^4.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "adm-zip": "^0.6.0"
   }
 }
