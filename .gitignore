@@ -15,6 +15,7 @@ html-delivery/.local-cohorts.json
 # editor-local settings
 .zed/
 html-delivery/node_modules/
+html-delivery/frontend/node_modules/
 html-delivery/playwright-report/
 html-delivery/test-results/
 
