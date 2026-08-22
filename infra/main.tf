@@ -24,6 +24,54 @@ resource "aws_s3_bucket" "games" {
   bucket = var.bucket_name
 }
 
+resource "aws_s3_bucket" "content_access_logs" {
+  bucket = "nxt-ai-literacy-content-access-logs"
+}
+
+resource "aws_s3_bucket_ownership_controls" "content_access_logs" {
+  bucket = aws_s3_bucket.content_access_logs.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "content_access_logs" {
+  bucket = aws_s3_bucket.content_access_logs.id
+
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "content_access_logs" {
+  bucket = aws_s3_bucket.content_access_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "content_access_logs" {
+  bucket = aws_s3_bucket.content_access_logs.id
+
+  rule {
+    id     = "expire-content-access-logs"
+    status = "Enabled"
+
+    filter {
+      prefix = "cloudfront/content/"
+    }
+
+    expiration {
+      days = 14
+    }
+  }
+}
+
 data "aws_route53_zone" "nxtcloud" {
   name         = "nxtcloud.kr."
   private_zone = false
@@ -352,6 +400,12 @@ resource "aws_cloudfront_distribution" "content" {
   comment         = "Isolated NXT AI literacy student content"
   price_class     = "PriceClass_200"
 
+  logging_config {
+    bucket          = aws_s3_bucket.content_access_logs.bucket_domain_name
+    include_cookies = false
+    prefix          = "cloudfront/content/"
+  }
+
   origin {
     domain_name              = aws_s3_bucket.games.bucket_regional_domain_name
     origin_id                = "s3-content"
@@ -378,6 +432,8 @@ resource "aws_cloudfront_distribution" "content" {
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
+
+  depends_on = [aws_s3_bucket_ownership_controls.content_access_logs]
 }
 
 resource "aws_cloudfront_distribution" "showcase" {

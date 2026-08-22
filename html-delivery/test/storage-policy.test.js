@@ -51,6 +51,15 @@ test('학생 콘텐츠는 전용 CloudFront 배포와 origin으로 격리한다'
   assert.doesNotMatch(terraform, /^\s*BASE_URL\s*=\s*"https:\/\/showcase\.nxtcloud\.kr"/m);
 });
 
+test('레거시 사용량 로그는 쿠키 없이 비공개 버킷에 14일만 보관한다', async () => {
+  const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
+  assert.match(terraform, /resource "aws_s3_bucket" "content_access_logs"/);
+  assert.match(terraform, /resource "aws_s3_bucket_public_access_block" "content_access_logs"[\s\S]*?block_public_acls\s*= true[\s\S]*?block_public_policy\s*= true/);
+  assert.match(terraform, /resource "aws_s3_bucket_server_side_encryption_configuration" "content_access_logs"[\s\S]*?sse_algorithm = "AES256"/);
+  assert.match(terraform, /id\s*= "expire-content-access-logs"[\s\S]*?days = 14/);
+  assert.match(terraform, /logging_config \{[\s\S]*?include_cookies = false[\s\S]*?prefix\s*= "cloudfront\/content\/"/);
+});
+
 test('비동기 내보내기는 작업 TTL, Lambda 자체 호출, 무재시도, 오류 경보를 구성한다', async () => {
   const terraform = await fs.readFile(path.join(__dirname, '../../infra/main.tf'), 'utf8');
   assert.match(terraform, /ttl \{\s*attribute_name = "expiresAt"\s*enabled\s*= true/);
