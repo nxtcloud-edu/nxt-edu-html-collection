@@ -13,6 +13,7 @@
     "test:web": "vitest run --config frontend/vitest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
+    "check:web-budget": "node scripts/check-web-budget.js",
     "backfill:cohort-ids": "node scripts/backfill-cohort-ids.js",
     "backfill:content-versions": "node scripts/backfill-content-versions.js",
     "migrate:content-objects": "node scripts/copy-legacy-content-objects.js",

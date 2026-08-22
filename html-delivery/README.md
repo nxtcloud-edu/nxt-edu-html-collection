@@ -20,6 +20,7 @@ Phase 18 관리자 화면도 2026-08-23 운영 배포했습니다. 대시보드�
 npm run typecheck:web
 npm run test:web
 npm run build:web
+npm run check:web-budget
 ```
 
 ## 로컬 DRY_RUN 운영

@@ -73,6 +73,15 @@ Terraform 배포 ZIP에는 `test/`가 제외된다. Playwright와 axe는 개발 
 - 운영 배포 후 콘텐츠 283개, 유형 182/101, 최신 버전 합계 396 및 기존 공유 URL 표본 유지
 - Terraform 최종 plan `no changes`, Git clean 및 `main...origin/main` 동기화
 
+Phase 19에서 위 기준을 실행 가능한 게이트로 고정했다.
+
+- `npm run check:web-budget`: 현재 index가 참조하는 HTML·JS·CSS의 raw/gzip 크기를 검사한다.
+- JS 예산 260,000/80,000 bytes(raw/gzip), CSS 40,000/8,000, HTML 2,048/1,024.
+- 기준 측정: JS 237,622/71,668, CSS 32,169/6,368, HTML 679/453 bytes.
+- 공개·업로드·보기·관리자 대시보드의 데스크톱·Pixel 7 시각 기준 8개를 저장했다.
+- 공개 3화면과 관리자 5영역은 WCAG 2 A/AA `critical`·`serious` 위반 0과 문서 가로 오버플로 0을 요구한다.
+- 운영 절차와 별도 승인 경계는 [운영 전환 체크리스트](./RELEASE_CHECKLIST.md)에 고정했다.
+
 ## 현재 발견된 개편 동인
 
 - `server.js`에 라우팅·도메인 규칙·AWS 호출·응답 조립이 집중돼 있다.
@@ -81,4 +90,3 @@ Terraform 배포 ZIP에는 `test/`가 제외된다. Playwright와 axe는 개발 
 - 관리자 화면은 이름 기반 레거시 API와 큰 단일 표에 의존한다.
 - Cohort와 ContentVersion은 일부 계약만 있으며 AuditLog는 영속 도메인으로 존재하지 않는다.
 - 관리자 비밀번호 재설정과 삭제가 브라우저 기본 prompt/confirm에 의존한다.
-

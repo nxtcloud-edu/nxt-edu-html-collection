@@ -3010,3 +3010,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Decisions / handoff
 - Phase 18 완료. 다음 단계는 Phase 19 전체 품질·전환 게이트이며 Phase 11 fallback 은퇴·S3 삭제와 독립적이다.
+
+## 2026-08-23 00:49 KST — Codex — Phase 19 품질·전환 게이트 구현
+
+### Intent
+- Phase 12~18 결과를 성능·시각·접근성·모바일·운영 절차의 반복 가능한 최종 게이트로 고정한다.
+
+### Files changed
+- `scripts/check-web-budget.js`, `test/web-budget.test.js`, `package.json` — 현재 해시 HTML/JS/CSS raw·gzip 예산과 단위 테스트.
+- `quality-gates.spec.js`, Playwright snapshot 경로, 데스크톱·모바일 PNG 8개 — 시각 회귀·critical/serious 접근성·가로 오버플로 게이트.
+- `AdminPage.tsx` — 콘텐츠 필터와 코호트 생성 입력의 접근 가능한 이름 보완.
+- `RELEASE_CHECKLIST.md`, 기준선·프런트 구조·README·로드맵 — 배포·보존·별도 승인·롤백 절차 최신화.
+
+### Commands / verification
+- `npm run typecheck:web`, Vitest 2/2, production build 통과.
+- `npm run check:web-budget` 통과: HTML 679/453, JS 237,622/71,668, CSS 32,169/6,368 bytes raw/gzip.
+- `npm test` 120/120 통과.
+- 첫 snapshot 생성에서 관리자 필터 select accessible name critical 위반을 발견. 필터·코호트 생성 입력에 명시 이름을 추가.
+- 수정 후 데스크톱·모바일 품질 집중 4/4, 전체 E2E 18/18 통과. 공개 3화면·관리자 5영역 critical/serious 위반 0·가로 오버플로 0, 시각 기준 8개 일치.
+- 8개 기준 이미지를 직접 검토해 데스크톱/모바일 계층·간격·반응형 전환 확인.
+- Terraform plan/apply·운영 브라우저 검증 — 아직 실행 안 함.
+- 운영 쓰기·S3 객체/포인터 변경·fallback apply — 실행 안 함.
+
+### Decisions / handoff
+- 예산 검사는 현재 index 참조 자산만 측정해 캐시/롤백용 이전 해시 자산 누적과 분리한다.
+- 시각 기준은 fixture 데이터, ko-KR/Asia-Seoul, reduced motion, desktop Chrome/Pixel 7 프로젝트로 고정한다.
+- 다음 안전 액션은 Phase 19 커밋·push·Lambda 배포와 읽기 전용 운영 전환 검증이다.

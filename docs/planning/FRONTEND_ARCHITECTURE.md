@@ -81,8 +81,9 @@ cd html-delivery
 npm run typecheck:web
 npm run test:web
 npm run build:web
+npm run check:web-budget
 npm test
 npm run test:e2e
 ```
 
-Vitest는 공통 셸의 기존 URL 연결과 기준선 표기를 확인한다. Playwright는 공개·업로드·보기·관리자 화면을 데스크톱·모바일에서 열어 핵심 흐름, 390px 가로 오버플로, WCAG 2 A/AA critical 위반을 검사한다. 관리자 테스트는 고정 mock 세션과 API 응답을 사용하며 운영 자격정보를 포함하지 않는다.
+Vitest는 공통 셸의 기존 URL 연결과 기준선 표기를 확인한다. Playwright는 공개·업로드·보기·관리자 화면을 데스크톱·모바일에서 열어 핵심 흐름, 390px 가로 오버플로, WCAG 2 A/AA critical·serious 위반과 8개 시각 스냅샷을 검사한다. 관리자 테스트는 고정 mock 세션과 API 응답을 사용하며 운영 자격정보를 포함하지 않는다. 웹 예산 검사는 `public/app/index.html`이 현재 참조하는 해시 자산만 측정해 롤백용 이전 자산 누적과 분리한다.

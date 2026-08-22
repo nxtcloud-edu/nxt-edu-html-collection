@@ -13,6 +13,7 @@ module.exports = defineConfig({
   reporter: process.env.CI
     ? [['line'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
     : [['line']],
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}{ext}',
   use: {
     baseURL,
     locale: 'ko-KR',
