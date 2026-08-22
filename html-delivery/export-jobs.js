@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
@@ -20,7 +21,9 @@ async function readLocal() {
 }
 
 async function writeLocal(jobs) {
-  await fs.writeFile(LOCAL_EXPORT_JOBS, `${JSON.stringify(jobs, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  const temporaryPath = `${LOCAL_EXPORT_JOBS}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  await fs.writeFile(temporaryPath, `${JSON.stringify(jobs, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  await fs.rename(temporaryPath, LOCAL_EXPORT_JOBS);
 }
 
 function publicExportJob(item) {
