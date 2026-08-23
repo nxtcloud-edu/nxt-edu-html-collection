@@ -3079,3 +3079,21 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 기본 탭은 콘텐츠 탐색이다. 기존 `/#gallery`, `/#cohorts`, `/#overview`는 URL 호환과 상단·좌측 탐색을 위해 유지한다.
 - 코호트 상세 페이지는 홈이 아니므로 기존 단일 흐름을 유지한다.
 - 다음 안전 액션은 기능 커밋·push와 Lambda 배포 후 운영 세 탭 읽기 검증이다.
+
+## 2026-08-23 10:34 KST — Codex — 홈 탭 운영 배포 완료
+
+### Commands / verification
+- 기능 커밋 `8af17cc`를 origin/main에 push.
+- `npm install --omit=dev` — Lambda ZIP의 운영 의존성만 복원, 취약점 0.
+- Terraform 저장 plan — 0 add·Lambda 코드 1 change·0 destroy.
+- 저장 plan apply — 0 added·1 changed·0 destroyed.
+- 운영 인앱 브라우저 fresh URL에서 기본 `콘텐츠 탐색`, 실제 콘텐츠 283개·첫 10개 확인.
+- 탭 클릭 시 `수업별 보기`는 `#cohorts`·코호트 15개, `운영 현황`은 `#overview`·지표 4개·차트 2개. 두 화면 가로 오버플로 0.
+- query를 바꾼 fresh navigation으로 `#cohorts`, `#overview` 직접 진입이 각각 올바른 탭을 선택하는지 확인.
+- 같은 브라우저 탭의 query 없는 hash-only 이동은 이전 HTML 메모리 캐시를 재사용했으나, 별도 `curl`의 query 없는 운영 홈은 현재 `index-PGt0q17o.js`, `index-BLk9zi0F.css`를 반환. CloudFront default behavior는 caching disabled이므로 인프라 무효화는 실행하지 않음.
+- 배포 후 `terraform plan -detailed-exitcode` — no changes.
+- 운영 콘텐츠·버전·피드백·코호트·계정·ZIP, S3 객체·DynamoDB 포인터 변경 — 실행 안 함.
+
+### Decisions / handoff
+- 홈 탭 개선 완료. 기존 해시·공유 URL·S3 객체·콘텐츠 모델은 변경하지 않았다.
+- 오래 열어 둔 브라우저 탭은 일반 새로고침 시 현재 HTML을 받으며, 이전 해시 자산은 캐시·롤백 호환을 위해 계속 보존한다.

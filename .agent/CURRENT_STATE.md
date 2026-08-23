@@ -7,8 +7,8 @@ Updated: 2026-08-23 10:28 KST
 - Hermes: 이번 변경에 관여하지 않음.
 
 ## Last verified repo state
-- Branch: `main`, Phase 19 품질 게이트 `6e15b45` 배포·origin/main push 완료.
-- Worktree: 홈 3탭 UX 개선 구현·로컬 검증 완료, 배포 전.
+- Branch: `main`, 홈 3탭 기능 `8af17cc` 배포·origin/main push 완료.
+- Worktree: 홈 탭 운영 검증 완료 문서·저널 최종 갱신 중.
 - Tests: 웹 타입 검사, Vitest 2/2, 전체 `npm test` 120/120, Playwright 데스크톱·모바일 E2E 18/18. 공개·관리자 critical/serious 접근성 위반 0·가로 오버플로 0·시각 기준 8개 일치.
 - Terraform: 콘텐츠 CloudFront 접근 로그용 비공개·AES256 S3 버킷, PAB 4종, 14일 TTL 생성. CloudFront 로그는 쿠키 제외로 배포 완료. 최종 리소스 삭제 0.
 - Prod audit: 레거시 398개, 등록·복사본 해시 일치 396개, 활성 fallback 283개, 사용량 근거 대기 113개, 미등록 2개, 삭제 후보 0개.
@@ -49,10 +49,10 @@ Updated: 2026-08-23 10:28 KST
 - Phase 18 첫 배포 검증: 운영 283·웹 101·게임 182·버전 396·코호트 15, 콘텐츠 상세 버전 5개, export 완료 이력, 다섯 업무 영역과 가로 오버플로 0 확인. 첫 25개 이후 이동 UI 누락을 발견해 cursor 이전/다음 탐색을 추가하고 E2E로 보완함.
 - Phase 19 구현·로컬 검증 완료: raw/gzip 웹 예산, 데스크톱·모바일 시각 기준 8개, 공개 3화면·관리자 5영역 접근성/오버플로 게이트, 운영 전환 체크리스트 추가. 운영 배포는 아직 남음.
 - Phase 19 운영 검증 완료: 0 add·1 Lambda change·0 destroy 배포 후 health, 첫 10개+cursor, 283·182/101·396·15, 새 JS/CSS, 기존 공유 콘텐츠, 관리자 접근성 라벨, 공개/관리자 오버플로 0 확인. 운영 쓰기 없음.
-- 홈 탭 개선 로컬 완료: 기본 콘텐츠 탐색, 수업별 보기, 운영 현황으로 긴 홈을 분리하고 기존 hash 직접 진입·키보드 이동을 유지. 타입·Vitest 2/2·서버 120/120·Playwright 18/18·웹 예산 통과.
+- 홈 탭 개선 배포 완료: 기본 콘텐츠 탐색, 수업별 보기, 운영 현황으로 긴 홈을 분리하고 기존 hash 직접 진입·키보드 이동을 유지. 타입·Vitest 2/2·서버 120/120·Playwright 18/18·웹 예산 통과. 운영 283개·15개 코호트·오버플로 0 확인.
 
 ## Next safe action
-1. 홈 탭 개선을 커밋·push하고 Lambda 코드만 배포한 뒤 운영에서 세 탭과 기존 hash 링크를 읽기 전용 검증한다.
+1. 홈 탭 UX 개선은 완료됐다. 후속 제품 요청 전까지 운영 상태를 유지한다.
 2. 2026-08-30 22:13 KST 이후 7일 사용량 근거를 수집해 fallback dry-run을 재실행한다.
 3. fallback 포인터 apply와 기존 `games/*` 삭제는 각각 별도 사용자 승인 전까지 실행하지 않는다.
 3. Phase 11 관찰은 병행하되 2026-08-30 22:13 KST 전에는 fallback apply를 실행하지 않는다.
