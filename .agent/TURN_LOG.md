@@ -3097,3 +3097,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 홈 탭 개선 완료. 기존 해시·공유 URL·S3 객체·콘텐츠 모델은 변경하지 않았다.
 - 오래 열어 둔 브라우저 탭은 일반 새로고침 시 현재 HTML을 받으며, 이전 해시 자산은 캐시·롤백 호환을 위해 계속 보존한다.
+
+## 2026-08-23 13:13 KST — Codex — 홈 탭 사용자 의도 교정
+
+### Intent
+- 앞선 구현의 탭 명칭·순서·기본 화면 해석 오류를 바로잡아 상단 대시보드, 콘텐츠 둘러보기, 수업별 모아보기를 각각 분리한다.
+
+### Files changed
+- `frontend/src/App.tsx`, `components/AppShell.tsx` — 기본 탭을 대시보드로 변경하고 세 탭·상단·좌측 탐색 명칭과 순서를 일치시킴.
+- Vitest·Playwright spec과 홈 데스크톱·모바일 기준 이미지 — 기본 대시보드와 각 탭 전환을 명시적으로 검증.
+- `README.md`, `FRONTEND_ARCHITECTURE.md` — 교정된 정보 구조와 hash 호환 계약 반영.
+
+### Commands / verification
+- `npm install` — 개발 의존성 복원, 취약점 0.
+- `npm run typecheck:web`, Vitest 2/2, production build — 통과.
+- `npm test` — 120/120 통과.
+- 첫 전체 `npx playwright test --update-snapshots` — 18/18 통과, 모바일 홈 기준 갱신. 데스크톱 기준은 허용 오차 안에서 이전 이미지가 남아 새 포트·기본 탭 assertion으로 재확인.
+- 데스크톱 시각 허용치를 임시 0으로 두어 홈 기준만 강제 갱신하고 무관한 업로드·보기 기준은 원복. 허용치는 0.015로 복구.
+- 새 포트 최종 전체 Playwright — 데스크톱·모바일 18/18 통과, 홈 기본 대시보드 assertion·critical/serious 접근성·가로 오버플로 포함.
+- `npm run check:web-budget` — HTML 679/452, JS 239160/71490, CSS 33006/6487 bytes raw/gzip로 통과.
+- 갱신된 데스크톱·모바일 기준 이미지를 직접 확인해 세 탭 순서, 기본 대시보드 지표, 반응형 배치를 확인.
+- Terraform plan/apply·운영 배포·운영 브라우저 검증 — 아직 실행 안 함.
+- S3 객체·DynamoDB 포인터·운영 콘텐츠/관리 데이터 쓰기 — 실행 안 함.
+
+### Decisions / handoff
+- 해시 계약은 유지하되 빈 hash와 `#overview`는 대시보드, `#gallery`는 콘텐츠 둘러보기, `#cohorts`는 수업별 모아보기로 연다.
+- 다음 안전 액션은 교정 커밋·push와 Lambda 재배포 후 운영 읽기 검증이다.

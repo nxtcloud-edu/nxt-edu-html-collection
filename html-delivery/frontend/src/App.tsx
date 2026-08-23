@@ -11,11 +11,11 @@ import type { Cohort, ContentPage, ContentType, SortMode } from './types';
 
 const PAGE_SIZE = 10;
 type HomeTab = 'gallery' | 'cohorts' | 'overview';
-const HOME_TABS: readonly HomeTab[] = ['gallery', 'cohorts', 'overview'];
+const HOME_TABS: readonly HomeTab[] = ['overview', 'gallery', 'cohorts'];
 
 function homeTabFromHash(): HomeTab {
   const hash = window.location.hash.slice(1);
-  return hash === 'cohorts' || hash === 'overview' ? hash : 'gallery';
+  return hash === 'gallery' || hash === 'cohorts' ? hash : 'overview';
 }
 
 function routeCohortId() {
@@ -120,7 +120,7 @@ function GalleryPage() {
       {isCohortPage && !selectedCohort && !cohortsError && cohorts.length > 0 ? <section className="message-state" role="status"><h2>등록된 수업을 찾을 수 없습니다.</h2><a href="/">전체 갤러리로 돌아가기</a></section> : null}
 
       {!isCohortPage ? <nav className="home-tabs" aria-label="홈 화면 보기" role="tablist">
-        {([['gallery', '콘텐츠 탐색'], ['cohorts', '수업별 보기'], ['overview', '운영 현황']] as const).map(([value, label]) => <button id={`home-tab-${value}`} type="button" role="tab" tabIndex={homeTab === value ? 0 : -1} aria-selected={homeTab === value} aria-controls={`home-panel-${value}`} onClick={() => selectHomeTab(value)} onKeyDown={(event) => navigateHomeTabs(event, value)} key={value}>{label}</button>)}
+        {([['overview', '대시보드'], ['gallery', '콘텐츠 둘러보기'], ['cohorts', '수업별 모아보기']] as const).map(([value, label]) => <button id={`home-tab-${value}`} type="button" role="tab" tabIndex={homeTab === value ? 0 : -1} aria-selected={homeTab === value} aria-controls={`home-panel-${value}`} onClick={() => selectHomeTab(value)} onKeyDown={(event) => navigateHomeTabs(event, value)} key={value}>{label}</button>)}
       </nav> : null}
 
       <div className={isCohortPage ? undefined : 'home-panel'} id={isCohortPage ? undefined : 'home-panel-overview'} role={isCohortPage ? undefined : 'tabpanel'} aria-labelledby={isCohortPage ? undefined : 'home-tab-overview'} hidden={!isCohortPage && homeTab !== 'overview'}>

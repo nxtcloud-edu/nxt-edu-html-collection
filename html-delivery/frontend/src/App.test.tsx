@@ -15,17 +15,19 @@ beforeEach(() => {
 });
 
 describe('Phase 16 공개 갤러리', () => {
-  it('서버 집계 KPI와 첫 페이지 10개를 렌더링한다', async () => {
+  it('대시보드를 기본으로 열고 콘텐츠 첫 페이지 10개로 전환한다', async () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'AI와 함께 만든 우리들의 콘텐츠' })).toBeInTheDocument();
+    expect(await screen.findByRole('tabpanel', { name: '대시보드' })).toBeVisible();
+    expect(screen.getByLabelText('콘텐츠 유형 분포: 미니게임 4개, 웹페이지 8개')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '콘텐츠 둘러보기' }));
     expect(await screen.findByText('12개의 콘텐츠')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /AI 프로젝트/ })).toHaveLength(10);
-    fireEvent.click(screen.getByRole('tab', { name: '운영 현황' }));
-    expect(screen.getByLabelText('콘텐츠 유형 분포: 미니게임 4개, 웹페이지 8개')).toBeInTheDocument();
   });
 
   it('필터와 검색을 서버 query로 다시 요청한다', async () => {
     render(<App />);
+    fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠 둘러보기' }));
     await screen.findByText('12개의 콘텐츠');
     fireEvent.click(screen.getByRole('button', { name: '웹페이지' }));
     fireEvent.change(screen.getByLabelText('콘텐츠 검색'), { target: { value: '지도' } });

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-const galleryNavigation = [{ label: '운영 현황', href: '/#overview' }, { label: '콘텐츠 탐색', href: '/#gallery' }, { label: '수업 컬렉션', href: '/#cohorts' }];
+const galleryNavigation = [{ label: '대시보드', href: '/#overview' }, { label: '콘텐츠 둘러보기', href: '/#gallery' }, { label: '수업별 모아보기', href: '/#cohorts' }];
 
 export function AppShell({ children, railLabel = 'SHOWCASE / 16', navigation = galleryNavigation, foot = '283개 콘텐츠 보존' }: { children: ReactNode; railLabel?: string; navigation?: { label: string; href: string }[]; foot?: string }) {
   return (
@@ -11,8 +11,8 @@ export function AppShell({ children, railLabel = 'SHOWCASE / 16', navigation = g
           <span>NXT CLOUD</span><b>SHOWCASE</b>
         </a>
         <nav aria-label="현재 서비스 바로가기">
-          <a href="/#gallery">둘러보기</a>
-          <a href="/#cohorts">수업별 보기</a>
+          <a href="/#gallery">콘텐츠 둘러보기</a>
+          <a href="/#cohorts">수업별 모아보기</a>
           <a className="nav-action" href="/upload.html">내 콘텐츠 업로드</a>
         </nav>
       </header>

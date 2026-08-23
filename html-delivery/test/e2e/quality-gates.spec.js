@@ -14,6 +14,7 @@ test('공개 핵심 화면은 시각·접근성·모바일 품질 게이트를 �
   await mockPublicApi(page);
   for (const [name, url] of [['gallery', '/'], ['upload', '/upload.html'], ['viewer', '/view.html?id=a0000001']]) {
     await page.goto(url);
+    if (name === 'gallery') await expect(page.getByRole('tab', { name: '대시보드' })).toHaveAttribute('aria-selected', 'true');
     await page.locator('iframe').evaluateAll((frames) => frames.forEach((frame) => { frame.style.visibility = 'hidden'; }));
     await assertQuality(page, testInfo, name);
     await expect(page).toHaveScreenshot(`${name}.png`, { animations: 'disabled', caret: 'hide', fullPage: false, maxDiffPixelRatio: 0.015 });
