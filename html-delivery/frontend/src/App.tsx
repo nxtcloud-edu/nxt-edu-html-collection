@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { getCohorts, getContents } from './api';
 import { AppShell } from './components/AppShell';
 import { CohortBars, TypeDonut } from './components/Charts';
@@ -10,6 +10,13 @@ import { AdminPage } from './pages/AdminPage';
 import type { Cohort, ContentPage, ContentType, SortMode } from './types';
 
 const PAGE_SIZE = 10;
+type HomeTab = 'gallery' | 'cohorts' | 'overview';
+const HOME_TABS: readonly HomeTab[] = ['gallery', 'cohorts', 'overview'];
+
+function homeTabFromHash(): HomeTab {
+  const hash = window.location.hash.slice(1);
+  return hash === 'cohorts' || hash === 'overview' ? hash : 'gallery';
+}
 
 function routeCohortId() {
   const params = new URLSearchParams(window.location.search);
@@ -29,6 +36,7 @@ function GalleryPage() {
   const [query, setQuery] = useState('');
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [pageIndex, setPageIndex] = useState(0);
+  const [homeTab, setHomeTab] = useState<HomeTab>(homeTabFromHash);
   const cursor = cursorHistory[pageIndex];
 
   useEffect(() => {
@@ -54,6 +62,11 @@ function GalleryPage() {
   useEffect(() => {
     document.title = selectedCohort ? `${selectedCohort.name} · NXT Cloud Showcase` : 'NXT Cloud AI 콘텐츠 쇼케이스';
   }, [selectedCohort]);
+  useEffect(() => {
+    const syncHomeTab = () => setHomeTab(homeTabFromHash());
+    window.addEventListener('hashchange', syncHomeTab);
+    return () => window.removeEventListener('hashchange', syncHomeTab);
+  }, []);
   const totals = useMemo(() => cohorts.reduce((sum, cohort) => ({
     contents: sum.contents + cohort.contentCount,
     games: sum.games + cohort.gameCount,
@@ -69,6 +82,19 @@ function GalleryPage() {
   function changeType(nextType: ContentType | 'all') { setType(nextType); resetPage(); }
   function changeSort(nextSort: SortMode) { setSort(nextSort); resetPage(); }
   function submitSearch(event: FormEvent) { event.preventDefault(); setQuery(searchDraft.trim()); resetPage(); }
+  function selectHomeTab(nextTab: HomeTab) {
+    setHomeTab(nextTab);
+    window.history.replaceState(null, '', `#${nextTab}`);
+  }
+  function navigateHomeTabs(event: KeyboardEvent<HTMLButtonElement>, currentTab: HomeTab) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const currentIndex = HOME_TABS.indexOf(currentTab);
+    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? HOME_TABS.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + HOME_TABS.length) % HOME_TABS.length;
+    const nextTab = HOME_TABS[nextIndex];
+    selectHomeTab(nextTab);
+    document.getElementById(`home-tab-${nextTab}`)?.focus();
+  }
   function nextPage() {
     if (!page?.nextCursor) return;
     setCursorHistory((current) => [...current.slice(0, pageIndex + 1), page.nextCursor]);
@@ -93,13 +119,19 @@ function GalleryPage() {
 
       {isCohortPage && !selectedCohort && !cohortsError && cohorts.length > 0 ? <section className="message-state" role="status"><h2>등록된 수업을 찾을 수 없습니다.</h2><a href="/">전체 갤러리로 돌아가기</a></section> : null}
 
+      {!isCohortPage ? <nav className="home-tabs" aria-label="홈 화면 보기" role="tablist">
+        {([['gallery', '콘텐츠 탐색'], ['cohorts', '수업별 보기'], ['overview', '운영 현황']] as const).map(([value, label]) => <button id={`home-tab-${value}`} type="button" role="tab" tabIndex={homeTab === value ? 0 : -1} aria-selected={homeTab === value} aria-controls={`home-panel-${value}`} onClick={() => selectHomeTab(value)} onKeyDown={(event) => navigateHomeTabs(event, value)} key={value}>{label}</button>)}
+      </nav> : null}
+
+      <div className={isCohortPage ? undefined : 'home-panel'} id={isCohortPage ? undefined : 'home-panel-overview'} role={isCohortPage ? undefined : 'tabpanel'} aria-labelledby={isCohortPage ? undefined : 'home-tab-overview'} hidden={!isCohortPage && homeTab !== 'overview'}>
       <section className="live-metrics" aria-label="콘텐츠 현황">
         <div><span>전체</span><strong>{scopeTotals.contents || '—'}</strong></div><div><span>웹페이지</span><strong>{scopeTotals.webpages || '—'}</strong></div><div><span>미니게임</span><strong>{scopeTotals.games || '—'}</strong></div><div><span>{isCohortPage ? '제출 방식' : '운영 수업'}</span><strong>{isCohortPage ? (selectedCohort?.submissionMode === 'team' ? 'TEAM' : 'IND') : cohorts.length || '—'}</strong></div>
       </section>
 
       {!isCohortPage && cohorts.length > 0 ? <section className="insight-grid" aria-label="갤러리 데이터 요약"><article><div className="insight-head"><p className="eyebrow">TYPE MIX</p><h2>무엇을 만들었나</h2></div><TypeDonut gameCount={totals.games} webpageCount={totals.webpages} /></article><article><div className="insight-head"><p className="eyebrow">TOP COHORTS</p><h2>어디서 만들었나</h2></div><CohortBars cohorts={cohorts} /></article></section> : null}
+      </div>
 
-      <section className="gallery-section" id="gallery">
+      <section className={`gallery-section${isCohortPage ? '' : ' home-panel'}`} id={isCohortPage ? 'gallery' : 'home-panel-gallery'} role={isCohortPage ? undefined : 'tabpanel'} aria-labelledby={isCohortPage ? undefined : 'home-tab-gallery'} hidden={!isCohortPage && homeTab !== 'gallery'}>
         <div className="section-heading gallery-heading"><div><p className="eyebrow">EXPLORE</p><h2>{isCohortPage ? '수업 결과물' : '콘텐츠 둘러보기'}</h2></div><span className="result-count" aria-live="polite">{page ? `${page.total}개의 콘텐츠` : '불러오는 중'}</span></div>
         <div className="filter-deck">
           <div className="segmented" aria-label="콘텐츠 분류 필터">{([['all', '전체'], ['webpage', '웹페이지'], ['game', '미니게임']] as const).map(([value, label]) => <button type="button" key={value} aria-pressed={type === value} onClick={() => changeType(value)}>{label}</button>)}</div>
@@ -113,7 +145,7 @@ function GalleryPage() {
         {!loading && !error && page && (pageIndex > 0 || page.nextCursor) ? <nav className="pager" aria-label="콘텐츠 페이지"><button type="button" onClick={previousPage} disabled={pageIndex === 0}>← 이전</button><span><b>{pageIndex + 1}</b> 페이지</span><button type="button" onClick={nextPage} disabled={!page.nextCursor}>다음 →</button></nav> : null}
       </section>
 
-      {!isCohortPage ? <section className="cohort-section" id="cohorts"><div className="section-heading gallery-heading"><div><p className="eyebrow">COHORTS</p><h2>수업별 모아보기</h2></div><StatusBadge tone="active">{cohorts.length}개 운영</StatusBadge></div>{cohortsError ? <div className="message-state message-state--error" role="alert">{cohortsError}</div> : <div className="cohort-list">{cohorts.map((cohort, index) => <a href={`/cohort.html?id=${encodeURIComponent(cohort.cohortId)}`} key={cohort.cohortId}><span>{String(index + 1).padStart(2, '0')}</span><strong>{cohort.name}</strong><small>{cohort.dateLabel || '일정 미정'}</small><b>{cohort.contentCount}<em>개</em></b></a>)}</div>}</section> : null}
+      {!isCohortPage ? <section className="cohort-section home-panel" id="home-panel-cohorts" role="tabpanel" aria-labelledby="home-tab-cohorts" hidden={homeTab !== 'cohorts'}><div className="section-heading gallery-heading"><div><p className="eyebrow">COHORTS</p><h2>수업별 모아보기</h2></div><StatusBadge tone="active">{cohorts.length}개 운영</StatusBadge></div>{cohortsError ? <div className="message-state message-state--error" role="alert">{cohortsError}</div> : <div className="cohort-list">{cohorts.map((cohort, index) => <a href={`/cohort.html?id=${encodeURIComponent(cohort.cohortId)}`} key={cohort.cohortId}><span>{String(index + 1).padStart(2, '0')}</span><strong>{cohort.name}</strong><small>{cohort.dateLabel || '일정 미정'}</small><b>{cohort.contentCount}<em>개</em></b></a>)}</div>}</section> : null}
 
       <footer><span>© NXT Cloud</span><span>283 CONTENTS · 396 VERSIONS · PRESERVED</span></footer>
     </AppShell>

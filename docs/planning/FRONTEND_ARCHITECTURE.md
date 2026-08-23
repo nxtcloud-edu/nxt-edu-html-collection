@@ -54,6 +54,8 @@ Vite는 배포 사이에 직전 해시 자산을 자동 삭제하지 않는다. 
 - 파라미터 없는 기존 `/api/v2/contents` 전체 응답은 호환을 위해 유지한다.
 - `/api/v2/cohorts`는 `contentCount`, `gameCount`, `webpageCount`를 additive하게 제공한다.
 - KPI, 콘텐츠 유형 Donut, 코호트 가로 막대는 실제 API 집계를 표시하며 색상만으로 값을 구분하지 않는다.
+- 홈은 콘텐츠 목록·수업 목록·운영 지표를 각각 `콘텐츠 탐색`, `수업별 보기`, `운영 현황` 탭으로 분리한다. 기본 탭은 콘텐츠 탐색이며 기존 `#gallery`, `#cohorts`, `#overview` 해시는 직접 진입과 상단·좌측 탐색 계약으로 유지한다.
+- 탭은 WAI-ARIA tablist/tab/tabpanel 관계와 좌우·Home·End 키보드 이동을 제공한다. 비활성 패널은 화면과 접근성 트리에서 숨겨 첫 화면의 세로 길이를 제한한다.
 - 기존 `public/index.html`, `public/cohort.html`은 롤백 자산으로 유지한다.
 
 ## Phase 17 업로드·보기

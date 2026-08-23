@@ -18,6 +18,8 @@ Phase 18 관리자 화면도 2026-08-23 운영 배포했습니다. 대시보드�
 
 Phase 19 품질 게이트도 2026-08-23 완료했습니다. 현재 해시 자산 raw/gzip 예산, 데스크톱·모바일 시각 기준 8개, 공개 3화면·관리자 5영역 critical/serious 접근성 0과 가로 오버플로 0을 자동 검사합니다. 운영 전환 절차는 [`RELEASE_CHECKLIST.md`](../docs/planning/RELEASE_CHECKLIST.md)를 따릅니다.
 
+홈은 한 화면의 세로 길이를 줄이기 위해 `콘텐츠 탐색`·`수업별 보기`·`운영 현황` 세 탭으로 나눕니다. 첫 진입은 콘텐츠 탐색이며 기존 `/#gallery`, `/#cohorts`, `/#overview` 주소는 해당 탭을 직접 엽니다. 키보드 좌우·Home·End 이동과 데스크톱·모바일 시각·접근성 회귀 검사를 유지합니다.
+
 ```bash
 npm run typecheck:web
 npm run test:web

@@ -3050,3 +3050,32 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Decisions / handoff
 - Phase 12~19 개편 goal 완료. 남은 Phase 11 관찰·fallback 은퇴·S3 정리는 제품 개편과 분리된 후속 운영 단계다.
+
+## 2026-08-23 10:28 KST — Codex — 홈 탭 UX 개선 구현
+
+### Intent
+- 첫 홈에서 지표·차트·콘텐츠·수업 목록이 모두 이어져 생기는 세로 길이를 줄이고 주요 탐색 목적별 탭으로 분리한다.
+
+### Files changed
+- `frontend/src/App.tsx`, `styles/gallery.css` — 콘텐츠 탐색·수업별 보기·운영 현황 탭, hash 직접 진입, 키보드 좌우·Home·End 이동, 반응형 sticky 탭.
+- Vitest·Playwright public/app-shell spec과 홈 데스크톱·모바일 시각 기준 — 기본 탭·전환·숨김·URL·회귀 검증.
+- `README.md`, `FRONTEND_ARCHITECTURE.md` — 홈 탭과 기존 hash 호환 계약 문서화.
+
+### Commands / verification
+- `npm install` — 개발 의존성 복원, 취약점 0.
+- `npm run typecheck:web` — 통과.
+- `npm run test:web` — 기존 차트 기본 노출 기대가 탭 분리로 1건 실패한 뒤 운영 현황 탭 전환 검증으로 갱신, 최종 Vitest 2/2 통과.
+- `npm run build:web` — production build 통과.
+- `npm test` — 120/120 통과.
+- `npx playwright test test/e2e/public-flows.spec.js` — sandbox 포트 EPERM 후 승인된 로컬 포트로 실행. 다중 locator 부정 assertion 2건을 패널 hidden assertion으로 수정 후 최종 8/8 통과.
+- `npx playwright test test/e2e/quality-gates.spec.js --update-snapshots` — 4/4 통과, 홈 데스크톱·모바일 기준 2개 갱신, critical/serious 위반 0·가로 오버플로 0.
+- `npx playwright test` — 기존 앱 셸 차트 즉시 노출 기대 2건을 운영 현황 탭 전환으로 갱신 후 최종 데스크톱·모바일 18/18 통과.
+- `npm run check:web-budget` — HTML 679/454, JS 239122/71493, CSS 33006/6487 bytes raw/gzip로 예산 통과.
+- 데스크톱·모바일 홈 기준 이미지를 직접 검토해 탭 계층·줄바꿈·첫 화면 배치 확인.
+- Terraform plan/apply·운영 배포·운영 브라우저 검증 — 아직 실행 안 함.
+- 운영 콘텐츠·S3 객체·DynamoDB 포인터·관리 데이터 쓰기 — 실행 안 함.
+
+### Decisions / handoff
+- 기본 탭은 콘텐츠 탐색이다. 기존 `/#gallery`, `/#cohorts`, `/#overview`는 URL 호환과 상단·좌측 탐색을 위해 유지한다.
+- 코호트 상세 페이지는 홈이 아니므로 기존 단일 흐름을 유지한다.
+- 다음 안전 액션은 기능 커밋·push와 Lambda 배포 후 운영 세 탭 읽기 검증이다.
