@@ -3123,3 +3123,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 해시 계약은 유지하되 빈 hash와 `#overview`는 대시보드, `#gallery`는 콘텐츠 둘러보기, `#cohorts`는 수업별 모아보기로 연다.
 - 다음 안전 액션은 교정 커밋·push와 Lambda 재배포 후 운영 읽기 검증이다.
+
+## 2026-08-23 13:18 KST — Codex — 홈 탭 교정 운영 완료
+
+### Commands / verification
+- 교정 커밋 `3b96a99` origin/main push 완료.
+- `npm install --omit=dev` — 운영 의존성만 복원, 취약점 0.
+- Terraform 저장 plan/apply — 0 add·Lambda 코드 1 change·0 destroy.
+- 운영 fresh URL 첫 진입에서 `대시보드` 선택, 지표 283·웹 101·게임 182·코호트 15와 차트 2개 확인.
+- 운영 탭 클릭에서 `콘텐츠 둘러보기`는 `#gallery`·첫 카드 10개, `수업별 모아보기`는 `#cohorts`·코호트 15개. 두 탭 가로 오버플로 0.
+- query 없는 운영 홈 HTML도 현재 `index-dhN-gBnF.js`, `index-BLk9zi0F.css`를 반환.
+- 배포 후 `terraform plan -detailed-exitcode` — no changes.
+- S3 객체·DynamoDB 포인터·콘텐츠·관리 데이터 쓰기 — 실행 안 함.
+
+### Decisions / handoff
+- 사용자 의도 교정 완료. 기본 대시보드와 세 탭의 명칭·순서가 상단·좌측 탐색까지 일치한다.
