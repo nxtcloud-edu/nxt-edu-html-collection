@@ -3162,3 +3162,26 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Decisions / handoff
 - 관리자 링크는 주 탐색이 아닌 공개 푸터에만 낮은 강조도로 둔다. 관리자 화면 자체에는 중복 노출하지 않는다.
 - 다음 안전 액션은 기능 커밋·push와 Lambda 배포 후 운영 링크·로그인 화면 읽기 검증이다.
+
+## 2026-08-24 20:30 KST — Codex — 관리자 진입 링크 운영 배포 완료
+
+### Intent
+- 공개 푸터 관리자 진입 링크 복구를 origin/main과 운영 환경에 반영하고 실제 경로를 검증한다.
+
+### Files changed
+- 제품 코드·테스트·문서 커밋 `37cd642`을 origin/main에 push.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 배포 및 검증 결과 최신화.
+
+### Commands / verification
+- `npm install --omit=dev` — 운영 의존성 설치, 취약점 0.
+- Terraform 저장 plan — 0 add·Lambda 코드 1 change·0 destroy.
+- 저장 plan apply — 0 added·1 changed·0 destroyed.
+- 운영 fresh browser에서 공개 푸터 `관리자` 링크가 보이고 href가 `/admin.html`, 가로 오버플로 0임을 확인.
+- 링크 클릭 후 `https://showcase.nxtcloud.kr/admin.html`과 `관리자 로그인` 제목 확인.
+- 배포 후 `terraform -chdir=infra plan -detailed-exitcode` — no changes, exit 0.
+- S3 객체·DynamoDB 포인터·콘텐츠·관리 데이터 쓰기 — 실행 안 함.
+
+### Decisions / handoff
+- 관리자 진입 경로 복구와 운영 배포 완료. 다음 제품 변경은 없다.
+- 다음 안전 액션은 2026-08-30 22:13 KST 이후 Phase 11의 완전한 7일 사용량 근거 수집과 fallback 은퇴 dry-run이다.
+- fallback apply와 기존 `games/*` 삭제는 각각 별도 사용자 승인 전까지 실행하지 않는다.
