@@ -3213,3 +3213,19 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - `수정`은 사용자 생성 코호트의 `보관`/`활성화`와 같은 행 작업 영역에 둔다. 기본 코호트는 서버 정책과 동일하게 수정 버튼을 노출하지 않는다.
 - 저장은 불변 `cohortId` 기반 PATCH를 사용하며 성공 후 전체 관리자 데이터를 새로고침한다.
 - 다음 안전 액션은 사용자 승인 후 커밋·push·배포하고, 운영에서는 실제 이름을 바꾸지 않은 채 UI만 읽기 전용 검증하는 것이다.
+
+## 2026-08-24 21:10 KST — Codex — 관리자 코호트 이름 수정 운영 배포 완료
+
+### Commands / verification
+- 기능 커밋 `feabfed`을 origin/main에 push.
+- `npm install --omit=dev` — 운영 의존성만 유지, 취약점 0.
+- Terraform 저장 plan — 0 add·Lambda 코드 1 change·0 destroy.
+- 저장 plan apply — 0 added·1 changed·0 destroyed.
+- 운영 관리자 로그인 후 코호트 화면에서 사용자 생성 코호트 11개의 `수정`과 `보관/활성화` 버튼이 함께 노출되는지 확인.
+- 첫 수정 폼의 기존 이름, 저장·취소 버튼, 가로 오버플로 0을 확인한 뒤 취소. 저장·PATCH 및 운영 코호트 데이터 변경은 실행하지 않음.
+- 배포 후 `terraform -chdir=infra plan -detailed-exitcode` — no changes, exit 0.
+- S3 객체·DynamoDB 포인터·콘텐츠·피드백·코호트 이름 변경 — 실행 안 함.
+
+### Decisions / handoff
+- 코호트 이름 수정 UI 배포 완료. 기본 코호트 보호와 불변 `cohortId` 계약은 유지한다.
+- 다음 안전 액션은 2026-08-30 22:13 KST 이후 Phase 11의 완전한 7일 사용량 근거 수집과 fallback 은퇴 dry-run이다.
