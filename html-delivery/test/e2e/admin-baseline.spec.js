@@ -30,6 +30,20 @@ test('로그인 관리자는 현황·콘텐츠·ZIP 진입점을 확인한다', 
   await page.getByRole('button', { name: '← 이전 25개' }).click();
   await expect(page.getByText('1 페이지')).toBeVisible();
 
+  await page.getByRole('button', { name: /코호트$/ }).click();
+  const baseCohort = page.getByRole('article').filter({ hasText: '2026 AI 리터러시 1기' });
+  await expect(baseCohort.getByText('기본 코호트')).toBeVisible();
+  await expect(baseCohort.getByRole('button', { name: '수정' })).toBeHidden();
+  const editableCohort = page.getByRole('article').filter({ hasText: '부산 공유대학 프로젝트' });
+  await expect(editableCohort.getByRole('button', { name: '수정' })).toBeVisible();
+  await expect(editableCohort.getByRole('button', { name: '보관' })).toBeVisible();
+  await editableCohort.getByRole('button', { name: '수정' }).click();
+  await editableCohort.getByLabel('코호트 이름 수정').fill('부산 공유대학 AI 프로젝트');
+  const renameRequest = page.waitForRequest((request) => request.method() === 'PATCH' && request.url().includes('/api/v2/admin/cohorts/coh_bbbbbbbbbbbb'));
+  await editableCohort.getByRole('button', { name: '저장' }).click();
+  expect((await renameRequest).postDataJSON()).toEqual({ name: '부산 공유대학 AI 프로젝트' });
+  await expect(page.getByRole('status')).toContainText('코호트 이름을 수정했습니다.');
+
   await page.getByRole('button', { name: /내보내기$/ }).click();
   await expect(page.getByRole('heading', { name: '코호트 ZIP 다운로드' })).toBeVisible();
   await expect(page.getByText(/이름\/팀명·제목·버전/)).toBeVisible();

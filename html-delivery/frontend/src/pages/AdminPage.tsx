@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { adminApi, type AdminCohort, type AdminContent, type AuditLog, type ExportJob, type Overview, type Version } from '../admin-api';
 import type { Feedback } from '../types';
+import '../styles/admin-cohort.css';
 
 type Section = 'dashboard' | 'contents' | 'cohorts' | 'exports' | 'system';
 const sections: [Section, string][] = [['dashboard', '대시보드'], ['contents', '콘텐츠'], ['cohorts', '코호트'], ['exports', '내보내기'], ['system', '감사·시스템']];
@@ -37,9 +38,24 @@ function Contents({ items, total, cohorts, busy, pageIndex, nextCursor, onFilter
 }
 
 function Cohorts({ cohorts, onChanged }: { cohorts: AdminCohort[]; onChanged: () => void }) {
-  const [notice, setNotice] = useState(''); async function create(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const d = new FormData(form); try { await adminApi.createCohort({ name: d.get('name'), dateLabel: d.get('dateLabel') }); form.reset(); setNotice('코호트를 만들었습니다.'); onChanged(); } catch (e) { setNotice((e as Error).message); } }
+  const [notice, setNotice] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  async function create(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const d = new FormData(form); try { await adminApi.createCohort({ name: d.get('name'), dateLabel: d.get('dateLabel') }); form.reset(); setNotice('코호트를 만들었습니다.'); onChanged(); } catch (e) { setNotice((e as Error).message); } }
   async function toggle(item: AdminCohort) { try { await adminApi.updateCohort(item.cohortId, { status: item.status === 'active' ? 'archived' : 'active' }); onChanged(); } catch (e) { setNotice((e as Error).message); } }
-  return <><header className="admin-heading"><div><p className="eyebrow">COHORTS</p><h1>코호트</h1></div><strong>{cohorts.length}개</strong></header>{notice && <p role="status" className="admin-notice">{notice}</p>}<form className="admin-filter" onSubmit={create}><input name="name" aria-label="새 코호트 이름" placeholder="새 코호트 이름" maxLength={60} required /><input name="dateLabel" aria-label="코호트 일정" placeholder="일정 (선택)" maxLength={20} /><button>코호트 추가</button></form><div className="cohort-admin-list">{cohorts.map((item) => <article key={item.cohortId}><div><small>{item.cohortId}</small><h2>{item.name}</h2><p>{item.dateLabel || '일정 미정'} · {item.submissionMode === 'team' ? '팀 제출' : '개인 제출'}</p></div><span className={`state ${item.status}`}>{item.status}</span>{item.editable ? <button className="quiet" onClick={() => toggle(item)}>{item.status === 'active' ? '보관' : '활성화'}</button> : <small>기본 코호트</small>}</article>)}</div></>;
+  async function rename(event: FormEvent<HTMLFormElement>, item: AdminCohort) {
+    event.preventDefault();
+    const name = String(new FormData(event.currentTarget).get('name') || '').trim();
+    setSavingId(item.cohortId);
+    try {
+      await adminApi.updateCohort(item.cohortId, { name });
+      setEditingId(null);
+      setNotice('코호트 이름을 수정했습니다.');
+      onChanged();
+    } catch (e) { setNotice((e as Error).message); }
+    finally { setSavingId(null); }
+  }
+  return <><header className="admin-heading"><div><p className="eyebrow">COHORTS</p><h1>코호트</h1></div><strong>{cohorts.length}개</strong></header>{notice && <p role="status" className="admin-notice">{notice}</p>}<form className="admin-filter" onSubmit={create}><input name="name" aria-label="새 코호트 이름" placeholder="새 코호트 이름" maxLength={60} required /><input name="dateLabel" aria-label="코호트 일정" placeholder="일정 (선택)" maxLength={20} /><button>코호트 추가</button></form><div className="cohort-admin-list">{cohorts.map((item) => <article key={item.cohortId}><div><small>{item.cohortId}</small><h2>{item.name}</h2><p>{item.dateLabel || '일정 미정'} · {item.submissionMode === 'team' ? '팀 제출' : '개인 제출'}</p></div><span className={`state ${item.status}`}>{item.status}</span>{item.editable ? <div className="cohort-row-actions"><button type="button" className="quiet" onClick={() => { setEditingId(item.cohortId); setNotice(''); }}>수정</button><button type="button" className="quiet" onClick={() => toggle(item)}>{item.status === 'active' ? '보관' : '활성화'}</button></div> : <small>기본 코호트</small>}{editingId === item.cohortId && <form className="cohort-edit-form" onSubmit={(event) => rename(event, item)}><label>코호트 이름<input name="name" aria-label="코호트 이름 수정" defaultValue={item.name} maxLength={60} autoFocus required /></label><div><button disabled={savingId === item.cohortId}>{savingId === item.cohortId ? '저장 중…' : '저장'}</button><button type="button" className="quiet" onClick={() => setEditingId(null)}>취소</button></div></form>}</article>)}</div></>;
 }
 
 function Exports({ cohorts, jobs, onChanged }: { cohorts: AdminCohort[]; jobs: ExportJob[]; onChanged: () => void }) {

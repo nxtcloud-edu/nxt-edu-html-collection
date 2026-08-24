@@ -3185,3 +3185,31 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 관리자 진입 경로 복구와 운영 배포 완료. 다음 제품 변경은 없다.
 - 다음 안전 액션은 2026-08-30 22:13 KST 이후 Phase 11의 완전한 7일 사용량 근거 수집과 fallback 은퇴 dry-run이다.
 - fallback apply와 기존 `games/*` 삭제는 각각 별도 사용자 승인 전까지 실행하지 않는다.
+
+## 2026-08-24 20:37 KST — Codex — 관리자 코호트 이름 수정 UI 구현
+
+### Intent
+- 관리자 코호트 목록의 보관 버튼 옆에 이름 수정 버튼을 추가하고 기존 ID 기반 v2 수정 API에 연결한다.
+
+### Files changed
+- `frontend/src/pages/AdminPage.tsx`, `styles/admin-cohort.css` — 사용자 생성 코호트 수정 버튼, 인라인 이름 폼, 저장·취소·진행 상태와 반응형 배치.
+- `test/e2e/admin-baseline.spec.js`, `fixtures.js` — PATCH 요청 본문, 수정 완료 안내, 기본 코호트 보호를 데스크톱·모바일에서 검증.
+- `README.md`, `docs/planning/FRONTEND_ARCHITECTURE.md` — 관리자 코호트 이름 수정 동작과 불변 ID 경계 문서화.
+- `public/app/*` — production web build 결과 갱신.
+
+### Commands / verification
+- `npm install` — 개발 의존성 복원, 취약점 0.
+- `npm run typecheck:web` — 통과.
+- `npm run test:web` — Vitest 2/2 통과.
+- `npm run build:web` — production build 통과.
+- `npm test` — 120/120 통과. 기존 API의 인증·중복·기본 코호트 보호·연결 콘텐츠 소속 갱신 포함.
+- 관리자 Playwright — 데스크톱·모바일 4/4 통과.
+- 전체 Playwright — 데스크톱·모바일 18/18 통과.
+- `npm run check:web-budget` — HTML 679/454, JS 240269/71730, CSS 33759/6612 bytes raw/gzip로 통과.
+- `./.agent/check-journal.sh .agent` — 저장소에 스크립트가 없어 실행 실패(`no such file or directory`). `rg --files`로 대체 위치를 찾았으나 없음.
+- Terraform plan/apply·커밋·push·운영 배포·운영 코호트 이름 변경 — 실행 안 함.
+
+### Decisions / handoff
+- `수정`은 사용자 생성 코호트의 `보관`/`활성화`와 같은 행 작업 영역에 둔다. 기본 코호트는 서버 정책과 동일하게 수정 버튼을 노출하지 않는다.
+- 저장은 불변 `cohortId` 기반 PATCH를 사용하며 성공 후 전체 관리자 데이터를 새로고침한다.
+- 다음 안전 액션은 사용자 승인 후 커밋·push·배포하고, 운영에서는 실제 이름을 바꾸지 않은 채 UI만 읽기 전용 검증하는 것이다.

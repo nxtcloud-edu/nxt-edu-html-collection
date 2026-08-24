@@ -88,6 +88,11 @@ async function mockAdminApi(page) {
     return json(route, { contents: secondPage ? adminContents.slice(3) : adminContents.slice(0, 3), page: { pageSize: 25, total: 4, nextCursor: secondPage ? null : 'fixture-admin-page-2' } });
   });
   await page.route('**/api/v2/admin/cohorts', (route) => json(route, { cohorts: adminCohorts }));
+  await page.route(/\/api\/v2\/admin\/cohorts\/[^/?]+$/, async (route) => {
+    const body = route.request().postDataJSON();
+    const cohort = adminCohorts.find((item) => route.request().url().endsWith(item.cohortId));
+    return json(route, { cohort: { ...cohort, ...body } });
+  });
   await page.route(/\/api\/v2\/admin\/contents\/[a-f0-9]{8}\/versions$/, (route) => json(route, { contentId: contents[0].contentId, metadataStatus: 'complete', versions: [{ contentId: contents[0].contentId, version: 3, objectKey: `contents/${contents[0].contentId}/v3.html`, originalFileName: 'carbon-map.html', sizeBytes: 8192, sha256: 'a'.repeat(64), uploadedAt: contents[0].updatedAt }] }));
   await page.route('**/api/v2/admin/audit-logs?*', (route) => json(route, { auditLogs: [{ auditId: 'audit-1', actorId: 'fixture-admin', action: 'update-content-v2', targetType: 'content', targetId: contents[0].contentId, details: {}, occurredAt: contents[0].updatedAt }], page: { limit: 25, nextCursor: null } }));
   await page.route('**/api/admin/exports?*', (route) => json(route, { exports: [] }));
