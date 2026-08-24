@@ -3138,3 +3138,27 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Decisions / handoff
 - 사용자 의도 교정 완료. 기본 대시보드와 세 탭의 명칭·순서가 상단·좌측 탐색까지 일치한다.
+
+## 2026-08-24 15:50 KST — Codex — 관리자 진입 링크 복구 구현
+
+### Intent
+- React 전환 과정에서 사라진 공개 화면의 관리자 페이지 진입 경로를 푸터에 복구한다.
+
+### Files changed
+- `frontend/src/App.tsx`, `styles/global.css` — 공개 홈·코호트 푸터에 낮은 강조도의 `/admin.html` 관리자 링크와 모바일 정렬 추가.
+- Vitest·Playwright 앱 셸 회귀 — 링크 이름과 정확한 href 고정.
+- `README.md` — 지원 관리자 URL과 공개 진입 위치 문서화.
+
+### Commands / verification
+- 구현 전 코드·운영 HTTP 확인: `/admin.html` 200, `/admin` 404, 현재 React 홈에는 링크 없음.
+- `npm install` — 개발 의존성 복원, 취약점 0.
+- `npm run typecheck:web`, Vitest 2/2, production build — 통과.
+- `npm test` — 120/120 통과.
+- 새 포트 전체 Playwright — 데스크톱·모바일 18/18 통과, 관리자 링크 href·critical/serious 접근성·가로 오버플로 포함.
+- `npm run check:web-budget` — HTML 679/452, JS 239273/71508, CSS 33235/6524 bytes raw/gzip로 통과.
+- Terraform plan/apply·운영 배포·운영 브라우저 검증 — 아직 실행 안 함.
+- 운영 데이터·S3 객체·DynamoDB 포인터 변경 — 실행 안 함.
+
+### Decisions / handoff
+- 관리자 링크는 주 탐색이 아닌 공개 푸터에만 낮은 강조도로 둔다. 관리자 화면 자체에는 중복 노출하지 않는다.
+- 다음 안전 액션은 기능 커밋·push와 Lambda 배포 후 운영 링크·로그인 화면 읽기 검증이다.

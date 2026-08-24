@@ -56,6 +56,9 @@ a.route-row:hover { background: var(--nxt-surface-raised); }
 .contract-card p:last-child { max-width: 760px; margin: 0; font-size: 17px; line-height: 1.7; }
 .contract-card code { color: #fff; font-family: var(--nxt-mono); }
 footer { display: flex; justify-content: space-between; gap: var(--nxt-space-4); padding: var(--nxt-space-8) 0 var(--nxt-space-12); color: var(--nxt-muted); font-family: var(--nxt-mono); font-size: 11px; }
+.footer-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--nxt-space-4); }
+.footer-meta a { color: inherit; text-underline-offset: 3px; }
+.footer-meta a:hover { color: var(--nxt-ink); }
 @media (max-width: 900px) { .shell-grid { grid-template-columns: 1fr; } .rail { display: none; } .hero { grid-template-columns: 1fr; min-height: auto; } .metrics { grid-template-columns: 1fr; } .metric-card { border-right: 0; border-bottom: 1px solid var(--nxt-line); } .metric-card:last-child { border-bottom: 0; } }
-@media (max-width: 620px) { .brand b { display: none; } .topbar { min-height: 64px; } main { padding-inline: 16px; } .hero { padding: var(--nxt-space-12) 0; } .hero h1 { font-size: clamp(43px, 15vw, 66px); } .section-heading { align-items: start; flex-direction: column; } .route-row { grid-template-columns: 1fr auto; } .route-row > span:not(.status-badge) { display: none; } .system-grid { grid-template-columns: 1fr; } .contract-card { grid-column: auto; } footer { flex-direction: column; } }
+@media (max-width: 620px) { .brand b { display: none; } .topbar { min-height: 64px; } main { padding-inline: 16px; } .hero { padding: var(--nxt-space-12) 0; } .hero h1 { font-size: clamp(43px, 15vw, 66px); } .section-heading { align-items: start; flex-direction: column; } .route-row { grid-template-columns: 1fr auto; } .route-row > span:not(.status-badge) { display: none; } .system-grid { grid-template-columns: 1fr; } .contract-card { grid-column: auto; } footer { flex-direction: column; } .footer-meta { justify-content: space-between; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .button:hover { transform: none; } }

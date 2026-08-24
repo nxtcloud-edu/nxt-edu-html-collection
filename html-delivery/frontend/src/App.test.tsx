@@ -19,6 +19,7 @@ describe('Phase 16 공개 갤러리', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'AI와 함께 만든 우리들의 콘텐츠' })).toBeInTheDocument();
     expect(await screen.findByRole('tabpanel', { name: '대시보드' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '관리자' })).toHaveAttribute('href', '/admin.html');
     expect(screen.getByLabelText('콘텐츠 유형 분포: 미니게임 4개, 웹페이지 8개')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: '콘텐츠 둘러보기' }));
     expect(await screen.findByText('12개의 콘텐츠')).toBeInTheDocument();

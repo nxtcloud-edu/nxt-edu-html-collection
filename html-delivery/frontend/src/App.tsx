@@ -147,7 +147,7 @@ function GalleryPage() {
 
       {!isCohortPage ? <section className="cohort-section home-panel" id="home-panel-cohorts" role="tabpanel" aria-labelledby="home-tab-cohorts" hidden={homeTab !== 'cohorts'}><div className="section-heading gallery-heading"><div><p className="eyebrow">COHORTS</p><h2>수업별 모아보기</h2></div><StatusBadge tone="active">{cohorts.length}개 운영</StatusBadge></div>{cohortsError ? <div className="message-state message-state--error" role="alert">{cohortsError}</div> : <div className="cohort-list">{cohorts.map((cohort, index) => <a href={`/cohort.html?id=${encodeURIComponent(cohort.cohortId)}`} key={cohort.cohortId}><span>{String(index + 1).padStart(2, '0')}</span><strong>{cohort.name}</strong><small>{cohort.dateLabel || '일정 미정'}</small><b>{cohort.contentCount}<em>개</em></b></a>)}</div>}</section> : null}
 
-      <footer><span>© NXT Cloud</span><span>283 CONTENTS · 396 VERSIONS · PRESERVED</span></footer>
+      <footer><span>© NXT Cloud</span><span className="footer-meta"><span>283 CONTENTS · 396 VERSIONS · PRESERVED</span><a href="/admin.html">관리자</a></span></footer>
     </AppShell>
   );
 }
